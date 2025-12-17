@@ -1,0 +1,83 @@
+name: personal_financial_management
+description: A new Flutter project Spending Management
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.18.0 <3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  flutter_bloc: ^8.1.1
+  firebase_auth: ^5.3.3
+  firebase_core: ^3.8.0
+  firebase_storage: ^12.3.6
+  cloud_firestore: ^5.5.0
+  fl_chart: ^0.69.0
+  equatable: ^2.0.5
+  shimmer: ^3.0.0
+  font_awesome_flutter: ^10.2.1
+  google_sign_in: ^6.2.2
+  shared_preferences: ^2.0.15
+  intl: ">=0.17.0 <0.20.0"
+  flutter_facebook_auth: ^7.1.1
+  fluttertoast: ^8.2.12
+  currency_text_input_formatter: ^2.1.7
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+  table_calendar: ^3.0.7
+  flutter_switch: ^0.3.2
+  dropdown_button2: ^2.3.9
+  smooth_page_indicator: ^1.0.0+2
+  cached_network_image: ^3.4.1
+  flutter_blurhash: ^0.8.2
+  url_launcher: ^6.1.6
+  screenshot: ^3.0.0
+  share_plus: ^10.1.2
+  path_provider: ^2.0.11
+  flutter_native_splash: ^2.2.14
+  csv: ^6.0.0
+  http: ^1.2.2
+  html: ^0.15.1
+  excel: ^2.0.0
+  diacritic: ^0.1.6
+
+
+dependency_overrides:
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/logo.png"
+  web:
+    generate: true
+    image_path: "assets/logo/logo.png"
+    background_color: "#FFFFFF"
+    theme_color: "#7CFC00"
+  windows:
+    generate: true
+    image_path: "assets/logo/logo.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo/
+    - assets/images/
+    - assets/icons/
+    - assets/lang/
+    - assets/intro/
