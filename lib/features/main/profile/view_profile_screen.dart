@@ -79,20 +79,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     const SizedBox(height: 16),
 
                     _buildProfileInfo(
-                      title: AppLocalizations.of(context).translate('monthly_money'),
-                      content: Text(
-                        NumberFormat.currency(locale: "vi_VI").format(user.money),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      isDarkMode: isDarkMode,
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildProfileInfo(
                       title: AppLocalizations.of(context).translate('birthday'),
                       content: Row(
                         children: [

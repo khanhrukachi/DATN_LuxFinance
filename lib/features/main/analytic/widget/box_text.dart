@@ -17,7 +17,7 @@ Widget boxText({required String text, required int number, Color? color}) {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 13),
+          style: const TextStyle(fontSize: 18),
         ),
         const SizedBox(width: 5),
         Flexible(
@@ -25,7 +25,7 @@ Widget boxText({required String text, required int number, Color? color}) {
             overflow: TextOverflow.ellipsis,
             numberFormat.format(number),
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18 ,
               fontWeight: FontWeight.bold,
               color: color,
             ),

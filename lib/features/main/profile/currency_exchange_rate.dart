@@ -22,7 +22,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
   String selectedValue = "VND";
   Map<String, dynamic> currency = {};
   List<Map<String, dynamic>> listCountry = [];
-  bool isLoading = true;  // Thêm biến trạng thái loading
+  bool isLoading = true; // trạng thái loading
 
   @override
   void initState() {
@@ -30,18 +30,27 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
     _moneyController.text = "1";
     _moneyController.addListener(() => setState(() {}));
     _searchController.addListener(() => setState(() {}));
-    APIService.getExchangeRate().then((value) {
-      setState(() {
-        currency = value;
-        isLoading = false;
-      });
+
+    // Hiển thị loading animation sau khi UI render
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showLoading(context);
     });
 
-    APIService.getCountry().then((value) {
+    // Đồng bộ 2 API
+    Future.wait([
+      APIService.getExchangeRate(),
+      APIService.getCountry(),
+    ]).then((results) {
       setState(() {
-        listCountry = value;
+        currency = results[0] as Map<String, dynamic>;
+        listCountry = (results[1] as List).cast<Map<String, dynamic>>();
         isLoading = false;
       });
+      hideLoading(context);
+    }).catchError((e) {
+      hideLoading(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error loading data: $e')));
     });
   }
 
@@ -133,8 +142,8 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
                         });
                       },
                       buttonStyleData: ButtonStyleData(
-                        height: 40, // Set button height
-                        width: 140, // Set button width
+                        height: 40,
+                        width: 140,
                         padding: EdgeInsets.zero,
                       ),
                       iconStyleData: IconStyleData(
@@ -154,9 +163,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
                           ],
                         ),
                       ),
-                      menuItemStyleData: MenuItemStyleData(
-                        height: 40,
-                      ),
+                      menuItemStyleData: MenuItemStyleData(height: 40),
                     ),
                   ),
                 ),
@@ -165,14 +172,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
           ),
         ),
       ),
-      body: isLoading
-          ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(Colors.blue),
-          strokeWidth: 6.0,
-        )
-      )
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 10),
@@ -242,8 +242,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (country.isNotEmpty &&
-                            country[0]["symbol"] != "")
+                        if (country.isNotEmpty && country[0]["symbol"] != "")
                           Text(
                             html_parser.DocumentFragment.html(
                                 country[0]["symbol"])
@@ -254,8 +253,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        if (country.isNotEmpty &&
-                            country[0]["symbol"] != "")
+                        if (country.isNotEmpty && country[0]["symbol"] != "")
                           const SizedBox(height: 5),
                         Text(
                           currency.entries.elementAt(index).key,
@@ -266,8 +264,7 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
                     ),
                   ),
                   const SizedBox(width: 5),
-                  const VerticalDivider(
-                      color: Colors.black, thickness: 1),
+                  const VerticalDivider(color: Colors.black, thickness: 1),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Column(
@@ -333,5 +330,110 @@ class _CurrencyExchangeRateState extends State<CurrencyExchangeRate> {
             : const SizedBox.shrink();
       },
     );
+  }
+}
+
+/// ========================
+/// Loading animation widget
+/// ========================
+
+void showLoading(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: SizedBox(
+          width: 100,
+          height: 100,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              RotationAnimationWidget(),
+              Container(
+                width: 73,
+                height: 73,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.5),
+                    width: 2.0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void hideLoading(BuildContext context) {
+  Navigator.of(context, rootNavigator: true).pop();
+}
+
+class RotationAnimationWidget extends StatefulWidget {
+  @override
+  _RotationAnimationWidgetState createState() =>
+      _RotationAnimationWidgetState();
+}
+
+class _RotationAnimationWidgetState extends State<RotationAnimationWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _controller.value * 2 * 3.14159265359,
+          child: child,
+        );
+      },
+      child: Container(
+        width: 73,
+        height: 73,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: SweepGradient(
+            colors: [
+              Colors.grey.withOpacity(0.9),
+              Colors.grey.withOpacity(0.3),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.6, 1.0],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10.0,
+              spreadRadius: 2.0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
