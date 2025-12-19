@@ -1,5 +1,5 @@
 List<Map<String, String>> listType = [
-  {"title": "monthly_spending"},
+  {"image": "assets/icons/current_money.png", "title": "current_money"},
   {"image": "assets/icons/eat.png", "title": "eating"},
   {"image": "assets/icons/taxi.png", "title": "move"},
   {"image": "assets/icons/house.png", "title": "rent_house"},

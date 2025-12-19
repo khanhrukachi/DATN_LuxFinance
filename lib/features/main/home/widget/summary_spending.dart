@@ -1,14 +1,10 @@
 import 'dart:math';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:personal_financial_management/models/spending.dart';
-import 'package:personal_financial_management/models/user.dart' as myuser;
 
 class SummarySpending extends StatefulWidget {
   const SummarySpending({Key? key, this.spendingList}) : super(key: key);
@@ -21,61 +17,46 @@ class SummarySpending extends StatefulWidget {
 class _SummarySpendingState extends State<SummarySpending> {
   final numberFormat = NumberFormat.currency(locale: "vi_VI");
 
-  Future initWallet({Map<String, dynamic>? data}) async {
-    FirebaseFirestore.instance
-        .collection("info")
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .get()
-        .then((value) {
-      myuser.User user = myuser.User.fromFirebase(value);
-      var walletData = data ?? {};
-      walletData
-          .addAll({DateFormat("MM_yyyy").format(DateTime.now()): user.money});
+  // ================== CALC ==================
 
-      FirebaseFirestore.instance
-          .collection("wallet")
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .set(walletData);
-    });
+  int getTotalIncome(List<Spending> list) {
+    return list
+        .where((e) => e.money > 0)
+        .fold(0, (sum, e) => sum + e.money);
   }
+
+  int getTotalExpense(List<Spending> list) {
+    return list
+        .where((e) => e.money < 0)
+        .fold(0, (sum, e) => sum + e.money.abs());
+  }
+
+  int getCurrentMoney(List<Spending> list) {
+    return list.fold(0, (sum, e) => sum + e.money);
+  }
+
+  // ================== UI ==================
 
   @override
   Widget build(BuildContext context) {
-    return widget.spendingList != null
-        ? StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection("wallet")
-                .doc(FirebaseAuth.instance.currentUser!.uid)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                if (snapshot.requireData.data() != null) {
-                  var data = snapshot.requireData.data();
-                  var wallet =
-                      data![DateFormat("MM_yyyy").format(DateTime.now())];
-                  int sum = 0;
-                  if (widget.spendingList!.isNotEmpty) {
-                    sum = widget.spendingList!
-                        .map((e) => e.money)
-                        .reduce((value, element) => value + element);
-                  }
-                  if (wallet != null) {
-                    return body(wallet, sum);
-                  } else {
-                    initWallet(data: data);
-                    return loadingSummary();
-                  }
-                } else {
-                  initWallet();
-                  return loadingSummary();
-                }
-              }
-              return loadingSummary();
-            })
-        : loadingSummary();
+    if (widget.spendingList == null) return loadingSummary();
+
+    final totalIncome = getTotalIncome(widget.spendingList!);
+    final totalExpense = getTotalExpense(widget.spendingList!);
+    final currentMoney = getCurrentMoney(widget.spendingList!);
+
+    return body(
+      totalIncome: totalIncome,
+      totalExpense: totalExpense,
+      currentMoney: currentMoney,
+    );
   }
 
-  Widget body(var wallet, var sum) {
+  Widget body({
+    required int totalIncome,
+    required int totalExpense,
+    required int currentMoney,
+  }) {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Card(
@@ -84,56 +65,30 @@ class _SummarySpendingState extends State<SummarySpending> {
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            color: Theme.of(context).colorScheme.background,
-          ),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context).translate('first_balance'),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const Spacer(),
-                  Text(
-                    numberFormat.format(wallet),
-                    style: const TextStyle(fontSize: 18),
-                  )
-                ],
+              summaryRow(
+                title: "Tổng tiền đã thu",
+                value: totalIncome,
+                color: Colors.green,
+                prefix: "+",
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context).translate('final_balance'),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const Spacer(),
-                  Text(
-                    numberFormat.format(wallet + sum),
-                    style: const TextStyle(fontSize: 18),
-                  )
-                ],
+              const SizedBox(height: 15),
+              summaryRow(
+                title: "Tổng tiền đã chi",
+                value: totalExpense,
+                color: Colors.red,
+                prefix: "-",
               ),
-              const SizedBox(height: 10),
-              const Divider(
-                height: 2,
-                color: Colors.black,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Spacer(),
-                  Text(
-                    "${sum > 0 ? "+" : ""}${numberFormat.format(sum)}",
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                ],
+              const SizedBox(height: 15),
+              const Divider(),
+              const SizedBox(height: 15),
+              summaryRow(
+                title: "Số tiền hiện tại",
+                value: currentMoney.abs(),
+                color: currentMoney >= 0 ? Colors.blue : Colors.red,
+                prefix: currentMoney >= 0 ? "" : "-",
+                isBold: true,
               ),
             ],
           ),
@@ -141,6 +96,37 @@ class _SummarySpendingState extends State<SummarySpending> {
       ),
     );
   }
+
+  Widget summaryRow({
+    required String title,
+    required int value,
+    required Color color,
+    String prefix = "",
+    bool isBold = false,
+  }) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          "$prefix${numberFormat.format(value)}",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ================== LOADING ==================
 
   Widget loadingSummary() {
     return Padding(
@@ -151,42 +137,15 @@ class _SummarySpendingState extends State<SummarySpending> {
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            color: Theme.of(context).colorScheme.background,
-          ),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context).translate('first_balance'),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const Spacer(),
-                  textLoading()
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Text(
-                    AppLocalizations.of(context).translate('final_balance'),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const Spacer(),
-                  textLoading()
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Divider(
-                height: 2,
-                color: Colors.black,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [const Spacer(), textLoading()],
-              ),
+              shimmerRow(),
+              const SizedBox(height: 15),
+              shimmerRow(),
+              const SizedBox(height: 15),
+              const Divider(),
+              const SizedBox(height: 15),
+              shimmerRow(isBold: true),
             ],
           ),
         ),
@@ -194,18 +153,29 @@ class _SummarySpendingState extends State<SummarySpending> {
     );
   }
 
-  Widget textLoading() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Container(
-        height: 25,
-        width: Random().nextInt(50) + 100,
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(5),
+  Widget shimmerRow({bool isBold = false}) {
+    return Row(
+      children: [
+        Container(
+          height: 20,
+          width: 120,
+          color: Colors.transparent,
         ),
-      ),
+        const Spacer(),
+        Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            height: isBold ? 28 : 25,
+            width: Random().nextInt(50) + 100,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
+

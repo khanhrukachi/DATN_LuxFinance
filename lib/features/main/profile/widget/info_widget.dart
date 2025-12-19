@@ -54,7 +54,7 @@ class InfoWidget extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          AppLocalizations.of(context).translate('monthly_money').capitalize(),
+          AppLocalizations.of(context).translate('total_assets').capitalize(),
           style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 10),

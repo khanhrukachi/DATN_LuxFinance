@@ -361,64 +361,68 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   }
   Future updateSpending() async {
     String moneyString = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (type != null &&
-        moneyString.isNotEmpty &&
-        moneyString.compareTo("0") != 0) {
-      int money = int.parse(moneyString);
 
-      // Ensure that type is a valid index and exists in listType
-      String typeName = '';
-      if (type! >= 0 && type! < listType.length) {
-        typeName =
-            listType[type!]['title'] ?? ''; // Fetch the 'title' for the type
-      }
-
-      Spending spending = Spending(
-        id: widget.spending.id,
-        money: type == 41
-            ? coefficient * money
-            : ([29, 30, 34, 36, 37, 40].contains(type!) ? 1 : -1) * money,
-        type: type!,
-        typeName: typeName.trim(),
-        // Use the fetched typeName
-        dateTime: DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          selectedTime.hour,
-          selectedTime.minute,
-        ),
-        note: _note.text.trim(),
-        image: widget.spending.image,
-        // Keep the original image if not updated
-        location: _location.text.trim(),
-        friends: friends,
-      );
-
-      loadingAnimation(context);
-      await SpendingFirebase.updateSpending(
-        spending,
-        widget.spending.dateTime,
-        image != null ? File(image!.path) : null, // Update image if selected
-        checkPickImage,
-      );
-
-      // Call the change callback if provided
-      if (widget.change != null) {
-        widget.change!(spending, colors);
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      Navigator.pop(context);
-    } else if (type == null) {
+    if (type == null) {
       Fluttertoast.showToast(
-          msg: AppLocalizations.of(context).translate('please_select_type'));
-    } else {
-      Fluttertoast.showToast(
-        msg:
-        AppLocalizations.of(context).translate('please_enter_valid_amount'),
+        msg: AppLocalizations.of(context).translate('please_select_type'),
       );
+      return;
     }
+
+    if (moneyString.isEmpty || moneyString == "0") {
+      Fluttertoast.showToast(
+        msg: AppLocalizations.of(context)
+            .translate('please_enter_valid_amount'),
+      );
+      return;
+    }
+
+    int money = int.parse(moneyString);
+
+    // xác định dấu tiền
+    final signedMoney = type == 41
+        ? coefficient * money
+        : ([29, 30, 34, 36, 37, 40].contains(type!) ? 1 : -1) * money;
+
+    // typeName an toàn
+    String safeTypeName = '';
+    if (type! >= 0 && type! < listType.length) {
+      safeTypeName = listType[type!]['title'] ?? '';
+    }
+
+    final newSpending = Spending(
+      id: widget.spending.id,
+      money: signedMoney,
+      type: type!,
+      typeName: safeTypeName.trim(),
+      dateTime: DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      ),
+      note: _note.text.trim(),
+      image: widget.spending.image,
+      location: _location.text.trim(),
+      friends: friends,
+    );
+
+    loadingAnimation(context);
+
+    await SpendingFirebase.updateSpending(
+      newSpending,
+      widget.spending.money as DateTime,
+      image != null ? File(image!.path) : null,
+      checkPickImage,
+    );
+
+    if (widget.change != null) {
+      widget.change!(newSpending, colors);
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context); // loading
+    Navigator.pop(context); // page
   }
 }

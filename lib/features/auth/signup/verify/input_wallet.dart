@@ -1,11 +1,12 @@
 import 'package:currency_text_input_formatter/currency_text_input_formatter.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/core/constants/app_styles.dart';
+import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/features/auth/login/widget/custom_button.dart';
+import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class InputWalletPage extends StatefulWidget {
@@ -19,16 +20,15 @@ class _InputWalletPageState extends State<InputWalletPage> {
   final TextEditingController _moneyController = TextEditingController();
   DateTime? currentBackPressTime;
 
+  bool _isLoading = false;
+
   @override
-  void dispose() {
-    _moneyController.dispose();
+  void dispose() {    _moneyController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final NumberFormat currencyFormatter = NumberFormat.currency(locale: 'vi_VI');
-
     return Scaffold(
       body: WillPopScope(
         onWillPop: () => onWillPop(
@@ -41,59 +41,84 @@ class _InputWalletPageState extends State<InputWalletPage> {
             child: Column(
               children: [
                 Text(
-                  AppLocalizations.of(context).translate('wallet'),
-                  style: const TextStyle(
-                      fontSize: 25, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  textAlign: TextAlign.center,
-                  AppLocalizations.of(context).translate(
-                      'enter_monthly_spending_amount_you_want_manage'),
-                  style: const TextStyle(
-                    fontSize: 18,
-                  ),
+                  AppLocalizations.of(context).translate('enter_the_current_balance'),
+                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 50),
+
                 TextFormField(
                   controller: _moneyController,
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp("[\\s0-9a-zA-Z]")),
-                    CurrencyTextInputFormatter(currencyFormatter),  // Use the NumberFormat here
+                    FilteringTextInputFormatter.digitsOnly,
+                    CurrencyTextInputFormatter.currency(
+                      locale: 'vi',
+                      symbol: '₫',
+                      decimalDigits: 0,
+                    ),
                   ],
                   style: const TextStyle(fontSize: 20),
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide:
-                      const BorderSide(width: 0, style: BorderStyle.none),
-                    ),
-                    hintStyle: AppStyles.p,
                     filled: true,
                     fillColor: Colors.white,
-                    hintText: "1.000.000 VND",
+                    hintText: "1.000.000 ₫",
                     contentPadding: const EdgeInsets.all(20),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                customButton(
-                  action: () async {
-                    // Safe parsing using tryParse
-                    final cleanedText = _moneyController.text.replaceAll(RegExp(r'[^0-9]'), '');
-                    final int? parsedValue = int.tryParse(cleanedText);
+                    hintStyle: AppStyles.p,
 
-                    if (parsedValue != null) {
-                      await SpendingFirebase.addWalletMoney(parsedValue);
-                      if (!mounted) return;
-                      Navigator.pushReplacementNamed(context, '/main');
-                    } else {
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  )
+
+                ),
+
+                const SizedBox(height: 50),
+
+                customButton(
+                  text: "OK",
+                  action: () async {
+                    if (_isLoading) return;
+
+                    final cleanedText = _moneyController.text
+                        .replaceAll(RegExp(r'[^0-9]'), '');
+                    final int? money = int.tryParse(cleanedText);
+
+                    if (money == null || money <= 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Invalid input. Please enter a valid amount.')),
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context).translate('please_enter_a_valid_amount')),
+                        ),
                       );
+                      return;
+                    }
+
+                    _isLoading = true;
+                    loadingAnimation(context);
+
+                    try {
+                      final spending = Spending(
+                        money: money,
+                        type: 0,
+                        dateTime: DateTime.now(),
+                        note: AppLocalizations.of(context).translate('current_money'),
+                        typeName: "current_money",
+                      );
+
+                      await SpendingFirebase.addSpending(spending);
+
+                      if (!mounted) return;
+                      Navigator.of(context, rootNavigator: true).pop();
+                      Navigator.pushReplacementNamed(context, '/main');
+                    } catch (e) {
+                      Navigator.of(context, rootNavigator: true).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("An error occurred: $e")),
+                      );
+                    } finally {
+                      _isLoading = false;
                     }
                   },
-                  text: "OK",
                 ),
               ],
             ),

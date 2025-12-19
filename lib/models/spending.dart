@@ -9,7 +9,7 @@ class Spending {
   String? image;
   String? typeName;
   String? location;
-  List<String>? friends;
+  List<String> friends;
 
   Spending({
     this.id,
@@ -20,35 +20,43 @@ class Spending {
     this.image,
     this.typeName,
     this.location,
-    this.friends,
-  });
+    List<String>? friends,
+  }) : friends = friends ?? [];
+
+  // ================= FIRESTORE =================
 
   Map<String, dynamic> toMap() => {
     "money": money,
     "type": type,
     "note": note,
-    "date": dateTime,
+    "date": Timestamp.fromDate(dateTime),
     "image": image,
     "typeName": typeName,
     "location": location,
-    "friends": friends
+    "friends": friends,
   };
 
   factory Spending.fromFirebase(DocumentSnapshot snapshot) {
-    var data = snapshot.data() as Map<String, dynamic>;
+    final data = snapshot.data() as Map<String, dynamic>? ?? {};
+
     return Spending(
-        id: snapshot.id,
-        money: data["money"],
-        type: data["type"],
-        dateTime: (data["date"] as Timestamp).toDate(),
-        note: data["note"],
-        image: data["image"],
-        typeName: data["typeName"],
-        location: data["location"],
-        friends: (data["friends"] as List<dynamic>)
-            .map((e) => e.toString())
-            .toList());
+      id: snapshot.id,
+      money: data['money'] ?? 0,
+      type: data['type'] ?? 0,
+      dateTime: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      note: data['note'],
+      image: data['image'],
+      typeName: data['typeName'],
+      location: data['location'],
+      friends: (data['friends'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
+    );
   }
+
+
+
+  // ================= COPY =================
 
   Spending copyWith({
     int? money,

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:currency_text_input_formatter/currency_text_input_formatter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,17 +29,13 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
-    final NumberFormat currencyFormatter = NumberFormat.currency(locale: 'vi_VI');
-
     return Scaffold(
       appBar: AppBar(
         elevation: 2,
         title: Text(AppLocalizations.of(context).translate('account')),
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
         ),
         centerTitle: true,
       ),
@@ -50,157 +45,142 @@ class _EditProfilePageState extends State<EditProfilePage> {
             .doc(FirebaseAuth.instance.currentUser!.uid)
             .get(),
         builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            myuser.User user = myuser.User.fromFirebase(snapshot.requireData);
-            final nameController = TextEditingController(text: user.name);
-            final moneyController = TextEditingController(
-              text: NumberFormat.currency(locale: "vi_VI").format(user.money),
-            );
-            bool gender = user.gender;
-            File? image;
-            DateTime selectedDate =
-                DateFormat("dd/MM/yyyy").parse(user.birthday);
-
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      showAvatar(
-                        image: image,
-                        url: user.avatar,
-                        getImage: (file) => setState(() => image = file),
-                      ),
-                      const SizedBox(height: 30),
-                      Padding(
-                        padding: const EdgeInsets.all(30),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            textProfile(AppLocalizations.of(context)
-                                .translate('full_name')),
-                            TextField(
-                              controller: nameController,
-                              textCapitalization: TextCapitalization.words,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                            textProfile(AppLocalizations.of(context)
-                                .translate('monthly_money')),
-                            TextField(
-                              controller: moneyController,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp("[\\s0-9a-zA-Z]")),
-                                CurrencyTextInputFormatter(currencyFormatter),
-                              ],
-                            ),
-                            const SizedBox(height: 30),
-                            textProfile(AppLocalizations.of(context)
-                                .translate('birthday')),
-                            const SizedBox(height: 20),
-                            InkWell(
-                              onTap: () async {
-                                final DateTime? picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: selectedDate,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (picked != null && picked != selectedDate) {
-                                  setState(() => selectedDate = picked);
-                                }
-                              },
-                              child: showBirthday(selectedDate),
-                            ),
-                            const SizedBox(height: 30),
-                            textProfile(AppLocalizations.of(context)
-                                .translate('gender')),
-                            const SizedBox(height: 30),
-                            Row(
-                              children: [
-                                const Spacer(),
-                                GenderWidget(
-                                    currentGender: gender,
-                                    gender: true,
-                                    action: () {
-                                      if (!gender) {
-                                        setState(() => gender = true);
-                                      }
-                                    }),
-                                const Spacer(),
-                                GenderWidget(
-                                    currentGender: gender,
-                                    gender: false,
-                                    action: () {
-                                      if (gender) {
-                                        setState(() => gender = false);
-                                      }
-                                    }),
-                                const Spacer(),
-                              ],
-                            ),
-                            const SizedBox(height: 30),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.buttonLogin,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  loadingAnimation(context);
-                                  await SpendingFirebase.updateInfo(
-                                    user: user.copyWith(
-                                      name: nameController.text.trim(),
-                                      money: int.parse(moneyController.text
-                                          .replaceAll(RegExp(r'[^0-9]'), '')),
-                                      gender: gender,
-                                      birthday: DateFormat("dd/MM/yyyy")
-                                          .format(selectedDate),
-                                    ),
-                                    image: image,
-                                  );
-                                  if (!mounted) return;
-                                  Navigator.pop(context);
-                                  Fluttertoast.showToast(
-                                      msg: AppLocalizations.of(context)
-                                          .translate("success"));
-                                  Navigator.pop(context);
-                                },
-                                child: Text(
-                                  AppLocalizations.of(context)
-                                      .translate('save'),
-                                  style: AppStyles.p,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                );
-              },
-            );
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
           }
-          return const Center(child: CircularProgressIndicator());
+
+          final user = myuser.User.fromFirebase(snapshot.requireData);
+          final nameController = TextEditingController(text: user.name);
+
+          bool gender = user.gender;
+          File? image;
+          DateTime selectedDate =
+          DateFormat("dd/MM/yyyy").parse(user.birthday);
+
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    showAvatar(
+                      image: image,
+                      url: user.avatar,
+                      getImage: (file) => setState(() => image = file),
+                    ),
+                    const SizedBox(height: 30),
+                    Padding(
+                      padding: const EdgeInsets.all(30),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          textProfile(AppLocalizations.of(context)
+                              .translate('full_name')),
+                          TextField(
+                            controller: nameController,
+                            textCapitalization: TextCapitalization.words,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          textProfile(AppLocalizations.of(context)
+                              .translate('birthday')),
+                          const SizedBox(height: 20),
+                          InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: selectedDate,
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now(),
+                              );
+                              if (picked != null) {
+                                setState(() => selectedDate = picked);
+                              }
+                            },
+                            child: showBirthday(selectedDate),
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          textProfile(AppLocalizations.of(context)
+                              .translate('gender')),
+                          const SizedBox(height: 30),
+                          Row(
+                            children: [
+                              const Spacer(),
+                              GenderWidget(
+                                currentGender: gender,
+                                gender: true,
+                                action: () => setState(() => gender = true),
+                              ),
+                              const Spacer(),
+                              GenderWidget(
+                                currentGender: gender,
+                                gender: false,
+                                action: () => setState(() => gender = false),
+                              ),
+                              const Spacer(),
+                            ],
+                          ),
+
+                          const SizedBox(height: 40),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.buttonLogin,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                              ),
+                              onPressed: () async {
+                                loadingAnimation(context);
+
+                                await SpendingFirebase.updateInfo(
+                                  user: user.copyWith(
+                                    name: nameController.text.trim(),
+                                    gender: gender,
+                                    birthday: DateFormat("dd/MM/yyyy")
+                                        .format(selectedDate),
+                                  ),
+                                  image: image,
+                                );
+
+                                if (!mounted) return;
+                                Navigator.pop(context);
+                                Fluttertoast.showToast(
+                                  msg: AppLocalizations.of(context)
+                                      .translate("success"),
+                                );
+                                Navigator.pop(context);
+                              },
+                              child: Text(
+                                AppLocalizations.of(context).translate('save'),
+                                style: AppStyles.p,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
         },
       ),
     );
   }
+
+  // ================= UI =================
 
   Widget textProfile(String text) {
     return Text(
@@ -220,29 +200,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(90),
-      onTap: () async {
-        _showBottomSheet(
-          (file) {
-            if (file != null) {
-              getImage(file);
-            }
-          },
-        );
-      },
+      onTap: () => _showBottomSheet(
+            (file) => file != null ? getImage(file) : null,
+      ),
       child: Stack(
         children: [
           ClipOval(
             child: image == null
                 ? CachedNetworkImage(
-                    imageUrl: url,
-                    width: 170,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) {
-                      return loadingInfo(width: 150, height: 150, radius: 90);
-                    },
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.error),
-                  )
+              imageUrl: url,
+              width: 170,
+              fit: BoxFit.cover,
+              placeholder: (_, __) =>
+                  loadingInfo(width: 150, height: 150, radius: 90),
+              errorWidget: (_, __, ___) =>
+              const Icon(Icons.error),
+            )
                 : Image.file(image, width: 170),
           ),
           Positioned(
@@ -252,7 +225,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(90),
-                border: Border.all(color: Colors.white),
               ),
               child: const Icon(
                 FontAwesomeIcons.circlePlus,
@@ -266,93 +238,71 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  void _showBottomSheet(Function(File? file) getFile) {
+  void _showBottomSheet(Function(File?) getFile) {
     showModalBottomSheet(
+      context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
       ),
-      context: context,
-      builder: (context) {
-        return SizedBox(
-          width: double.infinity,
-          height: 170,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(),
-              InkWell(
-                onTap: () async {
+      builder: (_) => SizedBox(
+        height: 170,
+        child: Column(
+          children: [
+            const Spacer(),
+            _pickItem(FontAwesomeIcons.image,
+                'select_photo_gallery', () async {
                   Navigator.pop(context);
                   getFile(await chooseAvatar(true));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 5, 0, 5),
-                  child: Row(
-                    children: [
-                      const Icon(FontAwesomeIcons.image, size: 30),
-                      const SizedBox(width: 10),
-                      Text(
-                        AppLocalizations.of(context)
-                            .translate('select_photo_gallery'),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () async {
+                }),
+            const Spacer(),
+            _pickItem(FontAwesomeIcons.camera,
+                'take_picture_camera', () async {
                   Navigator.pop(context);
                   getFile(await chooseAvatar(false));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 5, 0, 5),
-                  child: Row(
-                    children: [
-                      const Icon(FontAwesomeIcons.camera, size: 30),
-                      const SizedBox(width: 10),
-                      Text(
-                        AppLocalizations.of(context)
-                            .translate('take_picture_camera'),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-            ],
-          ),
-        );
-      },
+                }),
+            const Spacer(),
+          ],
+        ),
+      ),
     );
   }
 
-  Future<File?> chooseAvatar(bool check) async {
-    try {
-      var chooseImage = await pickImage(check);
-      if (chooseImage == null) return null;
+  Widget _pickItem(
+      IconData icon, String textKey, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            Icon(icon, size: 30),
+            const SizedBox(width: 10),
+            Text(
+              AppLocalizations.of(context).translate(textKey),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-      final cropImage = await ImageCropper().cropImage(
-        sourcePath: chooseImage.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1), // Aspect ratio for square cropping
-        compressFormat: ImageCompressFormat.jpg, // Optional, set if you want to specify the image format
+  Future<File?> chooseAvatar(bool fromGallery) async {
+    try {
+      final picked = await pickImage(fromGallery);
+      if (picked == null) return null;
+
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: picked.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         compressQuality: 90,
       );
 
-      if (cropImage == null) return null;
-      return File(cropImage.path);
-    } on PlatformException catch (_) {}
-    return null;
+      return cropped != null ? File(cropped.path) : null;
+    } catch (_) {
+      return null;
+    }
   }
-
 
   Widget loadingInfo(
       {required double width, required double height, double radius = 5}) {
@@ -360,8 +310,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       baseColor: Colors.grey[300]!,
       highlightColor: Colors.grey[100]!,
       child: Container(
-        height: height,
         width: width,
+        height: height,
         decoration: BoxDecoration(
           color: Colors.grey,
           borderRadius: BorderRadius.circular(radius),

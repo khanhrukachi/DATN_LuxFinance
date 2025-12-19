@@ -20,41 +20,56 @@ class HistoryPage extends StatelessWidget {
         title: Text(AppLocalizations.of(context).translate("history")),
         centerTitle: true,
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
       ),
-      body: FutureBuilder(
+      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         future: FirebaseFirestore.instance
             .collection("data")
             .doc(FirebaseAuth.instance.currentUser!.uid)
             .get(),
         builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            var data = (snapshot.requireData.data() ?? <String, dynamic>{});
-            List<String> listID = [];
-            for (var list in data.values) {
-              listID.addAll(
-                  (list as List<dynamic>).map((e) => e.toString()).toList());
-            }
-
-            return FutureBuilder(
-              future: SpendingFirebase.getSpendingList(listID),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  List<Spending> listSpending = snapshot.requireData;
-                  listSpending.sort(
-                          (a, b) => b.dateTime.difference(a.dateTime).inSeconds);
-
-                  return ItemSpendingDay(spendingList: listSpending);
-                }
-                return loading();
-              },
-            );
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return loading();
           }
-          return loading();
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text('Có lỗi xảy ra'));
+          }
+
+          final data = snapshot.data!.data() ?? {};
+          final List<String> listID = [];
+
+          for (final value in data.values) {
+            if (value is List) {
+              listID.addAll(value.map((e) => e.toString()));
+            }
+          }
+
+          if (listID.isEmpty) {
+            return const Center(child: Text('Chưa có giao dịch'));
+          }
+
+          return FutureBuilder<List<Spending>>(
+            future: SpendingFirebase.getSpendingList(listID),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return loading();
+              }
+
+              if (snapshot.hasError || !snapshot.hasData) {
+                return const Center(child: Text('Không tải được dữ liệu'));
+              }
+
+              final listSpending = snapshot.data!;
+              listSpending.sort(
+                    (a, b) => b.dateTime.compareTo(a.dateTime),
+              );
+
+              return ItemSpendingDay(spendingList: listSpending);
+            },
+          );
         },
       ),
     );
@@ -93,40 +108,33 @@ class HistoryPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Divider(
-                    height: 2,
-                    color: Colors.black,
-                    endIndent: 10,
-                    indent: 10,
-                  ),
+                  const Divider(height: 2),
                   Column(
                     children: List.generate(
                       Random().nextInt(4) + 1,
-                          (index) {
-                        return Container(
-                          padding: const EdgeInsets.all(10),
-                          child: Row(
-                            children: [
-                              Shimmer.fromColors(
-                                baseColor: Colors.grey[300]!,
-                                highlightColor: Colors.grey[100]!,
-                                child: Container(
-                                  height: 40,
-                                  width: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey,
-                                    borderRadius: BorderRadius.circular(90),
-                                  ),
+                          (_) => Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Row(
+                          children: [
+                            Shimmer.fromColors(
+                              baseColor: Colors.grey[300]!,
+                              highlightColor: Colors.grey[100]!,
+                              child: Container(
+                                height: 40,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey,
+                                  borderRadius: BorderRadius.circular(90),
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              textLoading(Random().nextInt(50) + 50),
-                              const Spacer(),
-                              textLoading(Random().nextInt(50) + 70),
-                            ],
-                          ),
-                        );
-                      },
+                            ),
+                            const SizedBox(width: 10),
+                            textLoading(Random().nextInt(50) + 50),
+                            const Spacer(),
+                            textLoading(Random().nextInt(50) + 70),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
