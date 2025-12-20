@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:personal_financial_management/models/spending.dart';
@@ -68,14 +69,14 @@ class _SummarySpendingState extends State<SummarySpending> {
           child: Column(
             children: [
               summaryRow(
-                title: "Tổng tiền đã thu",
+                title: AppLocalizations.of(context).translate('total_amount_collected'),
                 value: totalIncome,
                 color: Colors.green,
                 prefix: "+",
               ),
               const SizedBox(height: 15),
               summaryRow(
-                title: "Tổng tiền đã chi",
+                title: AppLocalizations.of(context).translate('total_amount_spent'),
                 value: totalExpense,
                 color: Colors.red,
                 prefix: "-",
@@ -84,7 +85,7 @@ class _SummarySpendingState extends State<SummarySpending> {
               const Divider(),
               const SizedBox(height: 15),
               summaryRow(
-                title: "Số tiền hiện tại",
+                title: AppLocalizations.of(context).translate('current_money'),
                 value: currentMoney.abs(),
                 color: currentMoney >= 0 ? Colors.blue : Colors.red,
                 prefix: currentMoney >= 0 ? "" : "-",

@@ -16,10 +16,8 @@ class SpendingFirebase {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final monthKey = DateFormat("MM_yyyy").format(DateTime.now());
 
-    final walletRef =
-    FirebaseFirestore.instance.collection("wallet").doc(uid);
-    final userRef =
-    FirebaseFirestore.instance.collection("info").doc(uid);
+    final walletRef = FirebaseFirestore.instance.collection("wallet").doc(uid);
+    final userRef = FirebaseFirestore.instance.collection("info").doc(uid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       final walletSnap = await tx.get(walletRef);
@@ -36,7 +34,7 @@ class SpendingFirebase {
 
       final int newMoney = currentMoney + delta;
 
-      tx.update(userRef, {'money': newMoney});
+      tx.set(userRef, {'money': newMoney}, SetOptions(merge: true));
 
       Map<String, dynamic> walletData = {};
       if (walletSnap.exists && walletSnap.data() != null) {
@@ -55,12 +53,9 @@ class SpendingFirebase {
   static Future<void> addSpending(Spending spending) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final spendingRef =
-    FirebaseFirestore.instance.collection("spending").doc();
-    final dataRef =
-    FirebaseFirestore.instance.collection("data").doc(uid);
+    final spendingRef = FirebaseFirestore.instance.collection("spending").doc();
+    final dataRef = FirebaseFirestore.instance.collection("data").doc(uid);
 
-    // upload image
     if (spending.image != null) {
       spending.image = await uploadImage(
         folder: "spending",
@@ -69,7 +64,10 @@ class SpendingFirebase {
       );
     }
 
-    await spendingRef.set(spending.toMap());
+    await spendingRef.set({
+      ...spending.toMap(),
+      "userId": uid,
+    });
 
     final key = DateFormat("MM_yyyy").format(spending.dateTime);
     final snap = await dataRef.get();
@@ -85,8 +83,7 @@ class SpendingFirebase {
     ids.add(spendingRef.id);
     await dataRef.set({key: ids}, SetOptions(merge: true));
 
-    // 🔥 update money
-    await _updateCurrentMoney(spending.money.toInt());
+    await _updateCurrentMoney(spending.money);
   }
 
   // =====================================================
@@ -94,17 +91,16 @@ class SpendingFirebase {
   // =====================================================
 
   static Future<void> updateSpending(
-      Spending spending,
-      DateTime oldDay,
-      File? image,
-      bool deleteImage,
-      ) async {
+    Spending spending,
+    DateTime oldDay,
+    File? image,
+    bool deleteImage,
+  ) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
     final spendingRef =
-    FirebaseFirestore.instance.collection("spending").doc(spending.id);
-    final dataRef =
-    FirebaseFirestore.instance.collection("data").doc(uid);
+        FirebaseFirestore.instance.collection("spending").doc(spending.id);
+    final dataRef = FirebaseFirestore.instance.collection("data").doc(uid);
 
     final oldSnap = await spendingRef.get();
     int oldMoney = 0;
@@ -128,7 +124,10 @@ class SpendingFirebase {
       spending.image = null;
     }
 
-    await spendingRef.update(spending.toMap());
+    await spendingRef.update({
+      ...spending.toMap(),
+      "userId": uid,
+    });
 
     final oldKey = DateFormat("MM_yyyy").format(oldDay);
     final newKey = DateFormat("MM_yyyy").format(spending.dateTime);
@@ -145,7 +144,7 @@ class SpendingFirebase {
         }
 
         final newList =
-        data[newKey] is List ? List<String>.from(data[newKey]) : [];
+            data[newKey] is List ? List<String>.from(data[newKey]) : [];
         newList.add(spending.id!);
         data[newKey] = newList;
 
@@ -153,7 +152,7 @@ class SpendingFirebase {
       }
     }
 
-    final int delta = spending.money.toInt() - oldMoney;
+    final int delta = spending.money - oldMoney;
     await _updateCurrentMoney(delta);
   }
 
@@ -163,8 +162,7 @@ class SpendingFirebase {
 
   static Future<void> deleteSpending(Spending spending) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final dataRef =
-    FirebaseFirestore.instance.collection("data").doc(uid);
+    final dataRef = FirebaseFirestore.instance.collection("data").doc(uid);
 
     final key = DateFormat("MM_yyyy").format(spending.dateTime);
 
@@ -186,27 +184,40 @@ class SpendingFirebase {
         .doc(spending.id)
         .delete();
 
-    await _updateCurrentMoney(-spending.money.toInt());
+    await _updateCurrentMoney(-spending.money);
   }
+
+  // =====================================================
+  // ================= EXPORT FOR AI =====================
+  // =====================================================
+
+  static Future<List<Spending>> getAllSpendingForAI() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final snap = await FirebaseFirestore.instance
+        .collection("spending")
+        .where("userId", isEqualTo: uid)
+        .orderBy("date")
+        .get();
+
+    return snap.docs.map((e) => Spending.fromFirebase(e)).toList();
+  }
+
+  // =====================================================
+  // ================= GET SPENDING LIST =====================
+  // =====================================================
 
   static Future<List<Spending>> getSpendingList(List<String> ids) async {
     List<Spending> list = [];
-
     for (final id in ids) {
-      final doc = await FirebaseFirestore.instance
-          .collection("spending")
-          .doc(id)
-          .get();
-
+      final doc =
+          await FirebaseFirestore.instance.collection("spending").doc(id).get();
       if (doc.exists && doc.data() != null) {
         list.add(Spending.fromFirebase(doc));
       }
     }
-
     return list;
   }
-
-
 
   // =====================================================
   // ================= USER ==============================
@@ -229,7 +240,7 @@ class SpendingFirebase {
     await FirebaseFirestore.instance
         .collection("info")
         .doc(uid)
-        .update(user.toMap());
+        .set(user.toMap(), SetOptions(merge: true));
   }
 
   // =====================================================

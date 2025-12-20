@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class MyPieChart extends StatefulWidget {
   const MyPieChart({Key? key, required this.list}) : super(key: key);
@@ -79,7 +80,7 @@ class _MyPieChartState extends State<MyPieChart>
               borderData: FlBorderData(show: false),
               sectionsSpace: 6,
               centerSpaceRadius: 40,
-              sections: showingSections(_controller.value),
+              sections: showingSections(_controller.value, context),
             ),
           );
         },
@@ -87,63 +88,73 @@ class _MyPieChartState extends State<MyPieChart>
     );
   }
 
-  List<PieChartSectionData> showingSections(double progress) {
-    List<PieChartSectionData> pieChartList = [];
+  List<PieChartSectionData> showingSections(
+      double progress,
+      BuildContext context,
+      ) {
+    final List<PieChartSectionData> pieChartList = [];
+
+    if (widget.list.isEmpty) return pieChartList;
+
+    final total = widget.list.fold<int>(
+      0,
+          (sum, e) => sum + e.money.abs(),
+    );
+
+    if (total <= 0) return pieChartList;
 
     for (int i = 0; i < listType.length; i++) {
-      if (![0, 10, 21, 27, 35, 38].contains(i)) {
-        List<Spending> spendingList =
-        widget.list.where((element) => element.type == i).toList();
-        if (spendingList.isNotEmpty) {
-          final isTouched = pieChartList.length == touchedIndex;
-          final fontSize = isTouched ? 20.0 : 16.0;
-          final radius = isTouched ? 110.0 : 100.0;
-          final widgetSize = isTouched ? 55.0 : 40.0;
+      if ([0, 10, 21, 27, 35, 38].contains(i)) continue;
 
-          int sumSpending = spendingList
-              .map((e) => e.money.abs())
-              .reduce((value, element) => value + element);
+      final spendingList =
+      widget.list.where((e) => e.type == i).toList();
 
-          double value = (sumSpending / sum) * 100 * progress;
+      if (spendingList.isEmpty) continue;
 
-          // Lấy màu từ palette, vòng lại nếu vượt quá số màu
-          final color = paletteColors[i % paletteColors.length];
+      final sumSpending = spendingList.fold<int>(
+        0,
+            (sum, e) => sum + e.money.abs(),
+      );
 
-          pieChartList.add(
-            PieChartSectionData(
-              color: color,
-              value: value,
-              title: isTouched
-                  ? "${listType[i]["name"]}\n${value.toStringAsFixed(1)}%"
-                  : "",
-              radius: radius,
-              titleStyle: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: [
-                  Shadow(
-                    color: Colors.black.withOpacity(0.6),
-                    offset: const Offset(2, 2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              badgeWidget: _Badge(
-                listType[i]["image"]!,
-                size: widgetSize,
-                borderColor: Colors.white,
-                isTouched: isTouched,
-              ),
-              badgePositionPercentageOffset: 0.98,
-            ),
-          );
-        }
-      }
+      final value = (sumSpending / total) * 100 * progress;
+      final isTouched = pieChartList.length == touchedIndex;
+
+      final String key =
+          spendingList.first.typeName ?? "other";
+
+      final String titleName =
+      AppLocalizations.of(context).translate(key);
+
+      pieChartList.add(
+        PieChartSectionData(
+          value: value,
+          color: paletteColors[i % paletteColors.length],
+          radius: isTouched ? 110 : 100,
+          title: isTouched
+              ? "$titleName\n${value.toStringAsFixed(1)}%"
+              : "",
+          titleStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [
+              Shadow(color: Colors.black54, blurRadius: 4),
+            ],
+          ),
+          badgeWidget: _Badge(
+            listType[i]["image"]!,
+            size: isTouched ? 55 : 40,
+            borderColor: Colors.white,
+            isTouched: isTouched,
+          ),
+          badgePositionPercentageOffset: 0.98,
+        ),
+      );
     }
 
     return pieChartList;
   }
+
 }
 
 class _Badge extends StatelessWidget {

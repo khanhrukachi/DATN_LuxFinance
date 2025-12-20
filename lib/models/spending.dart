@@ -2,14 +2,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Spending {
   String? id;
+
   int money;
   int type;
+  String? typeName;
+
   String? note;
   DateTime dateTime;
   String? image;
-  String? typeName;
   String? location;
   List<String> friends;
+
+  late int day;
+  late int month;
+  late int year;
+  late int weekday;
+  late int hour;
+  late bool isExpense;
+  late bool isIncome;
 
   Spending({
     this.id,
@@ -21,42 +31,62 @@ class Spending {
     this.typeName,
     this.location,
     List<String>? friends,
-  }) : friends = friends ?? [];
+  }) : friends = friends ?? [] {
+    day = dateTime.day;
+    month = dateTime.month;
+    year = dateTime.year;
+    weekday = dateTime.weekday; // 1-7
+    hour = dateTime.hour;
 
-  // ================= FIRESTORE =================
+    isExpense = money < 0;
+    isIncome = money > 0;
+  }
+
 
   Map<String, dynamic> toMap() => {
     "money": money,
     "type": type,
+    "typeName": typeName,
     "note": note,
     "date": Timestamp.fromDate(dateTime),
     "image": image,
-    "typeName": typeName,
     "location": location,
     "friends": friends,
   };
 
   factory Spending.fromFirebase(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>? ?? {};
+    final date =
+        (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     return Spending(
       id: snapshot.id,
-      money: data['money'] ?? 0,
+      money: (data['money'] ?? 0).toInt(),
       type: data['type'] ?? 0,
-      dateTime: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      typeName: data['typeName'],
+      dateTime: date,
       note: data['note'],
       image: data['image'],
-      typeName: data['typeName'],
       location: data['location'],
       friends: (data['friends'] as List<dynamic>?)
           ?.map((e) => e.toString())
-          .toList(),
+          .toList() ??
+          [],
     );
   }
 
-
-
-  // ================= COPY =================
+  Map<String, dynamic> toJson() => {
+    "amount": money.abs(),
+    "label": isExpense ? "expense" : "income",
+    "category": typeName ?? "",
+    "type_code": type,
+    "day": day,
+    "month": month,
+    "year": year,
+    "weekday": weekday,
+    "hour": hour,
+    "location": location ?? "",
+  };
 
   Spending copyWith({
     int? money,

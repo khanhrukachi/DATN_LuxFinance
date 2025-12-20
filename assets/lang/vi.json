@@ -15,6 +15,8 @@
   "gender": "Giới Tính",
   "save": "Lưu",
   "current_money": "Số tiền hiện tại",
+  "total_amount_collected" : "Tổng tiền đã thu",
+  "total_amount_spent" : "Tổng tiền đã chi",
   "total_report" : "Báo cáo tổng thể",
   "male": "Nam",
   "female": "Nữ",

@@ -15,6 +15,8 @@
   "gender": "Gender",
   "save": "Save",
   "current_money": "Current money",
+  "total_amount_collected" : "Total amount collected",
+  "total_amount_spent" : "Total amount spent",
   "total_report" : "Total report",
   "male": "Male",
   "female": "Female",
