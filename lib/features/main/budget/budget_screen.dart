@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
-import 'package:personal_financial_management/core/constants/function/loading.dart';
+import 'package:personal_financial_management/core/constants/function/loading_overlay.dart';
 import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:personal_financial_management/features/main/budget/edit_budget/edit_budget_screen.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_item.dart';
@@ -74,21 +74,10 @@ class _BudgetPageState extends State<BudgetPage> {
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('budget'),),
+        title: Text(AppLocalizations.of(context).translate('budget')),
         centerTitle: true,
         elevation: 0,
         automaticallyImplyLeading: false,
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "budget_add_fab",
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddBudgetPage()),
-          );
-          if (result == true) fetchBudgets();
-        },
-        child: const Icon(Icons.add),
       ),
       body: LoadingOverlay(
         isLoading: isLoading,
@@ -140,14 +129,12 @@ class _BudgetPageState extends State<BudgetPage> {
               const SizedBox(height: 12),
               Expanded(
                 child: ListView.builder(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   itemCount: budgetItems.length,
                   itemBuilder: (context, index) {
                     final item = budgetItems[index];
                     final itemProgress =
-                    (item["spent"] / item["limit"])
-                        .clamp(0.0, 1.0);
+                    (item["spent"] / item["limit"]).clamp(0.0, 1.0);
 
                     return BudgetItem(
                       type: item["type"],

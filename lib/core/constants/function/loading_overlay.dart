@@ -20,7 +20,7 @@ class LoadingOverlay extends StatelessWidget {
         if (isLoading)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(1), // 👈 nền đen mờ
+              color: Colors.black.withOpacity(1),
               alignment: Alignment.center,
               child: RotationAnimationWidget(),
             ),

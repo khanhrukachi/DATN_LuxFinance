@@ -17,7 +17,7 @@ class BudgetTypeSelector extends StatelessWidget {
       const nonExpenseTitles = [
         'salary','other_income','money_transferred','money_transferred_to',
         'invest','debt_collection','borrow','loan','pay','pay_interest',
-        'earn_profit','new_group'
+        'earn_profit','new_group','current_money'
       ];
       return !nonExpenseTitles.contains(title) && image != null;
     }).toList();

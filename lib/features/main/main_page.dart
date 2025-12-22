@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
+import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:personal_financial_management/features/spending/add_spending/add_spending.dart';
 
 import 'package:personal_financial_management/features/main/analytic/analytic_screen.dart';
@@ -52,25 +53,31 @@ class _MainPageState extends State<MainPage> {
         ),
       ),
 
-      /// FLOATING ACTION BUTTON
       floatingActionButton: FloatingActionButton(
         elevation: 6,
         backgroundColor: Theme.of(context).colorScheme.primary,
-        onPressed: () {
-          Navigator.of(context).push(
-            createRoute(screen: const AddSpendingPage()),
-          );
-        },
         shape: const CircleBorder(),
         child: const Icon(
           Icons.add_rounded,
           color: Colors.white,
           size: 30,
         ),
+        onPressed: () async {
+          if (currentTab == 1) {
+            final result = await Navigator.of(context).push(
+              createRoute(screen: const AddBudgetPage()),
+            );
+            if (result == true) setState(() {});
+          } else {
+            await Navigator.of(context).push(
+              createRoute(screen: const AddSpendingPage()),
+            );
+          }
+        },
       ),
+
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      /// BOTTOM NAVIGATION BAR
       bottomNavigationBar: BottomAppBar(
         color: isDark ? const Color(0xFF121212) : Colors.white,
         elevation: 8,
@@ -91,7 +98,6 @@ class _MainPageState extends State<MainPage> {
                 icon: Icons.menu_book,
               ),
 
-              /// SLOT FOR FAB
               const Expanded(child: SizedBox()),
 
               _tabItem(
