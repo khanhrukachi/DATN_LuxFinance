@@ -35,7 +35,7 @@ class Spending {
     day = dateTime.day;
     month = dateTime.month;
     year = dateTime.year;
-    weekday = dateTime.weekday; // 1-7
+    weekday = dateTime.weekday;
     hour = dateTime.hour;
 
     isExpense = money < 0;

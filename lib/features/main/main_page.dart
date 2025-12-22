@@ -8,7 +8,7 @@ import 'package:personal_financial_management/core/constants/function/route_func
 import 'package:personal_financial_management/features/spending/add_spending/add_spending.dart';
 
 import 'package:personal_financial_management/features/main/analytic/analytic_screen.dart';
-import 'package:personal_financial_management/features/main/calendar/budget_screen.dart';
+import 'package:personal_financial_management/features/main/budget/budget_screen.dart';
 import 'package:personal_financial_management/features/main/home/home_screen.dart';
 import 'package:personal_financial_management/features/main/profile/profile_screen.dart';
 

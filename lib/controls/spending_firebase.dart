@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/models/budget.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 
 class SpendingFirebase {
@@ -219,6 +220,111 @@ class SpendingFirebase {
     return list;
   }
 
+  // =====================================================
+  // ================= BUDGET ============================
+  // =====================================================
+
+  static Future<void> addOrUpdateBudget(Budget budget) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final ref = FirebaseFirestore.instance
+        .collection("budget")
+        .doc(uid)
+        .collection("items")
+        .doc("${budget.year}_${budget.month}_${budget.type}");
+
+    await ref.set(budget.toMap(), SetOptions(merge: true));
+  }
+
+  static Future<List<Budget>> getBudgetsOfMonth(int month, int year) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final snap = await FirebaseFirestore.instance
+        .collection("budget")
+        .doc(uid)
+        .collection("items")
+        .where("month", isEqualTo: month)
+        .where("year", isEqualTo: year)
+        .get();
+
+    return snap.docs.map((e) => Budget.fromFirebase(e)).toList();
+  }
+
+  static Future<int> getTotalExpenseOfMonth({
+    required int month,
+    required int year,
+    int? type,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    Query query = FirebaseFirestore.instance
+        .collection("spending")
+        .where("userId", isEqualTo: uid)
+        .where("money", isLessThan: 0);
+
+    if (type != null) {
+      query = query.where("type", isEqualTo: type);
+    }
+
+    final snap = await query.get();
+
+    int total = 0;
+    for (var doc in snap.docs) {
+      final spending = Spending.fromFirebase(doc);
+      if (spending.month == month && spending.year == year) {
+        total += spending.money.abs();
+      }
+    }
+    return total;
+  }
+
+  static Future<bool> isOverBudget(Budget budget) async {
+    final spent = await getTotalExpenseOfMonth(
+      month: budget.month,
+      year: budget.year,
+      type: budget.type == 0 ? null : budget.type,
+    );
+    return spent > budget.limitMoney;
+  }
+
+  static Future<void> updateBudget({
+    required Budget budget,
+    required int newLimit,
+  }) async {
+    if (budget.id == null) {
+      throw Exception("Budget document không tồn tại!");
+    }
+
+    final ref = FirebaseFirestore.instance
+        .collection("budget")
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection("items")
+        .doc(budget.id);
+
+    await ref.update({
+      "limitMoney": newLimit,
+      "updatedAt": FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> deleteBudget({
+    required int type,
+    required int month,
+    required int year,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final ref = FirebaseFirestore.instance
+        .collection("budget")
+        .doc(uid)
+        .collection("items")
+        .doc("${year}_${month}_${type}");
+
+    try {
+      final docSnap = await ref.get();
+      if (!docSnap.exists) return; // document chưa tồn tại -> không xóa
+      await ref.delete();
+    } catch (e) {
+      print("Error deleting budget: $e");
+    }
+  }
   // =====================================================
   // ================= USER ==============================
   // =====================================================

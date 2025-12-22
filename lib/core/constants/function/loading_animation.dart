@@ -4,6 +4,7 @@ void loadingAnimation(BuildContext context) {
   showDialog(
     context: context,
     barrierDismissible: true,
+    barrierColor: Colors.black.withOpacity(0.6),
     builder: (context) {
       return StatefulBuilder(
         builder: (context, setState) {

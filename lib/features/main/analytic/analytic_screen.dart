@@ -1,8 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:table_calendar/table_calendar.dart';
+
 import 'package:personal_financial_management/core/constants/function/get_date.dart';
 import 'package:personal_financial_management/core/constants/function/get_data_spending.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
+import 'package:personal_financial_management/core/constants/function/loading.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
+
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/column_chart.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/pie_chart.dart';
@@ -14,11 +21,6 @@ import 'package:personal_financial_management/features/main/analytic/widget/show
 import 'package:personal_financial_management/features/main/analytic/widget/tabbar_chart.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/tabbar_type.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/total_report.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 
 class AnalyticPage extends StatefulWidget {
   const AnalyticPage({Key? key}) : super(key: key);
@@ -32,39 +34,54 @@ class _AnalyticPageState extends State<AnalyticPage>
   late TabController _tabController;
   late TabController _chartController;
   late TabController _typeController;
+
   bool chart = false;
+  bool _isLoading = true;
+
   DateTime now = DateTime.now();
   String date = "";
 
   @override
   void initState() {
+    super.initState();
+
     date = getWeek(now);
+
     _tabController = TabController(length: 3, vsync: this);
     _chartController = TabController(length: 2, vsync: this);
     _typeController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      now = DateTime.now();
-      setState(() {
-        if (_tabController.index == 0) {
-          date = getWeek(now);
-        } else if (_tabController.index == 1) {
-          date = getMonth(now);
-        } else {
-          date = getYear(now);
-        }
-      });
-    });
+
+    _tabController.addListener(_onTabChange);
     _chartController.addListener(() {
-      setState(() {
-        if (_chartController.index == 0) {
-          chart = false;
-        } else {
-          chart = true;
-        }
-      });
+      setState(() => chart = _chartController.index == 1);
     });
     _typeController.addListener(() => setState(() {}));
-    super.initState();
+
+    /// Loading lần đầu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) setState(() => _isLoading = false);
+      });
+    });
+  }
+
+  void _onTabChange() {
+    setState(() {
+      _isLoading = true;
+      now = DateTime.now();
+
+      if (_tabController.index == 0) {
+        date = getWeek(now);
+      } else if (_tabController.index == 1) {
+        date = getMonth(now);
+      } else {
+        date = getYear(now);
+      }
+    });
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _isLoading = false);
+    });
   }
 
   @override
@@ -75,179 +92,157 @@ class _AnalyticPageState extends State<AnalyticPage>
     super.dispose();
   }
 
-  bool checkDate(DateTime date) {
+  bool checkDate(DateTime dateTime) {
     if (_tabController.index == 0) {
       int weekDay = now.weekday;
-      DateTime firstDayOfWeek = DateTime(now.year, now.month, now.day)
+      DateTime firstDay =
+      DateTime(now.year, now.month, now.day)
           .subtract(Duration(days: weekDay - 1));
+      DateTime lastDay = firstDay.add(const Duration(days: 6));
 
-      DateTime lastDayOfWeek = firstDayOfWeek.add(const Duration(days: 6));
-
-      if (firstDayOfWeek.isBefore(date) && lastDayOfWeek.isAfter(date) ||
-          isSameDay(firstDayOfWeek, date) ||
-          isSameDay(lastDayOfWeek, date)) return true;
-    } else if (_tabController.index == 1 && isSameMonth(date, now)) {
-      return true;
-    } else if (_tabController.index == 2 && date.year == now.year) {
-      return true;
+      return (dateTime.isAfter(firstDay) &&
+          dateTime.isBefore(lastDay)) ||
+          isSameDay(dateTime, firstDay) ||
+          isSameDay(dateTime, lastDay);
     }
-    return false;
+
+    if (_tabController.index == 1) {
+      return isSameMonth(dateTime, now);
+    }
+
+    return dateTime.year == now.year;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            header(),
-            const SizedBox(height: 20),
-            Expanded(child: body()),
-          ],
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: Text(
+          AppLocalizations.of(context).translate('spending'),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget header() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(
-                AppLocalizations.of(context).translate('spending'),
-                style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              InkWell(
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                onTap: () {
-                  Navigator.of(context).push(
-                    createRoute(
-                      screen: const SearchPage(),
-                      begin: const Offset(1, 0),
-                    ),
-                  );
-                },
-                child: Material(
-                  shape: RoundedRectangleBorder(
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(90),
+              onTap: () {
+                Navigator.of(context).push(
+                  createRoute(
+                    screen: const SearchPage(),
+                    begin: const Offset(1, 0),
+                  ),
+                );
+              },
+              child: Material(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(90),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
                     borderRadius: BorderRadius.circular(90),
                   ),
-                  elevation: 1,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(90),
-                    ),
-                    child: const Icon(
-                      FontAwesomeIcons.magnifyingGlass,
-                      size: 20,
-                      color: Color.fromRGBO(180, 190, 190, 1),
-                    ),
+                  child: const Icon(
+                    FontAwesomeIcons.magnifyingGlass,
+                    size: 20,
+                    color: Color.fromRGBO(180, 190, 190, 1),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 20),
-          CustomTabBar(controller: _tabController),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: CustomTabBar(controller: _tabController),
+        ),
+      ),
+      body: LoadingOverlay(
+        isLoading: _isLoading,
+        child: _body(),
       ),
     );
   }
 
-  Widget body() {
+  /// ================= BODY =================
+  Widget _body() {
     return StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("data")
-            .doc(FirebaseAuth.instance.currentUser!.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            Map<String, dynamic> data = {};
-            if (snapshot.requireData.data() != null) {
-              data = snapshot.requireData.data() as Map<String, dynamic>;
-            }
-            List<String> list = getDataSpending(
-              data: data,
-              index: _tabController.index,
-              date: now,
+      stream: FirebaseFirestore.instance
+          .collection("data")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox();
+
+        Map<String, dynamic> data = {};
+        if (snapshot.data!.data() != null) {
+          data = snapshot.data!.data() as Map<String, dynamic>;
+        }
+
+        final ids = getDataSpending(
+          data: data,
+          index: _tabController.index,
+          date: now,
+        );
+
+        return StreamBuilder<QuerySnapshot>(
+          stream:
+          FirebaseFirestore.instance.collection("spending").snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox();
+
+            final spendingList = snapshot.data!.docs
+                .where((e) => ids.contains(e.id))
+                .map((e) => Spending.fromFirebase(e))
+                .where((e) => checkDate(e.dateTime))
+                .toList();
+
+            final classify = spendingList.where((e) {
+              if (_typeController.index == 0 && e.money > 0) return false;
+              if (_typeController.index == 1 && e.money < 0) return false;
+              return true;
+            }).toList();
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: [
+                  _showChart(classify),
+                  if (spendingList.isNotEmpty)
+                    TotalReport(list: spendingList),
+                  if (spendingList.isNotEmpty)
+                    chart
+                        ? showListSpendingPie(list: classify)
+                        : classify.isNotEmpty
+                        ? ShowListSpendingColumn(
+                      spendingList: classify,
+                      index: _tabController.index,
+                    )
+                        : const SizedBox(height: 200),
+                ],
+              ),
             );
-
-            return StreamBuilder(
-              stream:
-                  FirebaseFirestore.instance.collection("spending").snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  var dataSpending = snapshot.data!.docs
-                      .where((element) => list.contains(element.id))
-                      .map((e) => Spending.fromFirebase(e))
-                      .toList();
-
-                  List<Spending> spendingList = dataSpending
-                      .where((element) => checkDate(element.dateTime))
-                      .toList();
-
-                  List<Spending> classifySpending =
-                      spendingList.where((element) {
-                    if (_typeController.index == 0 && element.money > 0) {
-                      return false;
-                    }
-                    if (_typeController.index == 1 && element.money < 0) {
-                      return false;
-                    }
-                    return true;
-                  }).toList();
-
-                  return SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        children: [
-                          showChart(classifySpending),
-                          if (spendingList.isNotEmpty)
-                            TotalReport(list: spendingList),
-                          if (spendingList.isNotEmpty)
-                            (chart
-                                ? showListSpendingPie(list: classifySpending)
-                                : (classifySpending.isNotEmpty
-                                ? ShowListSpendingColumn(
-                              spendingList: classifySpending,
-                              index: _tabController.index,
-                            )
-                                : SizedBox(
-                              height: 200,
-                              child: Center(
-                                child: Text(
-                                  AppLocalizations.of(context).translate('no_data'),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ))),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return loading();
-              },
-            );
-          }
-
-          return loading();
-        });
+          },
+        );
+      },
+    );
   }
 
-  Widget showChart(List<Spending> classifySpending) {
+  /// ================= CHART =================
+  Widget _showChart(List<Spending> list) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       color: const Color(0xff2c4260),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       child: Column(
         children: [
           const SizedBox(height: 10),
@@ -255,66 +250,26 @@ class _AnalyticPageState extends State<AnalyticPage>
             date: date,
             index: _tabController.index,
             now: now,
-            action: (date, now) {
+            action: (d, n) {
               setState(() {
-                this.date = date;
-                this.now = now;
+                date = d;
+                now = n;
               });
             },
           ),
           TabBarType(controller: _typeController),
-          classifySpending.isNotEmpty
-              ? (chart
-                  ? MyPieChart(list: classifySpending)
-                  : ColumnChart(
-                      index: _tabController.index,
-                      list: classifySpending,
-                      dateTime: now,
-                    ))
-              : SizedBox(
-                  height: 350,
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context).translate('no_data'),
-                      style: const TextStyle(
-                        color: Color.fromRGBO(255, 224, 111, 1),
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+          list.isNotEmpty
+              ? chart
+              ? MyPieChart(list: list)
+              : ColumnChart(
+            index: _tabController.index,
+            list: list,
+            dateTime: now,
+          )
+              : const SizedBox(height: 350),
           tabBarChart(controller: _chartController),
           const SizedBox(height: 10),
         ],
-      ),
-    );
-  }
-
-  Widget loading() {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        color: const Color(0xff2c4260),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            showDate(
-              date: date,
-              index: 0,
-              now: now,
-              action: (date, now) {},
-            ),
-            TabBarType(controller: TabController(length: 2, vsync: this)),
-            const SizedBox(
-              height: 350,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            tabBarChart(controller: TabController(length: 2, vsync: this)),
-            const SizedBox(height: 10),
-          ],
-        ),
       ),
     );
   }

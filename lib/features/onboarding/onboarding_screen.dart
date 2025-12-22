@@ -24,8 +24,8 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
       "content": "view_monthly_spending_summary_and_remaining_balance"
     },
     {
-      "image": "assets/intro/calendar.jpg",
-      "title": "calendar",
+      "image": "assets/intro/budget.jpg",
+      "title": "budget",
       "content": "review_your_scheduled_expenses"
     },
     {
