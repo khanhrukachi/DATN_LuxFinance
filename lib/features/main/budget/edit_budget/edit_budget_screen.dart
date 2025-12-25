@@ -46,6 +46,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
         budget: widget.budget,
         newLimit: limit,
       );
+      if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
       _showSnack(AppLocalizations.of(context).translate('budget_not_exist'));
@@ -56,16 +57,13 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
 
   Future<void> _deleteBudget() async {
     final local = AppLocalizations.of(context);
-
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          elevation: 0,
           backgroundColor: isDark ? Colors.grey[850] : Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -135,13 +133,12 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
     if (confirmed != true) return;
 
     setState(() => isLoading = true);
-
     await SpendingFirebase.deleteBudget(
       type: widget.budget.type,
       month: widget.budget.month,
       year: widget.budget.year,
     );
-
+    if (!mounted) return;
     setState(() => isLoading = false);
     Navigator.pop(context, true);
   }
@@ -157,40 +154,78 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('edit_budget')),
+        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        title: Text(
+          AppLocalizations.of(context).translate('edit_budget'),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: isLoading ? null : _deleteBudget,
           ),
         ],
+        elevation: 0,
       ),
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                BudgetCard(
-                  selectedType: selectedType,
-                  limitController: limitController,
-                  onTypeTap: () {},
+                // Thẻ Budget kiểu mới
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey.shade800 : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark
+                            ? Colors.black.withOpacity(0.3)
+                            : Colors.black.withOpacity(0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: BudgetCard(
+                    selectedType: selectedType,
+                    limitController: limitController,
+                    onTypeTap: () {},
+                  ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   height: 54,
                   child: ElevatedButton(
                     onPressed: isLoading ? null : _updateBudget,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                    ),
                     child: Text(
                       AppLocalizations.of(context).translate('update_budget'),
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
+          // Overlay loading
           if (isLoading)
             Positioned.fill(
               child: Container(

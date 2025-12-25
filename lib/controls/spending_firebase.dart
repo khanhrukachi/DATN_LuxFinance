@@ -319,7 +319,7 @@ class SpendingFirebase {
 
     try {
       final docSnap = await ref.get();
-      if (!docSnap.exists) return; // document chưa tồn tại -> không xóa
+      if (!docSnap.exists) return;
       await ref.delete();
     } catch (e) {
       print("Error deleting budget: $e");

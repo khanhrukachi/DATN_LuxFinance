@@ -29,7 +29,10 @@ class InputMoney extends StatelessWidget {
           fillColor: Theme.of(context).scaffoldBackgroundColor,
           border: InputBorder.none,
           hintText: "100.000 VND",
-          hintStyle: const TextStyle(fontSize: 20),
+          hintStyle: TextStyle(
+            fontSize: 20,
+            color: Colors.grey.withOpacity(0.5),
+          ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           focusedBorder: OutlineInputBorder(

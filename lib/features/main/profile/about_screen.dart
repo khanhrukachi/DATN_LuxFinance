@@ -6,8 +6,49 @@ import 'package:url_launcher/url_launcher_string.dart';
 class AboutPage extends StatelessWidget {
   const AboutPage({Key? key}) : super(key: key);
 
+  Widget _buildContactButton({
+    required BuildContext context,
+    required Color color,
+    required IconData icon,
+    required String label,
+    required String url,
+  }) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 3,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          if (await canLaunchUrlString(url)) {
+            await launchUrlString(url, mode: LaunchMode.externalApplication);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: color,
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  "${AppLocalizations.of(context).translate('contact_me_via')} $label",
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -16,157 +57,61 @@ class AboutPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
+        title: Text(AppLocalizations.of(context).translate('about'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 15),
-          Image.asset("assets/logo/logo.png", width: 150),
-          const SizedBox(height: 15),
-          const Text(
-            "LuxFinance",
-            style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Text("${AppLocalizations.of(context).translate('version')} 1.0.0"),
-          const SizedBox(height: 5),
-          Text(
-            "${AppLocalizations.of(context).translate('developed_by')} Rukachi Team",
-          ),
-          const SizedBox(height: 15),
-          const Divider(color: Colors.black45, height: 1),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: () async {
-              var url = 'https://fb.com/phamquockhanh7352';
-              if (await canLaunchUrlString(url)) {
-                await launchUrlString(
-                  url,
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-            },
-            child: SizedBox(
-              width: 300,
-              child: Row(
-                children: [
-                  const Icon(
-                    FontAwesomeIcons.facebook,
-                    color: Color.fromRGBO(66, 103, 178, 1),
-                    size: 40,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    "${AppLocalizations.of(context).translate('contact_me_via')} Facebook",
-                    style: const TextStyle(fontSize: 16),
-                  )
-                ],
-              ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          children: [
+            Image.asset("assets/logo/logo.png", width: 120),
+            const SizedBox(height: 12),
+            const Text(
+              "LuxFinance",
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: () async {
-              var url = 'https://twitter.com/rukachilocker';
-              if (await canLaunchUrlString(url)) {
-                await launchUrlString(
-                  url,
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-            },
-            child: SizedBox(
-              width: 300,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: const Color.fromRGBO(29, 161, 242, 1),
-                      borderRadius: BorderRadius.circular(90),
-                    ),
-                    child: const Icon(
-                      FontAwesomeIcons.twitter,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    "${AppLocalizations.of(context).translate('contact_me_via')} Twitter",
-                    style: const TextStyle(fontSize: 16),
-                  )
-                ],
-              ),
+            const SizedBox(height: 6),
+            Text("${AppLocalizations.of(context).translate('version')} 1.0.0",
+                style: TextStyle(color: theme.textTheme.bodySmall?.color)),
+            const SizedBox(height: 4),
+            Text(
+              "${AppLocalizations.of(context).translate('developed_by')} Rukachi Team",
+              style: TextStyle(color: theme.textTheme.bodySmall?.color),
             ),
-          ),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: () async {
-              var url = 'https://t.me/rukachiofficial';
-              if (await canLaunchUrlString(url)) {
-                await launchUrlString(
-                  url,
-                  mode: LaunchMode.externalApplication,
-                );
-              }
-            },
-            child: SizedBox(
-              width: 300,
-              child: Row(
-                children: [
-                  const Icon(
-                    FontAwesomeIcons.telegram,
-                    color: Color.fromRGBO(0, 136, 204, 1),
-                    size: 40,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    "${AppLocalizations.of(context).translate('contact_me_via')} Telegram",
-                    style: const TextStyle(fontSize: 16),
-                  )
-                ],
-              ),
+            const SizedBox(height: 24),
+            _buildContactButton(
+              context: context,
+              color: const Color(0xFF4267B2),
+              icon: FontAwesomeIcons.facebookF,
+              label: "Facebook",
+              url: 'https://fb.com/phamquockhanh7352',
             ),
-          ),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: () async {
-              String email = 'phamquockhanh.dev@gmail.com';
-              String subject = 'Spending Manager';
-              String body = 'Hello Phạm Quốc Khánh';
-
-              String emailUrl = "mailto:$email?subject=$subject&body=$body";
-
-              if (await canLaunchUrlString(emailUrl)) {
-                await launchUrlString(emailUrl);
-              }
-            },
-            child: SizedBox(
-              width: 300,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(90),
-                    ),
-                    child: const Icon(
-                      FontAwesomeIcons.envelope,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    "${AppLocalizations.of(context).translate('contact_me_via')} Email",
-                    style: const TextStyle(fontSize: 16),
-                  )
-                ],
-              ),
+            _buildContactButton(
+              context: context,
+              color: const Color(0xFF1DA1F2),
+              icon: FontAwesomeIcons.twitter,
+              label: "Twitter",
+              url: 'https://twitter.com/rukachilocker',
             ),
-          ),
-          const Spacer(),
-          const SizedBox(height: 40),
-        ],
+            _buildContactButton(
+              context: context,
+              color: const Color(0xFF0088CC),
+              icon: FontAwesomeIcons.telegram,
+              label: "Telegram",
+              url: 'https://t.me/rukachiofficial',
+            ),
+            _buildContactButton(
+              context: context,
+              color: Colors.red,
+              icon: FontAwesomeIcons.envelope,
+              label: "Email",
+              url:
+              'mailto:phamquockhanh.dev@gmail.com?subject=Spending Manager&body=Hello Phạm Quốc Khánh',
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }

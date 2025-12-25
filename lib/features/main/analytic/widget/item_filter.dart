@@ -11,6 +11,7 @@ class ItemFilter extends StatelessWidget {
     required this.value,
     this.content,
   }) : super(key: key);
+
   final String text;
   final Function(int) action;
   final List<String> list;
@@ -19,47 +20,57 @@ class ItemFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 70,
+            width: 80,
             child: Text(
               text,
-              style: const TextStyle(fontSize: 16),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Container(
-              height: 45,
-              alignment: Alignment.center,
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(5),
+                color: isDark ? Colors.grey.shade800 : Colors.white,
+                borderRadius: BorderRadius.circular(12), // ✅ bo giống card
+                border: Border.all(
+                  color: Colors.black12,
+                ),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton2<String>(
-                  hint: Center(
-                      child: Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      )),
-                  underline: const SizedBox.shrink(),
                   isExpanded: true,
+                  hint: Center(
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                   items: list.map((e) {
-                    return DropdownMenuItem(
+                    return DropdownMenuItem<String>(
                       value: e,
                       child: Center(
                         child: Text(
                           AppLocalizations.of(context).translate(e),
                           style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     );
@@ -69,8 +80,13 @@ class ItemFilter extends StatelessWidget {
                       action(list.indexOf(value));
                     }
                   },
-                  iconStyleData: IconStyleData(
-                    icon: const Icon(Icons.arrow_drop_down), // Your dropdown icon here
+                  iconStyleData: const IconStyleData(
+                    icon: Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  dropdownStyleData: DropdownStyleData(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),

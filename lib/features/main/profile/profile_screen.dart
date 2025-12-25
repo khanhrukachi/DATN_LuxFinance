@@ -22,8 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_financial_management/features/main/profile/history_screen.dart';
 import 'package:personal_financial_management/features/main/profile/currency_exchange_rate.dart';
 import 'package:personal_financial_management/features/main/profile/about_screen.dart';
-import 'package:personal_financial_management/features/main/profile/widget/info_widget.dart';
-import 'package:personal_financial_management/features/main/profile/widget/setting_item.dart';
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -34,13 +32,14 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  var numberFormat = NumberFormat.currency(locale: "vi_VI");
   int language = 0;
   bool darkMode = false;
   bool loginMethod = false;
+  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: "₫");
 
   @override
   void initState() {
+    super.initState();
     SharedPreferences.getInstance().then((value) {
       setState(() {
         language = value.getInt('language') ?? (Platform.localeName.split('_')[0] == "vi" ? 0 : 1);
@@ -48,16 +47,18 @@ class _ProfilePageState extends State<ProfilePage> {
         loginMethod = value.getBool("login") ?? false;
       });
     });
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isDarkMode = darkMode;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.grey[100],
       body: SafeArea(
         child: Column(
           children: [
-            StreamBuilder(
+            StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection("info")
                   .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -65,162 +66,293 @@ class _ProfilePageState extends State<ProfilePage> {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   myuser.User user = myuser.User.fromFirebase(snapshot.requireData);
-                  return InfoWidget(user: user);
+                  return _buildAvatarCard(user, isDarkMode);
                 }
-                return const InfoWidget();
+                return _buildAvatarCard(null, isDarkMode);
               },
             ),
             const SizedBox(height: 10),
             Expanded(
               child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      settingItem(
-                        text: AppLocalizations.of(context).translate('account'),
-                        action: () {
-                          Navigator.of(context).push(createRoute(
-                            screen: const UserProfilePage(),
-                            begin: const Offset(1, 0),
-                          ));
-                        },
-                        icon: FontAwesomeIcons.solidUser,
-                        color: const Color.fromRGBO(0, 150, 255, 1),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  children: [
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('account'),
+                      icon: FontAwesomeIcons.solidUser,
+                      color: Colors.blue,
+                      isDarkMode: isDarkMode,
+                      action: () => Navigator.of(context).push(createRoute(
+                        screen: const UserProfilePage(),
+                        begin: const Offset(1, 0),
+                      )),
+                    ),
+                    if (loginMethod) const SizedBox(height: 12),
+                    if (loginMethod)
+                      _buildCard(
+                        text: AppLocalizations.of(context).translate('change_password'),
+                        icon: FontAwesomeIcons.lock,
+                        color: Colors.deepOrange,
+                        isDarkMode: isDarkMode,
+                        action: () => Navigator.of(context).push(createRoute(
+                          screen: const ChangePassword(),
+                          begin: const Offset(1, 0),
+                        )),
                       ),
-                      if (loginMethod) const SizedBox(height: 20),
-                      if (loginMethod)
-                        settingItem(
-                          text: AppLocalizations.of(context).translate('change_password'),
-                          action: () {
-                            Navigator.of(context).push(createRoute(
-                              screen: const ChangePassword(),
-                              begin: const Offset(1, 0),
-                            ));
-                          },
-                          icon: FontAwesomeIcons.lock,
-                          color: const Color.fromRGBO(233, 116, 81, 1),
-                        ),
-                      const SizedBox(height: 20),
-                      settingItem(
-                        text: AppLocalizations.of(context).translate('language'),
-                        action: _showBottomSheet,
-                        icon: Icons.translate_outlined,
-                        color: const Color.fromRGBO(218, 165, 32, 1),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(90),
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            child: const Icon(
-                              FontAwesomeIcons.solidMoon,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            AppLocalizations.of(context).translate('dark_mode'),
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                          const Spacer(),
-                          FlutterSwitch(
-                            height: 30,
-                            width: 60,
-                            value: darkMode,
-                            onToggle: (value) async {
-                              BlocProvider.of<SettingCubit>(context).changeTheme();
-                              setState(() => darkMode = value);
-                              final prefs = await SharedPreferences.getInstance();
-                              await prefs.setBool('isDark', darkMode);
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      settingItem(
-                        text: AppLocalizations.of(context).translate('history'),
-                        action: () {
-                          Navigator.of(context).push(createRoute(
-                            screen: const HistoryPage(),
-                            begin: const Offset(1, 0),
-                          ));
-                        },
-                        icon: Icons.history_rounded,
-                        color: const Color.fromRGBO(121, 189, 161, 1),
-                      ),
-                      const SizedBox(height: 20),
-                      settingItem(
-                        text: "${AppLocalizations.of(context).translate('export')} CSV",
-                        action: () async {
-                          loadingAnimation(context);
-                          await ExportCSV.exportCSV(context);
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                        },
-                        icon: Icons.archive_outlined,
-                        color: const Color.fromRGBO(137, 207, 240, 1),
-                      ),
-                      const SizedBox(height: 20),
-                      settingItem(
-                        text: AppLocalizations.of(context).translate('currency_exchange_rate'),
-                        action: () async {
-                          Navigator.of(context).push(createRoute(
-                            screen: const CurrencyExchangeRate(),
-                            begin: const Offset(1, 0),
-                          ));
-                        },
-                        icon: Icons.attach_money_rounded,
-                        color: const Color.fromRGBO(255, 192, 0, 1),
-                      ),
-                      const SizedBox(height: 20),
-                      settingItem(
-                        text: AppLocalizations.of(context).translate('about'),
-                        action: () {
-                          Navigator.of(context).push(createRoute(
-                            screen: const AboutPage(),
-                            begin: const Offset(1, 0),
-                          ));
-                        },
-                        icon: FontAwesomeIcons.circleInfo,
-                        color: const Color.fromRGBO(79, 121, 66, 1),
-                      ),
-                      const SizedBox(height: 40),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.buttonLogin,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          onPressed: () async {
-                            await FirebaseAuth.instance.signOut();
-                            await GoogleSignIn().signOut();
-                            await FacebookAuth.instance.logOut();
-                            if (!mounted) return;
-                            Navigator.pushNamedAndRemoveUntil(
-                                context, '/login', (route) => false);
-                          },
-                          child: Text(
-                            AppLocalizations.of(context).translate('logout'),
-                            style: AppStyles.p,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('language'),
+                      icon: Icons.translate_outlined,
+                      color: Colors.amber,
+                      isDarkMode: isDarkMode,
+                      action: _showBottomSheet,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSwitchCard(
+                      text: AppLocalizations.of(context).translate('dark_mode'),
+                      icon: FontAwesomeIcons.solidMoon,
+                      value: darkMode,
+                      isDarkMode: isDarkMode,
+                      onToggle: (val) async {
+                        BlocProvider.of<SettingCubit>(context).changeTheme();
+                        setState(() => darkMode = val);
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('isDark', darkMode);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('history'),
+                      icon: Icons.history_rounded,
+                      color: Colors.green,
+                      isDarkMode: isDarkMode,
+                      action: () => Navigator.of(context).push(createRoute(
+                        screen: const HistoryPage(),
+                        begin: const Offset(1, 0),
+                      )),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: "${AppLocalizations.of(context).translate('export')} CSV",
+                      icon: Icons.archive_outlined,
+                      color: Colors.lightBlue,
+                      isDarkMode: isDarkMode,
+                      action: () async {
+                        loadingAnimation(context);
+                        await ExportCSV.exportCSV(context);
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('currency_exchange_rate'),
+                      icon: Icons.attach_money_rounded,
+                      color: Colors.yellow[700]!,
+                      isDarkMode: isDarkMode,
+                      action: () => Navigator.of(context).push(createRoute(
+                        screen: const CurrencyExchangeRate(),
+                        begin: const Offset(1, 0),
+                      )),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('about'),
+                      icon: FontAwesomeIcons.circleInfo,
+                      color: Colors.teal,
+                      isDarkMode: isDarkMode,
+                      action: () => Navigator.of(context).push(createRoute(
+                        screen: const AboutPage(),
+                        begin: const Offset(1, 0),
+                      )),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildLogoutButton(isDarkMode),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarCard(myuser.User? user, bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey.shade900 : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode ? Colors.black.withOpacity(0.4) : Colors.grey.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundImage: user != null ? NetworkImage(user.avatar) : null,
+            backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user?.name ?? "User",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            user?.money != null ? numberFormat.format(user!.money) : "0 ₫",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.amberAccent : Colors.blue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({
+    required String text,
+    required IconData icon,
+    required Color color,
+    required VoidCallback action,
+    required bool isDarkMode,
+  }) {
+    return GestureDetector(
+      onTap: action,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: color.withOpacity(0.2),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchCard({
+    required String text,
+    required IconData icon,
+    required bool value,
+    required Function(bool) onToggle,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey.shade800 : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: Colors.black12,
+            child: Icon(icon, color: Colors.black87, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+          FlutterSwitch(
+            height: 30,
+            width: 60,
+            value: value,
+            onToggle: onToggle,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(bool isDarkMode) {
+    return GestureDetector(
+      onTap: () async {
+        await FirebaseAuth.instance.signOut();
+        await GoogleSignIn().signOut();
+        await FacebookAuth.instance.logOut();
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.buttonLogin,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          AppLocalizations.of(context).translate('logout'),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -255,7 +387,6 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       setState(() => language = lang);
     }
-
     if (!mounted) return;
     Navigator.pop(context);
   }

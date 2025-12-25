@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
@@ -8,8 +7,8 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 
 Widget showListSpendingPie({required List<Spending> list}) {
-  var numberFormat = NumberFormat.currency(locale: "vi_VI");
-  int sum = list.isNotEmpty
+  final numberFormat = NumberFormat.currency(locale: "vi_VI");
+  final int totalSum = list.isNotEmpty
       ? list.map((e) => e.money).reduce((value, element) => value + element)
       : 1;
 
@@ -18,82 +17,149 @@ Widget showListSpendingPie({required List<Spending> list}) {
     physics: const NeverScrollableScrollPhysics(),
     itemCount: listType.length,
     itemBuilder: (context, index) {
-      if ([0, 10, 21, 27, 35, 38].contains(index)) {
-        return const SizedBox.shrink();
-      } else {
-        List<Spending> spendingList =
-            list.where((element) => element.type == index).toList();
-        if (spendingList.isNotEmpty) {
-          int sumSpending = spendingList
-              .map((e) => e.money)
-              .reduce((value, element) => value + element);
+      if ([0, 10, 21, 27, 35, 38].contains(index)) return const SizedBox.shrink();
 
-          return InkWell(
-            borderRadius: BorderRadius.circular(15),
-            onTap: () {
-              Navigator.of(context).push(createRoute(
+      final List<Spending> spendingList =
+      list.where((element) => element.type == index).toList();
+
+      if (spendingList.isEmpty) return const SizedBox.shrink();
+
+      final int sumSpending =
+      spendingList.map((e) => e.money).reduce((value, element) => value + element);
+      final double percent = sumSpending / totalSum;
+
+      final Map<String, dynamic> typeItem = listType[index];
+      final String titleKey = typeItem["title"] ?? "other";
+      final String? imagePath = typeItem["image"];
+      final Color baseColor = typeItem["color"] ?? Colors.green;
+      final bool isOver = percent >= 1.0;
+      final Color mainColor = isOver ? const Color(0xFFE5533D) : baseColor;
+
+      final bool isDark = Theme.of(context).brightness == Brightness.dark;
+      final Color surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
+      final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
+      final Color textSecondary = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.of(context).push(
+              createRoute(
                 screen: ViewListSpendingPage(spendingList: spendingList),
                 begin: const Offset(1, 0),
-              ));
-            },
-            child: Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
               ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-                child: Row(
-                  children: [
-                    Image.asset(
-                      listType[index]["image"]!,
-                      width: 40,
-                    ),
-                    const SizedBox(width: 10),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 100),
-                      child: Text(
-                        AppLocalizations.of(context)
-                            .translate(listType[index]["title"]!),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        numberFormat.format(sumSpending),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        "${((sumSpending / sum) * 100).toStringAsFixed(2)}%",
-                        style: const TextStyle(fontSize: 13),
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.arrow_forward_ios_outlined)
-                  ],
-                ),
-              ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: mainColor.withOpacity(isDark ? 0.25 : 0.12)),
+              boxShadow: [
+                if (!isDark)
+                  BoxShadow(
+                    color: mainColor.withOpacity(0.15),
+                    blurRadius: 18,
+                    offset: const Offset(0, 10),
+                  ),
+              ],
             ),
-          );
-        } else {
-          return const SizedBox.shrink();
-        }
-      }
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        mainColor.withOpacity(0.3),
+                        mainColor.withOpacity(0.08),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: imagePath != null
+                      ? Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Image.asset(imagePath),
+                  )
+                      : Icon(Icons.category, color: mainColor, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              AppLocalizations.of(context).translate(titleKey),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary),
+                            ),
+                          ),
+                          Text(
+                            "${(percent * 100).toStringAsFixed(2)}%",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: mainColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: percent.clamp(0.0, 1.0),
+                          minHeight: 8,
+                          backgroundColor:
+                          isDark ? Colors.white12 : Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(mainColor),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "${_formatCurrency(sumSpending)} VND",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isOver ? mainColor : textSecondary,
+                          fontWeight: isOver ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  isOver ? Icons.warning_amber_rounded : Icons.chevron_right,
+                  color: mainColor,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     },
+  );
+}
+
+String _formatCurrency(int value) {
+  return value.toString().replaceAllMapped(
+    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]}.',
   );
 }

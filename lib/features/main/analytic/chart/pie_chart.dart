@@ -15,16 +15,14 @@ class MyPieChart extends StatefulWidget {
 class _MyPieChartState extends State<MyPieChart>
     with SingleTickerProviderStateMixin {
   int touchedIndex = -1;
-  int sum = 1;
   late AnimationController _controller;
 
-  // Palette màu hài hòa
-  final List<Color> paletteColors = [
+  final List<Color> paletteColors = const [
     Color(0xff4e79a7),
-    Color(0xfff28e2b),
-    Color(0xffe15759),
     Color(0xff76b7b2),
     Color(0xff59a14f),
+    Color(0xfff28e2b),
+    Color(0xffe15759),
     Color(0xffff9da7),
     Color(0xff9c755f),
     Color(0xffbab0ac),
@@ -34,11 +32,9 @@ class _MyPieChartState extends State<MyPieChart>
   @override
   void initState() {
     super.initState();
-
-    // Animation PieChart
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
     )..forward();
   }
 
@@ -50,11 +46,7 @@ class _MyPieChartState extends State<MyPieChart>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.list.isNotEmpty) {
-      sum = widget.list
-          .map((e) => e.money.abs())
-          .reduce((value, element) => value + element);
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AspectRatio(
       aspectRatio: 1,
@@ -64,23 +56,27 @@ class _MyPieChartState extends State<MyPieChart>
           return PieChart(
             PieChartData(
               pieTouchData: PieTouchData(
-                touchCallback: (event, pieTouchResponse) {
+                touchCallback: (event, response) {
                   setState(() {
                     if (!event.isInterestedForInteractions ||
-                        pieTouchResponse == null ||
-                        pieTouchResponse.touchedSection == null) {
+                        response?.touchedSection == null) {
                       touchedIndex = -1;
                       return;
                     }
-                    touchedIndex = pieTouchResponse
-                        .touchedSection!.touchedSectionIndex;
+                    touchedIndex =
+                        response!.touchedSection!.touchedSectionIndex;
                   });
                 },
               ),
               borderData: FlBorderData(show: false),
-              sectionsSpace: 6,
+              sectionsSpace: 4,
               centerSpaceRadius: 40,
-              sections: showingSections(_controller.value, context),
+              centerSpaceColor:
+              isDark ? Colors.white10 : Colors.grey.shade100,
+              sections: _buildSections(
+                progress: _controller.value,
+                context: context,
+              ),
             ),
           );
         },
@@ -88,109 +84,95 @@ class _MyPieChartState extends State<MyPieChart>
     );
   }
 
-  List<PieChartSectionData> showingSections(
-      double progress,
-      BuildContext context,
-      ) {
-    final List<PieChartSectionData> pieChartList = [];
+  List<PieChartSectionData> _buildSections({
+    required double progress,
+    required BuildContext context,
+  }) {
+    final List<PieChartSectionData> sections = [];
 
-    if (widget.list.isEmpty) return pieChartList;
+    if (widget.list.isEmpty) return sections;
 
     final total = widget.list.fold<int>(
       0,
           (sum, e) => sum + e.money.abs(),
     );
 
-    if (total <= 0) return pieChartList;
+    if (total <= 0) return sections;
 
     for (int i = 0; i < listType.length; i++) {
       if ([0, 10, 21, 27, 35, 38].contains(i)) continue;
 
-      final spendingList =
-      widget.list.where((e) => e.type == i).toList();
+      final data = widget.list.where((e) => e.type == i).toList();
+      if (data.isEmpty) continue;
 
-      if (spendingList.isEmpty) continue;
+      final sumType =
+      data.fold<int>(0, (s, e) => s + e.money.abs());
 
-      final sumSpending = spendingList.fold<int>(
-        0,
-            (sum, e) => sum + e.money.abs(),
-      );
+      final percent = (sumType / total) * 100 * progress;
+      final isTouched = sections.length == touchedIndex;
 
-      final value = (sumSpending / total) * 100 * progress;
-      final isTouched = pieChartList.length == touchedIndex;
-
-      final String key =
-          spendingList.first.typeName ?? "other";
-
-      final String titleName =
+      final key = data.first.typeName ?? "other";
+      final title =
       AppLocalizations.of(context).translate(key);
 
-      pieChartList.add(
+      sections.add(
         PieChartSectionData(
-          value: value,
+          value: percent,
           color: paletteColors[i % paletteColors.length],
-          radius: isTouched ? 110 : 100,
+          radius: isTouched ? 108 : 95,
           title: isTouched
-              ? "$titleName\n${value.toStringAsFixed(1)}%"
+              ? "$title\n${percent.toStringAsFixed(1)}%"
               : "",
           titleStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
             shadows: [
-              Shadow(color: Colors.black54, blurRadius: 4),
+              Shadow(color: Colors.black38, blurRadius: 4),
             ],
           ),
           badgeWidget: _Badge(
             listType[i]["image"]!,
-            size: isTouched ? 55 : 40,
-            borderColor: Colors.white,
             isTouched: isTouched,
           ),
-          badgePositionPercentageOffset: 0.98,
+          badgePositionPercentageOffset: 0.95,
         ),
       );
     }
 
-    return pieChartList;
+    return sections;
   }
-
 }
 
 class _Badge extends StatelessWidget {
   const _Badge(
       this.imgAsset, {
-        Key? key,
-        required this.size,
-        required this.borderColor,
-        this.isTouched = false,
-      }) : super(key: key);
+        required this.isTouched,
+      });
 
   final String imgAsset;
-  final double size;
-  final Color borderColor;
   final bool isTouched;
 
   @override
   Widget build(BuildContext context) {
+    final double size = isTouched ? 45 : 35;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: isTouched ? size * 1.2 : size,
-      height: isTouched ? size * 1.2 : size,
+      duration: const Duration(milliseconds: 250),
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.18),
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: borderColor, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isTouched ? 0.6 : 0.4),
-            offset: Offset(isTouched ? 4 : 2, isTouched ? 4 : 2),
-            blurRadius: isTouched ? 6 : 4,
+            color: Colors.black.withOpacity(isTouched ? 0.45 : 0.25),
+            blurRadius: isTouched ? 6 : 3,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: EdgeInsets.all((isTouched ? size * 1.2 : size) * 0.15),
-      child: Center(child: Image.asset(imgAsset, fit: BoxFit.contain)),
+      child: Image.asset(imgAsset, fit: BoxFit.contain),
     );
   }
 }

@@ -57,7 +57,6 @@ class _AnalyticPageState extends State<AnalyticPage>
     });
     _typeController.addListener(() => setState(() {}));
 
-    /// Loading lần đầu
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) setState(() => _isLoading = false);
@@ -238,14 +237,21 @@ class _AnalyticPageState extends State<AnalyticPage>
     );
   }
 
-  /// ================= CHART =================
   Widget _showChart(List<Spending> list) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
-      color: const Color(0xff2c4260),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      color: isDark
+          ? Colors.white10
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           showDate(
             date: date,
             index: _tabController.index,
@@ -266,9 +272,11 @@ class _AnalyticPageState extends State<AnalyticPage>
             list: list,
             dateTime: now,
           )
-              : const SizedBox(height: 350),
+              : const SizedBox(height: 300),
+
           tabBarChart(controller: _chartController),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 12),
         ],
       ),
     );

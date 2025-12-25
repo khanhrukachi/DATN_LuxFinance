@@ -1,34 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-Widget boxText({required String text, required int number, Color? color}) {
-  var numberFormat = NumberFormat.currency(locale: "vi_VI");
+Widget boxText({
+  required String text,
+  required int number,
+  Color? color,
+}) {
+  final numberFormat = NumberFormat.currency(
+    locale: "vi_VI",
+    symbol: "₫",
+  );
 
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     decoration: BoxDecoration(
-      border: Border.all(color: Colors.black26, width: 1),
-      borderRadius: BorderRadius.circular(5),
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: Colors.black12,
+      ),
     ),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 18),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            overflow: TextOverflow.ellipsis,
-            numberFormat.format(number),
-            style: TextStyle(
-              fontSize: 18 ,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+        const SizedBox(width: 8),
+        Text(
+          numberFormat.format(number),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color ?? Colors.black,
           ),
         ),
       ],

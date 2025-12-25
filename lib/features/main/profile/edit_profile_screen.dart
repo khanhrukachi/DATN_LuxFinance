@@ -3,14 +3,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/core/constants/app_colors.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/features/main/profile/widget/show_birthday.dart';
@@ -31,13 +29,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 2,
         title: Text(AppLocalizations.of(context).translate('account')),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
-        centerTitle: true,
       ),
       body: FutureBuilder(
         future: FirebaseFirestore.instance
@@ -51,7 +50,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
           final user = myuser.User.fromFirebase(snapshot.requireData);
           final nameController = TextEditingController(text: user.name);
-
           bool gender = user.gender;
           File? image;
           DateTime selectedDate =
@@ -60,36 +58,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
           return StatefulBuilder(
             builder: (context, setState) {
               return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Column(
                   children: [
-                    const SizedBox(height: 20),
                     showAvatar(
                       image: image,
                       url: user.avatar,
                       getImage: (file) => setState(() => image = file),
                     ),
                     const SizedBox(height: 30),
-                    Padding(
-                      padding: const EdgeInsets.all(30),
+                    // Thông tin cá nhân
+                    _infoCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          textProfile(AppLocalizations.of(context)
-                              .translate('full_name')),
+                          _label(AppLocalizations.of(context).translate('full_name')),
                           TextField(
                             controller: nameController,
                             textCapitalization: TextCapitalization.words,
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontSize: 18, fontWeight: FontWeight.w600),
                           ),
-
-                          const SizedBox(height: 30),
-
-                          textProfile(AppLocalizations.of(context)
-                              .translate('birthday')),
-                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _infoCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _label(AppLocalizations.of(context).translate('birthday')),
+                          const SizedBox(height: 10),
                           InkWell(
                             onTap: () async {
                               final picked = await showDatePicker(
@@ -104,12 +103,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             },
                             child: showBirthday(selectedDate),
                           ),
-
-                          const SizedBox(height: 30),
-
-                          textProfile(AppLocalizations.of(context)
-                              .translate('gender')),
-                          const SizedBox(height: 30),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _infoCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _label(AppLocalizations.of(context).translate('gender')),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               const Spacer(),
@@ -127,47 +130,43 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               const Spacer(),
                             ],
                           ),
-
-                          const SizedBox(height: 40),
-
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.buttonLogin,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              onPressed: () async {
-                                loadingAnimation(context);
-
-                                await SpendingFirebase.updateInfo(
-                                  user: user.copyWith(
-                                    name: nameController.text.trim(),
-                                    gender: gender,
-                                    birthday: DateFormat("dd/MM/yyyy")
-                                        .format(selectedDate),
-                                  ),
-                                  image: image,
-                                );
-
-                                if (!mounted) return;
-                                Navigator.pop(context);
-                                Fluttertoast.showToast(
-                                  msg: AppLocalizations.of(context)
-                                      .translate("success"),
-                                );
-                                Navigator.pop(context);
-                              },
-                              child: Text(
-                                AppLocalizations.of(context).translate('save'),
-                                style: AppStyles.p,
-                              ),
-                            ),
-                          ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.buttonLogin,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        onPressed: () async {
+                          loadingAnimation(context);
+                          await SpendingFirebase.updateInfo(
+                            user: user.copyWith(
+                              name: nameController.text.trim(),
+                              gender: gender,
+                              birthday:
+                              DateFormat("dd/MM/yyyy").format(selectedDate),
+                            ),
+                            image: image,
+                          );
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          Fluttertoast.showToast(
+                            msg: AppLocalizations.of(context).translate("success"),
+                          );
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          AppLocalizations.of(context).translate('save'),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -180,16 +179,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  // ================= UI =================
+  Widget _infoCard({required Widget child}) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 3,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: child,
+      ),
+    );
+  }
 
-  Widget textProfile(String text) {
+  Widget _label(String text) {
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey[600],
-      ),
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[700]),
     );
   }
 
@@ -200,39 +205,46 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(90),
-      onTap: () => _showBottomSheet(
-            (file) => file != null ? getImage(file) : null,
-      ),
+      onTap: () => _showBottomSheet((file) => file != null ? getImage(file) : null),
       child: Stack(
         children: [
           ClipOval(
             child: image == null
                 ? CachedNetworkImage(
               imageUrl: url,
-              width: 170,
+              width: 140,
+              height: 140,
               fit: BoxFit.cover,
               placeholder: (_, __) =>
-                  loadingInfo(width: 150, height: 150, radius: 90),
-              errorWidget: (_, __, ___) =>
-              const Icon(Icons.error),
+                  Shimmer.fromColors(
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Colors.grey,
+                        borderRadius: BorderRadius.circular(70),
+                      ),
+                    ),
+                  ),
+              errorWidget: (_, __, ___) => const Icon(Icons.error),
             )
-                : Image.file(image, width: 170),
+                : Image.file(image, width: 140, height: 140, fit: BoxFit.cover),
           ),
           Positioned(
-            bottom: 10,
-            right: 10,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(90),
-              ),
+            bottom: 0,
+            right: 0,
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.white,
               child: const Icon(
                 FontAwesomeIcons.circlePlus,
                 color: Colors.blue,
-                size: 28,
+                size: 20,
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -242,44 +254,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (_) => SizedBox(
-        height: 170,
+        height: 160,
         child: Column(
           children: [
-            const Spacer(),
-            _pickItem(FontAwesomeIcons.image,
-                'select_photo_gallery', () async {
-                  Navigator.pop(context);
-                  getFile(await chooseAvatar(true));
-                }),
-            const Spacer(),
-            _pickItem(FontAwesomeIcons.camera,
-                'take_picture_camera', () async {
-                  Navigator.pop(context);
-                  getFile(await chooseAvatar(false));
-                }),
-            const Spacer(),
+            const SizedBox(height: 20),
+            _pickItem(FontAwesomeIcons.image, 'select_photo_gallery', () async {
+              Navigator.pop(context);
+              getFile(await chooseAvatar(true));
+            }),
+            const SizedBox(height: 10),
+            _pickItem(FontAwesomeIcons.camera, 'take_picture_camera', () async {
+              Navigator.pop(context);
+              getFile(await chooseAvatar(false));
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _pickItem(
-      IconData icon, String textKey, VoidCallback onTap) {
+  Widget _pickItem(IconData icon, String textKey, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         child: Row(
           children: [
-            Icon(icon, size: 30),
-            const SizedBox(width: 10),
+            Icon(icon, size: 24),
+            const SizedBox(width: 12),
             Text(
               AppLocalizations.of(context).translate(textKey),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -302,21 +310,5 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } catch (_) {
       return null;
     }
-  }
-
-  Widget loadingInfo(
-      {required double width, required double height, double radius = 5}) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: Colors.grey,
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-    );
   }
 }

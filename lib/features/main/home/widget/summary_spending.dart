@@ -1,125 +1,163 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:shimmer/shimmer.dart';
-
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
-class SummarySpending extends StatefulWidget {
+class SummarySpending extends StatelessWidget {
   const SummarySpending({Key? key, this.spendingList}) : super(key: key);
   final List<Spending>? spendingList;
 
-  @override
-  State<SummarySpending> createState() => _SummarySpendingState();
-}
-
-class _SummarySpendingState extends State<SummarySpending> {
-  final numberFormat = NumberFormat.currency(locale: "vi_VI");
-
   // ================== CALC ==================
 
-  int getTotalIncome(List<Spending> list) {
-    return list
-        .where((e) => e.money > 0)
-        .fold(0, (sum, e) => sum + e.money);
-  }
+  int getTotalIncome(List<Spending> list) =>
+      list.where((e) => e.money > 0).fold(0, (s, e) => s + e.money);
 
-  int getTotalExpense(List<Spending> list) {
-    return list
-        .where((e) => e.money < 0)
-        .fold(0, (sum, e) => sum + e.money.abs());
-  }
+  int getTotalExpense(List<Spending> list) =>
+      list.where((e) => e.money < 0).fold(0, (s, e) => s + e.money.abs());
 
-  int getCurrentMoney(List<Spending> list) {
-    return list.fold(0, (sum, e) => sum + e.money);
-  }
+  int getCurrentMoney(List<Spending> list) =>
+      list.fold(0, (s, e) => s + e.money);
 
   // ================== UI ==================
 
   @override
   Widget build(BuildContext context) {
-    if (widget.spendingList == null) return loadingSummary();
+    if (spendingList == null) return _loading(context);
 
-    final totalIncome = getTotalIncome(widget.spendingList!);
-    final totalExpense = getTotalExpense(widget.spendingList!);
-    final currentMoney = getCurrentMoney(widget.spendingList!);
+    final income = getTotalIncome(spendingList!);
+    final expense = getTotalExpense(spendingList!);
+    final balance = getCurrentMoney(spendingList!);
 
-    return body(
-      totalIncome: totalIncome,
-      totalExpense: totalExpense,
-      currentMoney: currentMoney,
+    return _body(
+      context,
+      income: income,
+      expense: expense,
+      balance: balance,
     );
   }
 
-  Widget body({
-    required int totalIncome,
-    required int totalExpense,
-    required int currentMoney,
-  }) {
+  Widget _body(
+      BuildContext context, {
+        required int income,
+        required int expense,
+        required int balance,
+      }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
+    final textSecondary =
+    isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.blue.withOpacity(0.15)),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.18),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+          ],
         ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              summaryRow(
-                title: AppLocalizations.of(context).translate('total_amount_collected'),
-                value: totalIncome,
-                color: Colors.green,
-                prefix: "+",
-              ),
-              const SizedBox(height: 15),
-              summaryRow(
-                title: AppLocalizations.of(context).translate('total_amount_spent'),
-                value: totalExpense,
-                color: Colors.red,
-                prefix: "-",
-              ),
-              const SizedBox(height: 15),
-              const Divider(),
-              const SizedBox(height: 15),
-              summaryRow(
-                title: AppLocalizations.of(context).translate('current_money'),
-                value: currentMoney.abs(),
-                color: currentMoney >= 0 ? Colors.blue : Colors.red,
-                prefix: currentMoney >= 0 ? "" : "-",
-                isBold: true,
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            _row(
+              context,
+              icon: Icons.arrow_downward_rounded,
+              title: AppLocalizations.of(context)
+                  .translate('total_amount_collected'),
+              value: income,
+              color: const Color(0xFF2FBF71),
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+            const SizedBox(height: 18),
+            _row(
+              context,
+              icon: Icons.arrow_upward_rounded,
+              title: AppLocalizations.of(context)
+                  .translate('total_amount_spent'),
+              value: expense,
+              color: const Color(0xFFE5533D),
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 18),
+            _row(
+              context,
+              icon: Icons.account_balance_wallet_rounded,
+              title:
+              AppLocalizations.of(context).translate('current_money'),
+              value: balance.abs(),
+              color: balance >= 0
+                  ? const Color(0xFF5B7CFA)
+                  : const Color(0xFFE5533D),
+              prefix: balance >= 0 ? "" : "-",
+              isBold: true,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget summaryRow({
-    required String title,
-    required int value,
-    required Color color,
-    String prefix = "",
-    bool isBold = false,
-  }) {
+  Widget _row(
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required int value,
+        required Color color,
+        required Color textPrimary,
+        required Color textSecondary,
+        String prefix = "",
+        bool isBold = false,
+      }) {
+    final format = NumberFormat.decimalPattern("vi");
+
     return Row(
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.30),
+                color.withOpacity(0.08),
+              ],
+            ),
+          ),
+          child: Icon(icon, color: color),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 15,
+              color: textSecondary,
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
         ),
-        const Spacer(),
         Text(
-          "$prefix${numberFormat.format(value)}",
+          "$prefix${format.format(value)} đ",
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            fontSize: isBold ? 17 : 15,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
             color: color,
           ),
         ),
@@ -127,51 +165,60 @@ class _SummarySpendingState extends State<SummarySpending> {
     );
   }
 
-  // ================== LOADING ==================
+  Widget _loading(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
-  Widget loadingSummary() {
     return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              shimmerRow(),
-              const SizedBox(height: 15),
-              shimmerRow(),
-              const SizedBox(height: 15),
-              const Divider(),
-              const SizedBox(height: 15),
-              shimmerRow(isBold: true),
-            ],
-          ),
+        child: Column(
+          children: [
+            _shimmerRow(),
+            const SizedBox(height: 18),
+            _shimmerRow(),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 18),
+            _shimmerRow(isBold: true),
+          ],
         ),
       ),
     );
   }
 
-  Widget shimmerRow({bool isBold = false}) {
+  Widget _shimmerRow({bool isBold = false}) {
     return Row(
       children: [
         Container(
-          height: 20,
-          width: 120,
-          color: Colors.transparent,
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            shape: BoxShape.circle,
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Container(
+            height: 14,
+            color: Colors.transparent,
+          ),
+        ),
         Shimmer.fromColors(
           baseColor: Colors.grey[300]!,
           highlightColor: Colors.grey[100]!,
           child: Container(
-            height: isBold ? 28 : 25,
-            width: Random().nextInt(50) + 100,
+            height: isBold ? 22 : 18,
+            width: Random().nextInt(60) + 80,
             decoration: BoxDecoration(
               color: Colors.grey,
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(6),
             ),
           ),
         ),
@@ -179,4 +226,3 @@ class _SummarySpendingState extends State<SummarySpending> {
     );
   }
 }
-

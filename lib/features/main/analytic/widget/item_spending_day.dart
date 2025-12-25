@@ -5,124 +5,133 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-class ItemSpendingDay extends StatefulWidget {
+class ItemSpendingDay extends StatelessWidget {
   const ItemSpendingDay({
     Key? key,
     required this.spendingList,
     required this.type,
   }) : super(key: key);
+
   final List<Spending> spendingList;
   final int type;
 
   @override
-  State<ItemSpendingDay> createState() => _ItemSpendingDayState();
-}
-
-class _ItemSpendingDayState extends State<ItemSpendingDay> {
-  var numberFormat = NumberFormat.currency(locale: "vi_VI");
-
-  @override
   Widget build(BuildContext context) {
-    widget.spendingList.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final numberFormat = NumberFormat.currency(locale: "vi_VI");
 
-    var listDate = widget.spendingList
+    spendingList.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+
+    final listDate = spendingList
         .map((e) => DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day))
-        .toList()
         .toSet()
         .toList();
 
     return ListView.builder(
       itemCount: listDate.length,
       itemBuilder: (context, index) {
-        var list = widget.spendingList
-            .where((element) => isSameDay(element.dateTime, listDate[index]))
+        final date = listDate[index];
+
+        final list = spendingList
+            .where((e) => isSameDay(e.dateTime, date))
             .toList();
 
+        final totalMoney =
+        list.fold<double>(0, (sum, e) => sum + e.money);
+
         return Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
           child: Card(
+            elevation: 3,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                   child: Row(
                     children: [
                       Text(
-                        "${listDate[index].day}",
-                        style: const TextStyle(fontSize: 30),
+                        date.day.toString(),
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 15),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            DateFormat("EEEE").format(listDate[index]),
-                            style: const TextStyle(fontSize: 18),
+                            DateFormat("EEEE").format(date),
+                            style: const TextStyle(fontSize: 16),
                           ),
-                          Text(DateFormat("MMMM, yyyy").format(listDate[index]))
+                          Text(
+                            DateFormat("MMMM, yyyy").format(date),
+                            style: const TextStyle(color: Colors.grey),
+                          ),
                         ],
                       ),
                       const Spacer(),
                       Text(
-                        numberFormat.format(list
-                            .map((e) => e.money)
-                            .reduce((value, element) => value + element)),
+                        numberFormat.format(totalMoney),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
-                const Divider(
-                  height: 2,
-                  color: Colors.black,
-                  endIndent: 10,
-                  indent: 10,
-                ),
+
+                const Divider(height: 1),
+
+                /// ===== LIST SPENDING =====
                 Column(
-                  children: List.generate(
-                    list.length,
-                    (index) => InkWell(
+                  children: list.map((spending) {
+                    final data = type == 0
+                        ? categories[spending.type]
+                        : income[spending.type];
+
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
                       onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
                         child: Row(
                           children: [
                             Image.asset(
-                              widget.type == 0
-                                  ? categories[widget.spendingList[0].type]
-                                      ["icon"]!
-                                  : income[widget.spendingList[0].type]["icon"],
-                              width: 40,
+                              data["icon"]!,
+                              width: 36,
                             ),
                             const SizedBox(width: 10),
-                            Text(
-                              AppLocalizations.of(context).translate(
-                                  widget.type == 0
-                                      ? categories[widget.spendingList[0].type]
-                                          ["name"]!
-                                      : income[widget.spendingList[0].type]
-                                          ["name"]),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: Text(
+                                AppLocalizations.of(context)
+                                    .translate(data["name"]!),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const Spacer(),
                             Text(
-                              numberFormat.format(list[index].money),
-                              style: const TextStyle(fontSize: 16),
+                              numberFormat.format(spending.money),
+                              style: const TextStyle(fontSize: 15),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: Colors.grey,
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),

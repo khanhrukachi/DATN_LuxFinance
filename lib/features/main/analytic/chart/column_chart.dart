@@ -22,14 +22,15 @@ class ColumnChart extends StatefulWidget {
   State<StatefulWidget> createState() => ColumnChartState();
 }
 
-class ColumnChartState extends State<ColumnChart> with SingleTickerProviderStateMixin {
+class ColumnChartState extends State<ColumnChart>
+    with SingleTickerProviderStateMixin {
   final Duration animDuration = const Duration(milliseconds: 500);
   int touchedIndex = -1;
   double max = 0;
   List<int> money = [];
   List<String> weekOfMonth = [];
 
-  final List<Color> paletteColors = [
+  final List<Color> paletteColors = const [
     Color(0xff4e79a7),
     Color(0xfff28e2b),
     Color(0xffe15759),
@@ -57,28 +58,30 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
       max = 1000;
     }
 
-    double chartMax = max * 1.3;
+    final chartMax = max * 1.3;
+    final width = widget.index == 0 ? 520.0 : 1000.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    double width = widget.index == 0 ? 500 : 1000;
-
-    return AspectRatio(
-      aspectRatio: 1.2,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Container(
-          width: width,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.green.shade50],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: AspectRatio(
+        aspectRatio: 1.2,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            width: width,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade200,
+              ),
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: BarChart(
-            mainBarData(chartMax),
-            swapAnimationDuration: animDuration,
+            child: BarChart(
+              mainBarData(chartMax),
+              swapAnimationDuration: animDuration,
+            ),
           ),
         ),
       ),
@@ -87,7 +90,12 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
 
   int maxValue(int a, int b) => a > b ? a : b;
 
-  BarChartGroupData makeGroupData(int x, double y, double chartMax, {bool isTouched = false}) {
+  BarChartGroupData makeGroupData(
+      int x,
+      double y,
+      double chartMax, {
+        bool isTouched = false,
+      }) {
     final color = paletteColors[x % paletteColors.length];
 
     return BarChartGroupData(
@@ -95,22 +103,22 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
       barRods: [
         BarChartRodData(
           toY: y,
-          width: 20,
+          width: 18,
+          borderRadius:
+          const BorderRadius.vertical(top: Radius.circular(10)),
           gradient: LinearGradient(
-            colors: [
-              color.withOpacity(isTouched ? 0.9 : 0.6),
-              color.withOpacity(isTouched ? 1.0 : 0.8),
-            ],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
+            colors: [
+              color.withOpacity(isTouched ? 0.85 : 0.6),
+              color.withOpacity(isTouched ? 1.0 : 0.8),
+            ],
           ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
-            toY: chartMax, // dùng chartMax thay vì max
-            color: Colors.grey.shade300.withOpacity(0.3),
+            toY: chartMax,
+            color: Colors.grey.withOpacity(0.15),
           ),
-          rodStackItems: [],
         ),
       ],
       showingTooltipIndicators: isTouched ? [0] : [],
@@ -124,7 +132,12 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
 
     return List.generate(
       column,
-          (i) => makeGroupData(i, money[i].toDouble(), chartMax, isTouched: i == touchedIndex),
+          (i) => makeGroupData(
+        i,
+        money[i].toDouble(),
+        chartMax,
+        isTouched: i == touchedIndex,
+      ),
     );
   }
 
@@ -142,18 +155,18 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
                   .translate(listDayOfWeek[group.x.toInt()]);
             } else if (widget.index == 1) {
               label =
-              "${AppLocalizations.of(context).translate('week')} ${group.x.toInt() + 1}";
+              "${AppLocalizations.of(context).translate('week')} ${group.x + 1}";
             } else {
               label = AppLocalizations.of(context)
                   .translate(listMonthOfYear[group.x.toInt()]);
             }
 
             return BarTooltipItem(
-              '$label\n💰 ${(rod.toY).toStringAsFixed(0)}',
+              "$label\n💰 ${rod.toY.toStringAsFixed(0)}",
               const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             );
           },
@@ -161,24 +174,19 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
         touchCallback: (event, response) {
           setState(() {
             if (!event.isInterestedForInteractions ||
-                response == null ||
-                response.spot == null) {
+                response?.spot == null) {
               touchedIndex = -1;
               return;
             }
-            touchedIndex = response.spot!.touchedBarGroupIndex;
+            touchedIndex = response!.spot!.touchedBarGroupIndex;
           });
         },
       ),
       titlesData: FlTitlesData(
-        show: true,
-        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        topTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: false,
-            reservedSize: 50, // padding trên 50px
-          ),
-        ),
+        rightTitles:
+        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        topTitles:
+        AxisTitles(sideTitles: SideTitles(showTitles: false)),
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
@@ -189,37 +197,41 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 38,
+            reservedSize: 36,
             getTitlesWidget: bottomTitles,
           ),
         ),
       ),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: chartMax / 4,
+        getDrawingHorizontalLine: (value) => FlLine(
+          color: Colors.grey.withOpacity(0.15),
+          strokeWidth: 1,
+        ),
+      ),
       borderData: FlBorderData(show: false),
       barGroups: showingGroups(chartMax),
-      gridData: FlGridData(show: true),
       backgroundColor: Colors.transparent,
     );
   }
 
   Widget leftTitles(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Color(0xff7589a2),
-      fontWeight: FontWeight.bold,
-      fontSize: 11,
-    );
     return SideTitleWidget(
       axisSide: meta.axisSide,
-      space: 4,
-      child: Text("${(value / 1000).toStringAsFixed(0)}K", style: style),
+      child: Text(
+        "${(value / 1000).toStringAsFixed(0)}K",
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey,
+        ),
+      ),
     );
   }
 
   Widget bottomTitles(double value, TitleMeta meta) {
-    const style = TextStyle(
-      color: Colors.black87,
-      fontWeight: FontWeight.bold,
-      fontSize: 14,
-    );
     String title = "";
     if (widget.index == 0) {
       title = AppLocalizations.of(context)
@@ -230,10 +242,17 @@ class ColumnChartState extends State<ColumnChart> with SingleTickerProviderState
       title = AppLocalizations.of(context)
           .translate(listMonthOfYearAcronym[value.toInt()]);
     }
+
     return SideTitleWidget(
       axisSide: meta.axisSide,
-      space: 16,
-      child: Text(title, style: style),
+      space: 14,
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

@@ -37,6 +37,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     );
 
     await SpendingFirebase.addOrUpdateBudget(budget);
+    if (!mounted) return;
     Navigator.pop(context, true);
   }
 
@@ -60,28 +61,71 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     return Scaffold(
       backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('add_budget')),
-        centerTitle: true,
         elevation: 0,
+        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : Colors.black,
+        ),
+        title: Text(
+          AppLocalizations.of(context).translate('add_budget'),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            BudgetCard(
-              selectedType: selectedType,
-              limitController: _limitController,
-              onTypeTap: _openTypeSelector,
+            // Thẻ Budget
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey.shade800 : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: BudgetCard(
+                selectedType: selectedType,
+                limitController: _limitController,
+                onTypeTap: _openTypeSelector,
+              ),
             ),
-            const SizedBox(height: 26),
+
+            const SizedBox(height: 30),
+
+            // Nút Lưu Budget
             SizedBox(
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
                 onPressed: _saveBudget,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                ),
                 child: Text(
                   AppLocalizations.of(context).translate('save_budget'),
-                  style: const TextStyle(fontSize: 16),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
