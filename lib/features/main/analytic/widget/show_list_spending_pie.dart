@@ -31,9 +31,9 @@ Widget showListSpendingPie({required List<Spending> list}) {
       final Map<String, dynamic> typeItem = listType[index];
       final String titleKey = typeItem["title"] ?? "other";
       final String? imagePath = typeItem["image"];
-      final Color baseColor = typeItem["color"] ?? Colors.green;
+      final Color baseColor = typeItem["color"] ?? Colors.red;
       final bool isOver = percent >= 1.0;
-      final Color mainColor = isOver ? const Color(0xFFE5533D) : baseColor;
+      final Color mainColor = isOver ? Colors.green : baseColor;
 
       final bool isDark = Theme.of(context).brightness == Brightness.dark;
       final Color surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
@@ -144,7 +144,7 @@ Widget showListSpendingPie({required List<Spending> list}) {
                 ),
                 const SizedBox(width: 10),
                 Icon(
-                  isOver ? Icons.warning_amber_rounded : Icons.chevron_right,
+                  Icons.chevron_right,
                   color: mainColor,
                   size: 24,
                 ),
