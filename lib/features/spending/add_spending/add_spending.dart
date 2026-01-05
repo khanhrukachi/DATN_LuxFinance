@@ -309,7 +309,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
             ? coefficient * money
             : ([29, 30, 34, 36, 37, 40].contains(type!) ? 1 : -1) * money,
         type: type!,
-        typeName: typeName.trim(),  // Use the fetched typeName
+        typeName: typeName.trim(),
         dateTime: DateTime(
           selectedDate.year,
           selectedDate.month,

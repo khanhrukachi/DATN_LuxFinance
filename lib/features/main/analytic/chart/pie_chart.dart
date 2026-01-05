@@ -48,6 +48,34 @@ class _MyPieChartState extends State<MyPieChart>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final sections = _buildSections(
+      progress: _controller.value,
+      context: context,
+    );
+
+    if (sections.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.pie_chart_outline,
+              size: 48,
+              color: isDark ? Colors.white38 : Colors.grey,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppLocalizations.of(context).translate('no_data'),
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white54 : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return AspectRatio(
       aspectRatio: 1,
       child: AnimatedBuilder(
@@ -73,10 +101,7 @@ class _MyPieChartState extends State<MyPieChart>
               centerSpaceRadius: 40,
               centerSpaceColor:
               isDark ? Colors.white10 : Colors.grey.shade100,
-              sections: _buildSections(
-                progress: _controller.value,
-                context: context,
-              ),
+              sections: sections,
             ),
           );
         },
@@ -111,7 +136,7 @@ class _MyPieChartState extends State<MyPieChart>
       final percent = (sumType / total) * 100 * progress;
       final isTouched = sections.length == touchedIndex;
 
-      final key = data.first.typeName ?? "other";
+      final key = data.first.typeName ?? 'other';
       final title =
       AppLocalizations.of(context).translate(key);
 
@@ -121,8 +146,8 @@ class _MyPieChartState extends State<MyPieChart>
           color: paletteColors[i % paletteColors.length],
           radius: isTouched ? 108 : 95,
           title: isTouched
-              ? "$title\n${percent.toStringAsFixed(1)}%"
-              : "",
+              ? '$title\n${percent.toStringAsFixed(1)}%'
+              : '',
           titleStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -132,7 +157,7 @@ class _MyPieChartState extends State<MyPieChart>
             ],
           ),
           badgeWidget: _Badge(
-            listType[i]["image"]!,
+            listType[i]['image']!,
             isTouched: isTouched,
           ),
           badgePositionPercentageOffset: 0.95,
@@ -156,6 +181,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double size = isTouched ? 45 : 35;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       width: size,

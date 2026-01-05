@@ -86,7 +86,6 @@ class ItemSpendingDay extends StatelessWidget {
 
                 const Divider(height: 1),
 
-                /// ===== LIST SPENDING =====
                 Column(
                   children: list.map((spending) {
                     final data = type == 0

@@ -256,8 +256,6 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
 
   Widget line() => const Divider(thickness: 0.5);
 
-  // ================= LOGIC =================
-
   Future<void> updateSpending() async {
     final moneyRaw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (moneyRaw.isEmpty) return;
@@ -293,6 +291,8 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
     );
 
     if (!mounted) return;
+    Navigator.pop(context);
+    Navigator.pop(context);
     Navigator.pop(context);
     Navigator.pop(context);
   }

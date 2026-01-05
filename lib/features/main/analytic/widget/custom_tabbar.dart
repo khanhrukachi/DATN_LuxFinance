@@ -26,10 +26,9 @@ class CustomTabBar extends StatelessWidget {
       child: TabBar(
         controller: controller,
 
-        /// ===== QUAN TRỌNG =====
-        isScrollable: false, // chia đều 3 tab
+        isScrollable: false,
         indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent, // ❌ XÓA DÒNG KẺ DƯỚI
+        dividerColor: Colors.transparent,
 
         indicator: BoxDecoration(
           color: isDark ? Colors.white12 : Colors.white,

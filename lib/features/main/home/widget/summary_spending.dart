@@ -9,8 +9,6 @@ class SummarySpending extends StatelessWidget {
   const SummarySpending({Key? key, this.spendingList}) : super(key: key);
   final List<Spending>? spendingList;
 
-  // ================== CALC ==================
-
   int getTotalIncome(List<Spending> list) =>
       list.where((e) => e.money > 0).fold(0, (s, e) => s + e.money);
 
@@ -20,7 +18,6 @@ class SummarySpending extends StatelessWidget {
   int getCurrentMoney(List<Spending> list) =>
       list.fold(0, (s, e) => s + e.money);
 
-  // ================== UI ==================
 
   @override
   Widget build(BuildContext context) {
@@ -38,13 +35,14 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
-  Widget _body(
-      BuildContext context, {
-        required int income,
-        required int expense,
-        required int balance,
-      }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _body(BuildContext context, {
+    required int income,
+    required int expense,
+    required int balance,
+  }) {
+    final isDark = Theme
+        .of(context)
+        .brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
     final textSecondary =
@@ -113,17 +111,16 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
-  Widget _row(
-      BuildContext context, {
-        required IconData icon,
-        required String title,
-        required int value,
-        required Color color,
-        required Color textPrimary,
-        required Color textSecondary,
-        String prefix = "",
-        bool isBold = false,
-      }) {
+  Widget _row(BuildContext context, {
+    required IconData icon,
+    required String title,
+    required int value,
+    required Color color,
+    required Color textPrimary,
+    required Color textSecondary,
+    String prefix = "",
+    bool isBold = false,
+  }) {
     final format = NumberFormat.decimalPattern("vi");
 
     return Row(
@@ -166,8 +163,17 @@ class SummarySpending extends StatelessWidget {
   }
 
   Widget _loading(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme
+        .of(context)
+        .brightness == Brightness.dark;
+
+    // Màu nền card
     final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
+    // Màu shimmer: base và highlight
+    final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+    final highlightShimmer = isDark ? Colors.grey.shade700 : Colors.grey
+        .shade100;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -179,28 +185,33 @@ class SummarySpending extends StatelessWidget {
         ),
         child: Column(
           children: [
-            _shimmerRow(),
+            _shimmerRow(baseShimmer, highlightShimmer),
             const SizedBox(height: 18),
-            _shimmerRow(),
+            _shimmerRow(baseShimmer, highlightShimmer),
             const SizedBox(height: 18),
             const Divider(),
             const SizedBox(height: 18),
-            _shimmerRow(isBold: true),
+            _shimmerRow(baseShimmer, highlightShimmer, isBold: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _shimmerRow({bool isBold = false}) {
+  Widget _shimmerRow(Color baseShimmer, Color highlightShimmer,
+      {bool isBold = false}) {
     return Row(
       children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            shape: BoxShape.circle,
+        Shimmer.fromColors(
+          baseColor: baseShimmer,
+          highlightColor: highlightShimmer,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: baseShimmer,
+              shape: BoxShape.circle,
+            ),
           ),
         ),
         const SizedBox(width: 14),
@@ -211,13 +222,13 @@ class SummarySpending extends StatelessWidget {
           ),
         ),
         Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
+          baseColor: baseShimmer,
+          highlightColor: highlightShimmer,
           child: Container(
             height: isBold ? 22 : 18,
             width: Random().nextInt(60) + 80,
             decoration: BoxDecoration(
-              color: Colors.grey,
+              color: baseShimmer,
               borderRadius: BorderRadius.circular(6),
             ),
           ),

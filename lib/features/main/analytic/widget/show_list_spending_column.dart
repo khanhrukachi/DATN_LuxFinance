@@ -32,6 +32,10 @@ class _ShowListSpendingColumnState extends State<ShowListSpendingColumn> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.spendingList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final listDate = widget.index == 0
         ? getListDayOfWeek(widget.spendingList.first.dateTime)
         : widget.index == 1
@@ -168,15 +172,14 @@ class _ShowListSpendingColumnState extends State<ShowListSpendingColumn> {
         } else if (typeMoney < 0) {
           mainColor = Colors.red.shade400;
         } else {
-          mainColor = Colors.grey; // bằng 0
+          mainColor = Colors.grey;
         }
-
         final Color textPrimary = isDark ? Colors.white : Colors.black87;
         final Color textSecondary = Colors.grey.shade700;
-
         return InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
+            if (list.isEmpty) return;
             Navigator.of(context).push(
               createRoute(
                 screen: ViewListSpendingPage(spendingList: list),

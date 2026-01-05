@@ -2,12 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_page_loading.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:personal_financial_management/core/constants/function/get_date.dart';
 import 'package:personal_financial_management/core/constants/function/get_data_spending.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
-import 'package:personal_financial_management/core/constants/function/loading_overlay.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 import 'package:personal_financial_management/models/spending.dart';
@@ -29,15 +29,12 @@ class AnalyticPage extends StatefulWidget {
   State<AnalyticPage> createState() => _AnalyticPageState();
 }
 
-class _AnalyticPageState extends State<AnalyticPage>
-    with TickerProviderStateMixin {
+class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMixin {
   late TabController _tabController;
   late TabController _chartController;
   late TabController _typeController;
 
   bool chart = false;
-  bool _isLoading = true;
-
   DateTime now = DateTime.now();
   String date = "";
 
@@ -56,17 +53,10 @@ class _AnalyticPageState extends State<AnalyticPage>
       setState(() => chart = _chartController.index == 1);
     });
     _typeController.addListener(() => setState(() {}));
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) setState(() => _isLoading = false);
-      });
-    });
   }
 
   void _onTabChange() {
     setState(() {
-      _isLoading = true;
       now = DateTime.now();
 
       if (_tabController.index == 0) {
@@ -76,10 +66,6 @@ class _AnalyticPageState extends State<AnalyticPage>
       } else {
         date = getYear(now);
       }
-    });
-
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _isLoading = false);
     });
   }
 
@@ -94,13 +80,10 @@ class _AnalyticPageState extends State<AnalyticPage>
   bool checkDate(DateTime dateTime) {
     if (_tabController.index == 0) {
       int weekDay = now.weekday;
-      DateTime firstDay =
-      DateTime(now.year, now.month, now.day)
+      DateTime firstDay = DateTime(now.year, now.month, now.day)
           .subtract(Duration(days: weekDay - 1));
       DateTime lastDay = firstDay.add(const Duration(days: 6));
-
-      return (dateTime.isAfter(firstDay) &&
-          dateTime.isBefore(lastDay)) ||
+      return (dateTime.isAfter(firstDay) && dateTime.isBefore(lastDay)) ||
           isSameDay(dateTime, firstDay) ||
           isSameDay(dateTime, lastDay);
     }
@@ -122,10 +105,7 @@ class _AnalyticPageState extends State<AnalyticPage>
         automaticallyImplyLeading: false,
         title: Text(
           AppLocalizations.of(context).translate('spending'),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -166,14 +146,10 @@ class _AnalyticPageState extends State<AnalyticPage>
           child: CustomTabBar(controller: _tabController),
         ),
       ),
-      body: LoadingOverlay(
-        isLoading: _isLoading,
-        child: _body(),
-      ),
+      body: _body(),
     );
   }
 
-  /// ================= BODY =================
   Widget _body() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -181,24 +157,23 @@ class _AnalyticPageState extends State<AnalyticPage>
           .doc(FirebaseAuth.instance.currentUser!.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
+        if (!snapshot.hasData) {
+          return const AnalyticPageLoading(itemCount: 6);
+        }
 
         Map<String, dynamic> data = {};
         if (snapshot.data!.data() != null) {
           data = snapshot.data!.data() as Map<String, dynamic>;
         }
 
-        final ids = getDataSpending(
-          data: data,
-          index: _tabController.index,
-          date: now,
-        );
+        final ids = getDataSpending(data: data, index: _tabController.index, date: now);
 
         return StreamBuilder<QuerySnapshot>(
-          stream:
-          FirebaseFirestore.instance.collection("spending").snapshots(),
+          stream: FirebaseFirestore.instance.collection("spending").snapshots(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) return const SizedBox();
+            if (!snapshot.hasData) {
+              return const AnalyticPageLoading(itemCount: 6);
+            }
 
             final spendingList = snapshot.data!.docs
                 .where((e) => ids.contains(e.id))
@@ -212,22 +187,22 @@ class _AnalyticPageState extends State<AnalyticPage>
               return true;
             }).toList();
 
+            if (spendingList.isEmpty) {
+              return _noData(context);
+            }
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(10),
               child: Column(
                 children: [
                   _showChart(classify),
-                  if (spendingList.isNotEmpty)
-                    TotalReport(list: spendingList),
-                  if (spendingList.isNotEmpty)
-                    chart
-                        ? showListSpendingPie(list: classify)
-                        : classify.isNotEmpty
-                        ? ShowListSpendingColumn(
-                      spendingList: classify,
-                      index: _tabController.index,
-                    )
-                        : const SizedBox(height: 200),
+                  TotalReport(list: spendingList),
+                  chart
+                      ? showListSpendingPie(list: classify)
+                      : ShowListSpendingColumn(
+                    spendingList: classify,
+                    index: _tabController.index,
+                  ),
                 ],
               ),
             );
@@ -243,12 +218,8 @@ class _AnalyticPageState extends State<AnalyticPage>
     return Card(
       elevation: 1,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      color: isDark
-          ? Colors.white10
-          : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      color: isDark ? Colors.white10 : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           const SizedBox(height: 12),
@@ -267,17 +238,54 @@ class _AnalyticPageState extends State<AnalyticPage>
           list.isNotEmpty
               ? chart
               ? MyPieChart(list: list)
-              : ColumnChart(
-            index: _tabController.index,
-            list: list,
-            dateTime: now,
-          )
-              : const SizedBox(height: 300),
-
+              : ColumnChart(index: _tabController.index, list: list, dateTime: now)
+              : _noData(context),
           tabBarChart(controller: _chartController),
-
           const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  Widget _noData(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Card(
+        elevation: 0.5,
+        color: isDark ? Colors.white10 : Colors.grey.shade50,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        child: SizedBox(
+          height: 240,
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.15),
+                ),
+                child: Icon(
+                  Icons.insert_chart_outlined_rounded,
+                  size: 36,
+                  color: isDark ? Colors.white38 : Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                AppLocalizations.of(context).translate('no_data'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white54 : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

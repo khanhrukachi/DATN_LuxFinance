@@ -26,12 +26,16 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int currentTab = 0;
 
-  final List<Widget> screens = const [
-    HomePage(),
-    BudgetPage(),
-    AnalyticPage(),
-    ProfilePage(),
+  final GlobalKey<BudgetPageState> budgetKey =
+  GlobalKey<BudgetPageState>();
+
+  late final List<Widget> screens = [
+    const HomePage(),
+    BudgetPage(key: budgetKey),
+    const AnalyticPage(),
+    const ProfilePage(),
   ];
+
 
   DateTime? currentBackPressTime;
   final PageStorageBucket bucket = PageStorageBucket();
@@ -67,13 +71,17 @@ class _MainPageState extends State<MainPage> {
             final result = await Navigator.of(context).push(
               createRoute(screen: const AddBudgetPage()),
             );
-            if (result == true) setState(() {});
+
+            if (result == true) {
+              budgetKey.currentState?.fetchBudgets();
+            }
           } else {
             await Navigator.of(context).push(
               createRoute(screen: const AddSpendingPage()),
             );
           }
         },
+
       ),
 
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -118,7 +126,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// TAB ITEM
   Widget _tabItem({
     required int index,
     required String text,
@@ -143,7 +150,6 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  /// PICK IMAGE (OPTIONAL)
   Future pickImage() async {
     try {
       final image = await ImagePicker().pickImage(

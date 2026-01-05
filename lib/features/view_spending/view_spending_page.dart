@@ -45,7 +45,6 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
   void initState() {
     super.initState();
     spending = widget.spending;
-    // Tạo màu cho friends nếu có
     final friends = spending?.friends ?? [];
     for (var _ in friends) {
       colors.add(Color.fromRGBO(Random().nextInt(255), Random().nextInt(255),
@@ -64,7 +63,6 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
   @override
   Widget build(BuildContext context) {
     if (!isValid) {
-      // Màn hình lỗi nếu dữ liệu không hợp lệ
       return Scaffold(
         appBar: AppBar(
           title: const Text('Lỗi'),
@@ -295,25 +293,32 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
   Future<void> showConfirmDialog() async {
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: Center(
-            child:
-            Text(AppLocalizations.of(context).translate('you_want_delete'))),
+          child: Text(
+            AppLocalizations.of(context).translate('you_want_delete'),
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text(AppLocalizations.of(context).translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
               loadingAnimation(context);
+
               await SpendingFirebase.deleteSpending(spending!);
+
               if (spending!.id != null) {
                 widget.delete?.call(spending!.id!);
               }
+
               if (!mounted) return;
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.of(context).pop();
+              Navigator.of(context, rootNavigator: true).pop();
+              Navigator.of(context).pop();
             },
             child: const Text("OK"),
           ),
@@ -321,4 +326,5 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
       ),
     );
   }
+
 }

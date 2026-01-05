@@ -177,7 +177,6 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Thẻ Budget kiểu mới
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -225,7 +224,6 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
               ],
             ),
           ),
-          // Overlay loading
           if (isLoading)
             Positioned.fill(
               child: Container(

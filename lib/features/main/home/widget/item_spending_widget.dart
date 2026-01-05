@@ -40,7 +40,6 @@ class ItemSpendingWidget extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final numberFormat = NumberFormat.decimalPattern("vi");
 
-    // ==== FIX KIỂU DỮ LIỆU ====
     final Map<String, dynamic> typeItem =
     listType[index] as Map<String, dynamic>;
 
@@ -92,7 +91,6 @@ class ItemSpendingWidget extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // ICON
               Container(
                 width: 54,
                 height: 54,
@@ -149,10 +147,12 @@ class ItemSpendingWidget extends StatelessWidget {
   Widget _loading(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
+    final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+    final highlightShimmer = isDark ? Colors.grey.shade700 : Colors.grey.shade100;
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      itemCount: 6,
+      itemCount: 5,
       itemBuilder: (_, __) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -165,28 +165,46 @@ class ItemSpendingWidget extends StatelessWidget {
             child: Row(
               children: [
                 Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: baseShimmer,
+                  highlightColor: highlightShimmer,
                   child: Container(
                     width: 54,
                     height: 54,
-                    decoration: const BoxDecoration(
-                      color: Colors.grey,
+                    decoration: BoxDecoration(
+                      color: baseShimmer,
                       shape: BoxShape.circle,
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: textLoading(Random().nextInt(80) + 80),
+                  child: textLoading(Random().nextInt(80) + 80,
+                      baseShimmer: baseShimmer, highlightShimmer: highlightShimmer),
                 ),
                 const SizedBox(width: 16),
-                textLoading(Random().nextInt(50) + 60),
+                textLoading(Random().nextInt(50) + 60,
+                    baseShimmer: baseShimmer, highlightShimmer: highlightShimmer),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget textLoading(int width,
+      {int height = 16, required Color baseShimmer, required Color highlightShimmer}) {
+    return Shimmer.fromColors(
+      baseColor: baseShimmer,
+      highlightColor: highlightShimmer,
+      child: Container(
+        height: height.toDouble(),
+        width: width.toDouble(),
+        decoration: BoxDecoration(
+          color: baseShimmer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
     );
   }
 }

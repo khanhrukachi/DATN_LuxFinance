@@ -96,8 +96,6 @@ class _HomePageState extends State<HomePage>
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(child: const SizedBox(height: 10)),
-
-        // TAB BAR
         SliverToBoxAdapter(
           child: SizedBox(
             height: 40,
@@ -135,13 +133,9 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         ),
-
-        // SUMMARY
         SliverToBoxAdapter(
           child: SummarySpending(spendingList: spendingList),
         ),
-
-        // TITLE
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -159,8 +153,6 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         ),
-
-        // LIST
         spendingList.isNotEmpty
             ? SliverFillRemaining(
           child: ItemSpendingWidget(
