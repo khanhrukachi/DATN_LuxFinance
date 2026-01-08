@@ -6,8 +6,8 @@ import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
+import 'package:personal_financial_management/features/auth/signup/verify/update_profile_screen.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
-import 'package:personal_financial_management/features/auth/signup/verify/input_wallet.dart';
 
 class VerifyPage extends StatefulWidget {
   const VerifyPage({Key? key}) : super(key: key);
@@ -109,7 +109,7 @@ class _VerifyPageState extends State<VerifyPage> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
-                          createRoute(screen: const InputWalletPage()),
+                          createRoute(screen: const UpdateProfileScreen()),
                         );
                       },
                       icon: const Icon(FontAwesomeIcons.house),
