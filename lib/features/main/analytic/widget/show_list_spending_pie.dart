@@ -7,7 +7,6 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 
 Widget showListSpendingPie({required List<Spending> list}) {
-  final numberFormat = NumberFormat.currency(locale: "vi_VI");
   final int totalSum = list.isNotEmpty
       ? list.map((e) => e.money).reduce((value, element) => value + element)
       : 1;
@@ -132,7 +131,7 @@ Widget showListSpendingPie({required List<Spending> list}) {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "${_formatCurrency(sumSpending)} VND",
+                        "${_formatCurrency(sumSpending)} đ",
                         style: TextStyle(
                           fontSize: 13,
                           color: isOver ? mainColor : textSecondary,

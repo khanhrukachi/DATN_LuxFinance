@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class APIService {
+  static const String _baseUrl = "http://192.168.1.202:8000";
   /// =====================
   /// EXCHANGE RATE
   /// =====================
@@ -82,7 +84,6 @@ class APIService {
     }
   }
 
-  // wrapper để compute chỉ nhận 1 argument
   static List<Map<String, dynamic>> _parseCountryWrapper(Map<String, String> bodies) {
     return parseCountrySync(bodies["countryBody"]!, bodies["symbolBody"]!);
   }
@@ -111,6 +112,20 @@ class APIService {
     } catch (e) {
       print("Error fetching symbol data: $e");
       return [];
+    }
+  }
+
+  static Future<void> fetchAI(String uid) async {
+    try {
+      http.post(
+        Uri.parse("$_baseUrl/ai/advisor"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"user_id": uid}),
+      ); // ❌ không await
+
+      debugPrint("✅ AI request fired for uid=$uid");
+    } catch (e) {
+      debugPrint("❌ AI ERROR (ignored): $e");
     }
   }
 }

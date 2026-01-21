@@ -106,7 +106,6 @@ class MySearchDelegate extends SearchDelegate<String> {
 
   @override
   void showResults(BuildContext context) {
-    // super.showResults(context);
     if (query.isNotEmpty) {
       var firestore = FirebaseFirestore.instance
           .collection("history")

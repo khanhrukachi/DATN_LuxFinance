@@ -5,42 +5,51 @@ import 'package:intl/intl.dart';
 
 class InputMoney extends StatelessWidget {
   const InputMoney({Key? key, required this.controller}) : super(key: key);
+
   final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
-    final NumberFormat currencyFormatter = NumberFormat.currency(locale: 'vi_VI');
+    final NumberFormat currencyFormatter = NumberFormat.currency(
+      locale: 'vi_VI',
+      symbol: '',
+      decimalDigits: 0,
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
       height: 100,
-      // color: Colors.white,
       child: TextFormField(
         controller: controller,
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp("[\\s0-9a-zA-Z]")),
-          CurrencyTextInputFormatter(currencyFormatter)
-        ],
-        textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 20),
         keyboardType: TextInputType.number,
+
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          CurrencyTextInputFormatter(currencyFormatter),
+        ],
+
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
         decoration: InputDecoration(
           filled: true,
           fillColor: Theme.of(context).scaffoldBackgroundColor,
           border: InputBorder.none,
-          hintText: "100.000 VND",
+          hintText: "100.000 đ",
           hintStyle: TextStyle(
             fontSize: 20,
             color: Colors.grey.withOpacity(0.5),
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+          const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.white),
+            borderSide: BorderSide.none,
             borderRadius: BorderRadius.circular(20),
           ),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: const BorderSide(color: Colors.white),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide.none,
             borderRadius: BorderRadius.circular(20),
           ),
         ),

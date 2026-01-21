@@ -16,6 +16,7 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/features/auth/signup/gender_widget.dart';
+import '../../../core/constants/function/get_survey_data.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -67,7 +68,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       getImage: (file) => setState(() => image = file),
                     ),
                     const SizedBox(height: 30),
-                    // Thông tin cá nhân
+
+                    // Tên đầy đủ
                     _infoCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,6 +85,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+
+                    // Ngày sinh
                     _infoCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,6 +111,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+
+                    // Giới tính
                     _infoCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +139,71 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 20),
+
+                    // Thông tin xã hội & nghề nghiệp
+                    _infoCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDropdown(
+                            label: "Nơi ở hiện tại",
+                            value: SurveyData.provinces.contains(user.currentAddress)
+                                ? user.currentAddress
+                                : SurveyData.provinces.first,
+                            options: SurveyData.provinces,
+                            onChanged: (v) => setState(() => user.currentAddress = v),
+                          ),
+                          _buildDropdown(
+                            label: "Tình trạng hôn nhân",
+                            value: ["Độc thân", "Đã kết hôn", "Khác"].contains(user.maritalStatus)
+                                ? user.maritalStatus
+                                : "Độc thân",
+                            options: ["Độc thân", "Đã kết hôn", "Khác"],
+                            onChanged: (v) => setState(() => user.maritalStatus = v),
+                          ),
+                          _buildDropdown(
+                            label: "Ngành nghề",
+                            value: SurveyData.jobs.contains(user.job) ? user.job : SurveyData.jobs.first,
+                            options: SurveyData.jobs,
+                            onChanged: (v) => setState(() => user.job = v),
+                          ),
+                          _buildDropdown(
+                            label: "Trình độ học vấn",
+                            value: SurveyData.educationLevels.contains(user.educationLevel)
+                                ? user.educationLevel
+                                : SurveyData.educationLevels.first,
+                            options: SurveyData.educationLevels,
+                            onChanged: (v) => setState(() => user.educationLevel = v),
+                          ),
+                          _buildDropdown(
+                            label: "Lối sống",
+                            value: ["Tiết kiệm", "Cân bằng", "Hưởng thụ"].contains(user.lifestyle)
+                                ? user.lifestyle
+                                : "Cân bằng",
+                            options: ["Tiết kiệm", "Cân bằng", "Hưởng thụ"],
+                            onChanged: (v) => setState(() => user.lifestyle = v),
+                          ),
+                          _buildDropdown(
+                            label: "Khẩu vị rủi ro",
+                            value: ["Thấp", "Trung bình", "Cao"].contains(user.riskTolerance)
+                                ? user.riskTolerance
+                                : "Trung bình",
+                            options: ["Thấp", "Trung bình", "Cao"],
+                            onChanged: (v) => setState(() => user.riskTolerance = v),
+                          ),
+                          _buildMultiSelectDropdown(
+                            label: "Sở thích",
+                            values: user.hobbies,
+                            options: SurveyData.hobbies,
+                            onChanged: (list) => setState(() => user.hobbies = list),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 30),
+
+                    // Nút lưu
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -150,8 +220,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             user: user.copyWith(
                               name: nameController.text.trim(),
                               gender: gender,
-                              birthday:
-                              DateFormat("dd/MM/yyyy").format(selectedDate),
+                              birthday: DateFormat("dd/MM/yyyy").format(selectedDate),
                             ),
                             image: image,
                           );
@@ -176,6 +245,217 @@ class _EditProfilePageState extends State<EditProfilePage> {
           );
         },
       ),
+    );
+  }
+
+  // Helper Dropdown
+  Widget _buildDropdown({
+    required String label,
+    required String value,
+    required List<String> options,
+    required Function(String) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              barrierColor: Colors.black.withOpacity(0.3),
+              builder: (_) => Center(
+                child: Material( // ✅ BẮT BUỘC
+                  color: Colors.transparent,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    height: MediaQuery.of(context).size.height * 0.5,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface, // 🌗 dark/light
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "Chọn $label",
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Divider(),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: options.length,
+                            itemBuilder: (_, index) {
+                              final item = options[index];
+                              return ListTile(
+                                title: Text(item),
+                                trailing: item == value
+                                    ? Icon(Icons.check,
+                                    color: Theme.of(context).colorScheme.primary)
+                                    : null,
+                                onTap: () {
+                                  onChanged(item);
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildMultiSelectDropdown({
+    required String label,
+    required List<String> values,
+    required List<String> options,
+    required Function(List<String>) onChanged,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        const SizedBox(height: 6),
+
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            final tempSelected = List<String>.from(values);
+
+            showDialog(
+              context: context,
+              barrierColor: Colors.black.withOpacity(0.4),
+              builder: (_) => Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "Chọn $label",
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        Divider(color: colorScheme.outline),
+
+                        Expanded(
+                          child: StatefulBuilder(
+                            builder: (context, setStateDialog) {
+                              return ListView.builder(
+                                itemCount: options.length,
+                                itemBuilder: (_, index) {
+                                  final item = options[index];
+                                  final isSelected =
+                                  tempSelected.contains(item);
+
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    title: Text(item),
+                                    activeColor: colorScheme.primary,
+                                    onChanged: (checked) {
+                                      setStateDialog(() {
+                                        if (checked == true) {
+                                          tempSelected.add(item);
+                                        } else {
+                                          tempSelected.remove(item);
+                                        }
+                                      });
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              onChanged(tempSelected);
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Xác nhận"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(color: colorScheme.outline),
+              borderRadius: BorderRadius.circular(8),
+              color: colorScheme.surface,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    values.isEmpty
+                        ? "Chọn sở thích"
+                        : values.join(", "),
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down,
+                    color: colorScheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+      ],
     );
   }
 
@@ -215,19 +495,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
               width: 140,
               height: 140,
               fit: BoxFit.cover,
-              placeholder: (_, __) =>
-                  Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: Colors.grey,
-                        borderRadius: BorderRadius.circular(70),
-                      ),
-                    ),
+              placeholder: (_, __) => Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(70),
                   ),
+                ),
+              ),
               errorWidget: (_, __, ___) => const Icon(Icons.error),
             )
                 : Image.file(image, width: 140, height: 140, fit: BoxFit.cover),

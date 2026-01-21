@@ -325,6 +325,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
 
       loadingAnimation(context);
       await SpendingFirebase.addSpending(spending);
+
       if (!mounted) return;
       Navigator.pop(context);
       Navigator.pop(context);

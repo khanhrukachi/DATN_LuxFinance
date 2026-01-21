@@ -28,7 +28,7 @@ class ShowListSpendingColumn extends StatefulWidget {
 }
 
 class _ShowListSpendingColumnState extends State<ShowListSpendingColumn> {
-  final numberFormat = NumberFormat.currency(locale: "vi_VI");
+  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: 'đ',);
 
   @override
   Widget build(BuildContext context) {

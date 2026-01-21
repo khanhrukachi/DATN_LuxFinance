@@ -13,7 +13,7 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/column_chart.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/pie_chart.dart';
-import 'package:personal_financial_management/features/main/analytic/search_screen.dart';
+import 'package:personal_financial_management/features/main/profile/search_screen.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/custom_tabbar.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/show_date.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/show_list_spending_column.dart';
@@ -29,7 +29,8 @@ class AnalyticPage extends StatefulWidget {
   State<AnalyticPage> createState() => _AnalyticPageState();
 }
 
-class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMixin {
+class _AnalyticPageState extends State<AnalyticPage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   late TabController _chartController;
   late TabController _typeController;
@@ -58,7 +59,6 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
   void _onTabChange() {
     setState(() {
       now = DateTime.now();
-
       if (_tabController.index == 0) {
         date = getWeek(now);
       } else if (_tabController.index == 1) {
@@ -80,9 +80,12 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
   bool checkDate(DateTime dateTime) {
     if (_tabController.index == 0) {
       int weekDay = now.weekday;
-      DateTime firstDay = DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: weekDay - 1));
+      DateTime firstDay =
+      DateTime(now.year, now.month, now.day).subtract(
+        Duration(days: weekDay - 1),
+      );
       DateTime lastDay = firstDay.add(const Duration(days: 6));
+
       return (dateTime.isAfter(firstDay) && dateTime.isBefore(lastDay)) ||
           isSameDay(dateTime, firstDay) ||
           isSameDay(dateTime, lastDay);
@@ -166,7 +169,11 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
           data = snapshot.data!.data() as Map<String, dynamic>;
         }
 
-        final ids = getDataSpending(data: data, index: _tabController.index, date: now);
+        final ids = getDataSpending(
+          data: data,
+          index: _tabController.index,
+          date: now,
+        );
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection("spending").snapshots(),
@@ -187,16 +194,13 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
               return true;
             }).toList();
 
-            if (spendingList.isEmpty) {
-              return _noData(context);
-            }
-
             return SingleChildScrollView(
               padding: const EdgeInsets.all(10),
               child: Column(
                 children: [
                   _showChart(classify),
-                  TotalReport(list: spendingList),
+                  if (spendingList.isNotEmpty)
+                    TotalReport(list: spendingList),
                   chart
                       ? showListSpendingPie(list: classify)
                       : ShowListSpendingColumn(
@@ -234,12 +238,19 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
               });
             },
           ),
+
           TabBarType(controller: _typeController),
+
           list.isNotEmpty
-              ? chart
+              ? (chart
               ? MyPieChart(list: list)
-              : ColumnChart(index: _tabController.index, list: list, dateTime: now)
-              : _noData(context),
+              : ColumnChart(
+            index: _tabController.index,
+            list: list,
+            dateTime: now,
+          ))
+              : _emptyChart(),
+
           tabBarChart(controller: _chartController),
           const SizedBox(height: 12),
         ],
@@ -247,45 +258,28 @@ class _AnalyticPageState extends State<AnalyticPage> with TickerProviderStateMix
     );
   }
 
-  Widget _noData(BuildContext context) {
+  Widget _emptyChart() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Card(
-        elevation: 0.5,
-        color: isDark ? Colors.white10 : Colors.grey.shade50,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        child: SizedBox(
-          height: 240,
-          width: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.15),
-                ),
-                child: Icon(
-                  Icons.insert_chart_outlined_rounded,
-                  size: 36,
-                  color: isDark ? Colors.white38 : Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                AppLocalizations.of(context).translate('no_data'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white54 : Colors.grey[600],
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: 295,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.insert_chart_outlined,
+            size: 40,
+            color: isDark ? Colors.white38 : Colors.grey,
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context).translate('no_data'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDark ? Colors.white54 : Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }

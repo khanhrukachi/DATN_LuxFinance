@@ -1,7 +1,7 @@
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/features/auth/login/widget/custom_button.dart';
 import 'package:personal_financial_management/features/auth/login/widget/input_password.dart';
@@ -26,15 +26,57 @@ class _ChangePasswordState extends State<ChangePassword> {
     super.dispose();
   }
 
+  Future<void> _reauthenticateAndProceed() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    loadingAnimation(context); // show loading
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw FirebaseAuthException(code: 'no-user');
+
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _passwordController.text.trim(),
+      );
+
+      await user.reauthenticateWithCredential(credential);
+
+      if (!mounted) return;
+      Navigator.pop(context); // remove loading dialog
+      Navigator.of(context).push(createRoute(
+        screen: const NewPassword(),
+        begin: const Offset(1, 0),
+      ));
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // remove loading dialog
+
+      String msg = "";
+      if (e.code == 'wrong-password') {
+        msg = AppLocalizations.of(context).translate("incorrect_password");
+      } else if (e.code == 'no-user') {
+        msg = AppLocalizations.of(context).translate("user_not_found");
+      } else {
+        msg = AppLocalizations.of(context).translate("unknown_error_login");
+      }
+
+      Fluttertoast.showToast(msg: msg);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      Fluttertoast.showToast(
+        msg: AppLocalizations.of(context).translate("unknown_error_login"),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
         backgroundColor: Colors.transparent,
@@ -55,9 +97,9 @@ class _ChangePasswordState extends State<ChangePassword> {
               ),
               const SizedBox(height: 20),
               Text(
-                textAlign: TextAlign.center,
                 AppLocalizations.of(context)
                     .translate('please_enter_your_current_password'),
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(height: 50),
@@ -71,39 +113,7 @@ class _ChangePasswordState extends State<ChangePassword> {
               ),
               const SizedBox(height: 30),
               customButton(
-                action: () async {
-                  if (_formKey.currentState!.validate()) {
-                    try {
-                      final user = FirebaseAuth.instance.currentUser;
-                      final credential = EmailAuthProvider.credential(
-                        email: user!.email!,
-                        password: _passwordController.text,
-                      );
-                      var result =
-                      await user.reauthenticateWithCredential(credential);
-                      if (result.user != null) {
-                        if (!mounted) return;
-                        Navigator.of(context).push(createRoute(
-                          screen: const NewPassword(),
-                          begin: const Offset(1, 0),
-                        ));
-                      } else {
-                        if (!mounted) return;
-                        Fluttertoast.showToast(
-                          msg: AppLocalizations.of(context)
-                              .translate("incorrect_password"),
-                        );
-                      }
-                    } catch (e) {
-                      Fluttertoast.showToast(
-                        msg: AppLocalizations.of(context)
-                            .translate("incorrect_password"),
-                      );
-                      // Fluttertoast.showToast(msg: e.toString());
-                    }
-                    return;
-                  }
-                },
+                action: _reauthenticateAndProceed,
                 text: AppLocalizations.of(context).translate('submit'),
               ),
             ],

@@ -10,7 +10,7 @@ class TotalReport extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final numberFormat = NumberFormat.currency(locale: "vi_VI");
+    final numberFormat = NumberFormat.currency(locale: "vi_VI",symbol: 'đ',);
 
     final spending = list
         .where((e) => e.money < 0)

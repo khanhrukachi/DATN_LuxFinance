@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
+import '../../../core/constants/function/get_survey_data.dart';
+
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
@@ -13,10 +15,12 @@ class UserProfilePage extends StatefulWidget {
   State<UserProfilePage> createState() => _UserProfilePageState();
 }
 
+
 class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -48,15 +52,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               child: Column(
                 children: [
-                  // Avatar
                   CircleAvatar(
                     radius: 75,
                     backgroundImage: CachedNetworkImageProvider(user.avatar),
                     backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
                   ),
                   const SizedBox(height: 40),
-
-                  // Full Name
                   _buildCardItem(
                     icon: Icons.person,
                     iconColor: Colors.blue,
@@ -65,8 +66,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 12),
-
-                  // Birthday
                   _buildCardItem(
                     icon: Icons.calendar_today,
                     iconColor: Colors.orange,
@@ -75,8 +74,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 12),
-
-                  // Gender
                   _buildCardItem(
                     icon: Icons.male,
                     iconColor: Colors.green,
@@ -84,6 +81,29 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     content: user.gender
                         ? AppLocalizations.of(context).translate('male')
                         : AppLocalizations.of(context).translate('female'),
+                    isDarkMode: isDarkMode,
+                  ),
+                  _buildCardItem(
+                    icon: Icons.work,
+                    iconColor: Colors.purple,
+                    title: AppLocalizations.of(context).translate('job'),
+                    content: user.job,
+                    isDarkMode: isDarkMode,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCardItem(
+                    icon: Icons.school,
+                    iconColor: Colors.teal,
+                    title: AppLocalizations.of(context).translate('education'),
+                    content: user.educationLevel,
+                    isDarkMode: isDarkMode,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildCardItem(
+                    icon: Icons.location_on,
+                    iconColor: Colors.red,
+                    title: AppLocalizations.of(context).translate('current_address'),
+                    content:  user.currentAddress,
                     isDarkMode: isDarkMode,
                   ),
                 ],

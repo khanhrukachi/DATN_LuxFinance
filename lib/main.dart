@@ -6,7 +6,6 @@ import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/features/auth/forgot/forgot_screen.dart';
 import 'package:personal_financial_management/features/auth/forgot/success_screen.dart';
 import 'package:personal_financial_management/features/auth/login/login_page.dart';
-import 'package:personal_financial_management/features/auth/signup/verify/input_wallet.dart';
 import 'package:personal_financial_management/features/auth/signup/verify/verify_screen.dart';
 import 'package:personal_financial_management/features/main/home/home_screen.dart';
 import 'package:personal_financial_management/features/main/main_page.dart';
@@ -17,6 +16,7 @@ import 'package:personal_financial_management/setting/bloc/setting_state.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations_setup.dart';
 import 'package:personal_financial_management/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'features/auth/signup/verify/update_profile_screen.dart';
 
 bool loginMethod = false;
 int? language;
@@ -108,7 +108,7 @@ class MyApp extends StatelessWidget {
                 '/forgot': (context) => const ForgotPage(),
                 '/success': (context) => const SuccessPage(),
                 '/verify': (context) => const VerifyPage(),
-                '/wallet': (context) => const InputWalletPage(),
+                '/survey': (context) => const UpdateProfileScreen(),
                 '/edit_profile': (context) => const EditProfilePage(),
               },
             );

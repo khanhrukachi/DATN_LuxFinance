@@ -38,7 +38,7 @@ class _SuccessPageState extends State<SuccessPage> {
                 Text(
                   textAlign: TextAlign.center,
                   AppLocalizations.of(context)
-                      .translate('check_your_email_make_password_change!'),
+                      .translate('check_your_email_make_password_change'),
                   style: const TextStyle(fontSize: 18),
                 ),
                 const SizedBox(height: 20),

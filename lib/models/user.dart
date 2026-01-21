@@ -8,46 +8,130 @@ class User {
   String birthday;
   String avatar;
   bool gender;
+
   int money;
 
-  User(
-      {required this.name,
-      required this.birthday,
-      required this.avatar,
-      required this.money,
-      this.gender = true});
+  String currentAddress;
+  String maritalStatus;
+  String job;
+  String educationLevel;
+  int averageMonthlyIncome;
+
+  String lifestyle;
+  String riskTolerance;
+  List<String> hobbies;
+
+  bool hasCompletedSurvey;
+  Timestamp? createdAt;
+
+  User({
+    required this.name,
+    required this.birthday,
+    required this.avatar,
+    required this.money,
+    this.gender = true,
+
+    this.currentAddress = "",
+    this.maritalStatus = "",
+    this.job = "",
+    this.educationLevel = "",
+    this.averageMonthlyIncome = 0,
+
+    this.lifestyle = "",
+    this.riskTolerance = "",
+    this.hobbies = const [],
+
+    this.hasCompletedSurvey = false,
+    this.createdAt,
+  });
 
   Map<String, dynamic> toMap() => {
-        "name": name,
-        "birthday": birthday,
-        "avatar": avatar,
-        "gender": gender,
-        "money": money
-      };
+    "name": name,
+    "birthday": birthday,
+    "avatar": avatar,
+    "gender": gender,
+    "money": money,
+
+    "currentAddress": currentAddress,
+    "maritalStatus": maritalStatus,
+    "job": job,
+    "educationLevel": educationLevel,
+    "averageMonthlyIncome": averageMonthlyIncome,
+
+    "lifestyle": lifestyle,
+    "riskTolerance": riskTolerance,
+    "hobbies": hobbies,
+
+    "hasCompletedSurvey": hasCompletedSurvey,
+    "createdAt": createdAt ?? FieldValue.serverTimestamp(),
+  };
 
   factory User.fromFirebase(DocumentSnapshot snapshot) {
-    var data = snapshot.data() as Map<String, dynamic>;
+    final data = snapshot.data() as Map<String, dynamic>;
+
     return User(
-      name: data["name"],
-      birthday: data["birthday"],
-      avatar: data["avatar"],
-      money: data["money"],
-      gender: data['gender'] as bool,
+      name: data["name"] ?? "",
+      birthday: data["birthday"] ?? "",
+      avatar: data["avatar"] ?? defaultAvatar,
+      gender: data["gender"] ?? true,
+      money: data["money"] ?? 0,
+
+      currentAddress: data["currentAddress"] ?? "",
+      maritalStatus: data["maritalStatus"] ?? "",
+      job: data["job"] ?? "",
+      educationLevel: data["educationLevel"] ?? "",
+      averageMonthlyIncome: data["averageMonthlyIncome"] ?? 0,
+
+      lifestyle: data["lifestyle"] ?? "",
+      riskTolerance: data["riskTolerance"] ?? "",
+      hobbies: List<String>.from(data["hobbies"] ?? []),
+
+      hasCompletedSurvey: data["hasCompletedSurvey"] ?? false,
+      createdAt: data["createdAt"],
     );
   }
 
-  User copyWith(
-      {String? name,
-      String? birthday,
-      String? avatar,
-      bool? gender,
-      int? money}) {
+  // ================= COPY =================
+
+  User copyWith({
+    String? name,
+    String? birthday,
+    String? avatar,
+    bool? gender,
+    int? money,
+
+    String? currentAddress,
+    String? maritalStatus,
+    String? job,
+    String? educationLevel,
+    int? averageMonthlyIncome,
+
+    String? lifestyle,
+    String? riskTolerance,
+    List<String>? hobbies,
+
+    bool? hasCompletedSurvey,
+  }) {
     return User(
       name: name ?? this.name,
       birthday: birthday ?? this.birthday,
-      avatar: avatar ?? defaultAvatar,
-      money: money ?? this.money,
+      avatar: avatar ?? this.avatar,
       gender: gender ?? this.gender,
+      money: money ?? this.money,
+
+      currentAddress: currentAddress ?? this.currentAddress,
+      maritalStatus: maritalStatus ?? this.maritalStatus,
+      job: job ?? this.job,
+      educationLevel: educationLevel ?? this.educationLevel,
+      averageMonthlyIncome:
+      averageMonthlyIncome ?? this.averageMonthlyIncome,
+
+      lifestyle: lifestyle ?? this.lifestyle,
+      riskTolerance: riskTolerance ?? this.riskTolerance,
+      hobbies: hobbies ?? this.hobbies,
+
+      hasCompletedSurvey:
+      hasCompletedSurvey ?? this.hasCompletedSurvey,
     );
   }
 }

@@ -87,8 +87,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         begin: const Offset(1, 0),
                       )),
                     ),
-                    if (loginMethod) const SizedBox(height: 12),
-                    if (loginMethod)
+                    if (loginMethod) ...[
+                      const SizedBox(height: 12),
                       _buildCard(
                         text: AppLocalizations.of(context).translate('change_password'),
                         icon: FontAwesomeIcons.lock,
@@ -99,6 +99,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           begin: const Offset(1, 0),
                         )),
                       ),
+                    ],
                     const SizedBox(height: 12),
                     _buildCard(
                       text: AppLocalizations.of(context).translate('language'),
@@ -143,17 +144,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         if (!mounted) return;
                         Navigator.pop(context);
                       },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildCard(
-                      text: AppLocalizations.of(context).translate('currency_exchange_rate'),
-                      icon: Icons.attach_money_rounded,
-                      color: Colors.yellow[700]!,
-                      isDarkMode: isDarkMode,
-                      action: () => Navigator.of(context).push(createRoute(
-                        screen: const CurrencyExchangeRate(),
-                        begin: const Offset(1, 0),
-                      )),
                     ),
                     const SizedBox(height: 12),
                     _buildCard(

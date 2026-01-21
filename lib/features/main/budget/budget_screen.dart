@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/edit_budget/edit_budget_screen.dart';
@@ -27,7 +28,6 @@ class BudgetPageState extends State<BudgetPage>
     fetchBudgets();
   }
 
-  // ===================== FETCH =====================
   Future<void> fetchBudgets() async {
     if (!mounted) return;
 
@@ -88,65 +88,78 @@ class BudgetPageState extends State<BudgetPage>
       ),
       body: SafeArea(
         child: Column(
-          children: [
-            TotalBudgetCard(
-              spent: spentTotal,
-              limit: limitTotal,
-              progress: progress,
-              isLoading: isLoading,
-            ),
-
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: isLoading
-                  ? ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: 5,
-                itemBuilder: (_, __) => const BudgetItem(
-                  type: 0,
-                  spent: 0,
-                  limit: 0,
-                  progress: 0.0,
-                  isLoading: true,
+            children: [
+              if (!isLoading && budgetItems.isNotEmpty) ...[
+                TotalBudgetCard(
+                  spent: spentTotal,
+                  limit: limitTotal,
+                  progress: progress,
+                  isLoading: isLoading,
                 ),
-              )
-                  : budgetItems.isEmpty
-                  ? _buildEmpty()
-                  : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: budgetItems.length,
-                itemBuilder: (context, index) {
-                  final item = budgetItems[index];
-                  final progress =
-                  (item["spent"] / item["limit"]).clamp(0.0, 1.0);
-                  return BudgetItemFuture(
-                    budget: item["budget"],
-                    spent: item["spent"],
-                    limit: item["limit"],
-                    progress: progress,
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              EditBudgetPage(budget: item["budget"]),
-                        ),
-                      );
-                      if (result == true) fetchBudgets();
-                    },
-                  );
-                },
+                const SizedBox(height: 12),
+              ],
+
+              Expanded(
+                child: isLoading
+                    ? _buildLoading()
+                    : budgetItems.isEmpty
+                    ? _buildEmptyWithButton(context)
+                    : _buildBudgetList(),
               ),
-            ),
-          ],
+            ]
+
         ),
       ),
     );
   }
 
+  Widget _buildLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: 5,
+      itemBuilder: (_, __) => const BudgetItem(
+        type: 0,
+        spent: 0,
+        limit: 0,
+        progress: 0.0,
+        isLoading: true,
+      ),
+    );
+  }
+
+  Widget _buildBudgetList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      itemCount: budgetItems.length,
+      itemBuilder: (context, index) {
+        final item = budgetItems[index];
+        final progress =
+        (item["spent"] / item["limit"]).clamp(0.0, 1.0);
+
+        return BudgetItemFuture(
+          budget: item["budget"],
+          spent: item["spent"],
+          limit: item["limit"],
+          progress: progress,
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditBudgetPage(budget: item["budget"]),
+              ),
+            );
+            if (result == true) fetchBudgets();
+          },
+        );
+      },
+    );
+  }
+
+
   // ===================== EMPTY STATE =================
-  Widget _buildEmpty() {
+  Widget _buildEmptyWithButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -169,14 +182,37 @@ class BudgetPageState extends State<BudgetPage>
                 color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              AppLocalizations.of(context)
-                  .translate('tap_the_add_button_to_create_budget'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
+            const SizedBox(height: 20),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.all(20),
+                  backgroundColor:
+                  isDark ? Colors.green.shade600 : Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AddBudgetPage(),
+                    ),
+                  );
+                  if (result == true) fetchBudgets();
+                },
+                child: Text(
+                  AppLocalizations.of(context)
+                      .translate('add_budget'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
