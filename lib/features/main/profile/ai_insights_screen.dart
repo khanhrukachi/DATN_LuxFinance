@@ -135,25 +135,54 @@ class _AIInsightsScreenState extends State<AIInsightsScreen>
           color: _isDarkMode ? Colors.white : Colors.black,
         ),
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: _isDarkMode ? Colors.amber : Colors.blue,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: _isDarkMode ? Colors.amber : Colors.blue,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.trending_up),
-              text: AppLocalizations.of(context).translate('prediction'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: _isDarkMode
+                  ? const Color(0xFF1E1E1E)
+                  : const Color(0xFFF2F4F7),
+              borderRadius: BorderRadius.circular(30),
             ),
-            Tab(
-              icon: const Icon(Icons.pie_chart),
-              text: AppLocalizations.of(context).translate('behavior'),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: _isDarkMode ? Colors.amber : Colors.blue,
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isDarkMode ? Colors.amber : Colors.blue)
+                        .withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              labelColor: Colors.white,
+              unselectedLabelColor:
+              _isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: [
+                _buildTab(
+                  icon: Icons.trending_up,
+                  text: AppLocalizations.of(context).translate('prediction'),
+                ),
+                _buildTab(
+                  icon: Icons.pie_chart_rounded,
+                  text: AppLocalizations.of(context).translate('behavior'),
+                ),
+                _buildTab(
+                  icon: Icons.warning_amber_rounded,
+                  text: AppLocalizations.of(context).translate('anomaly'),
+                ),
+              ],
             ),
-            Tab(
-              icon: const Icon(Icons.warning_amber),
-              text: AppLocalizations.of(context).translate('anomaly'),
-            ),
-          ],
+          ),
         ),
       ),
       body: _isLoading
@@ -170,6 +199,23 @@ class _AIInsightsScreenState extends State<AIInsightsScreen>
                 ),
     );
   }
+
+  Widget _buildTab({
+    required IconData icon,
+    required String text,
+  }) {
+    return Tab(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 6),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildLoadingView() {
     return Center(
