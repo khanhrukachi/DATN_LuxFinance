@@ -1,0 +1,44 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+import json
+
+# ================= CONNECT =================
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+# ================= CONVERT =================
+def convert_value(v):
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    if isinstance(v, dict):
+        return {k: convert_value(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [convert_value(x) for x in v]
+    return v
+
+# ================= READ DATA =================
+result = {}
+
+# Lấy toàn bộ items bằng collection_group
+docs = db.collection_group("items").stream()
+
+for doc in docs:
+    user_id = doc.reference.parent.parent.id   # budget/{userId}
+    item_id = doc.id                           # 2026_1_1
+
+    item_data = convert_value(doc.to_dict())
+
+    # Tạo node cha nếu chưa tồn tại
+    if user_id not in result:
+        result[user_id] = {"items": {}}
+
+    result[user_id]["items"][item_id] = item_data
+
+print("📦 TOTAL USERS:", len(result))
+
+# ================= SAVE =================
+with open("budget.json", "w", encoding="utf-8") as f:
+    json.dump(result, f, ensure_ascii=False, indent=2)
+
+print("✅ Saved budget.json")

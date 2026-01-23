@@ -44,7 +44,7 @@ class _LoginFormState extends State<LoginForm> {
     return BlocListener<LoginBloc, LoginState>(
       listener: (context, state) {
         if (state is LoginSuccessState) {
-          Navigator.pop(context); // đóng loading
+          Navigator.pop(context);
 
           final uid = FirebaseAuth.instance.currentUser!.uid;
           debugPrint("🔥 USER ID = $uid");

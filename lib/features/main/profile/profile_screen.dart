@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_financial_management/features/main/profile/history_screen.dart';
 import 'package:personal_financial_management/features/main/profile/currency_exchange_rate.dart';
 import 'package:personal_financial_management/features/main/profile/about_screen.dart';
+import 'package:personal_financial_management/features/main/profile/ai_insights_screen.dart';
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -129,6 +130,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
                         screen: const HistoryPage(),
+                        begin: const Offset(1, 0),
+                      )),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCard(
+                      text: AppLocalizations.of(context).translate('ai_insights'),
+                      icon: Icons.auto_awesome,
+                      color: Colors.purple,
+                      isDarkMode: isDarkMode,
+                      action: () => Navigator.of(context).push(createRoute(
+                        screen: const AIInsightsScreen(),
                         begin: const Offset(1, 0),
                       )),
                     ),

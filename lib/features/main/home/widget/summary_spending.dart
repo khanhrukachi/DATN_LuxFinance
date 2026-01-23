@@ -6,8 +6,17 @@ import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class SummarySpending extends StatelessWidget {
-  const SummarySpending({Key? key, this.spendingList}) : super(key: key);
-  final List<Spending>? spendingList;
+  const SummarySpending({
+    Key? key,
+    required this.monthSpendingList,
+    required this.allSpendingList,
+  }) : super(key: key);
+
+  final List<Spending> monthSpendingList;
+
+  final List<Spending> allSpendingList;
+
+  // =================== LOGIC ===================
 
   int getTotalIncome(List<Spending> list) =>
       list.where((e) => e.money > 0).fold(0, (s, e) => s + e.money);
@@ -15,17 +24,20 @@ class SummarySpending extends StatelessWidget {
   int getTotalExpense(List<Spending> list) =>
       list.where((e) => e.money < 0).fold(0, (s, e) => s + e.money.abs());
 
-  int getCurrentMoney(List<Spending> list) =>
+  int getBalance(List<Spending> list) =>
       list.fold(0, (s, e) => s + e.money);
 
+  // =================== UI ===================
 
   @override
   Widget build(BuildContext context) {
-    if (spendingList == null) return _loading(context);
+    if (monthSpendingList.isEmpty && allSpendingList.isEmpty) {
+      return _loading(context);
+    }
 
-    final income = getTotalIncome(spendingList!);
-    final expense = getTotalExpense(spendingList!);
-    final balance = getCurrentMoney(spendingList!);
+    final income = getTotalIncome(monthSpendingList);
+    final expense = getTotalExpense(monthSpendingList);
+    final balance = getBalance(allSpendingList);
 
     return _body(
       context,
@@ -35,14 +47,13 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
-  Widget _body(BuildContext context, {
-    required int income,
-    required int expense,
-    required int balance,
-  }) {
-    final isDark = Theme
-        .of(context)
-        .brightness == Brightness.dark;
+  Widget _body(
+      BuildContext context, {
+        required int income,
+        required int expense,
+        required int balance,
+      }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
     final textSecondary =
@@ -94,13 +105,13 @@ class SummarySpending extends StatelessWidget {
             _row(
               context,
               icon: Icons.account_balance_wallet_rounded,
-              title:
-              AppLocalizations.of(context).translate('current_money'),
+              title: AppLocalizations.of(context)
+                  .translate('current_money'),
               value: balance.abs(),
+              prefix: balance >= 0 ? "" : "-",
               color: balance >= 0
                   ? const Color(0xFF5B7CFA)
                   : const Color(0xFFE5533D),
-              prefix: balance >= 0 ? "" : "-",
               isBold: true,
               textPrimary: textPrimary,
               textSecondary: textSecondary,
@@ -111,16 +122,17 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, {
-    required IconData icon,
-    required String title,
-    required int value,
-    required Color color,
-    required Color textPrimary,
-    required Color textSecondary,
-    String prefix = "",
-    bool isBold = false,
-  }) {
+  Widget _row(
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required int value,
+        required Color color,
+        required Color textPrimary,
+        required Color textSecondary,
+        String prefix = "",
+        bool isBold = false,
+      }) {
     final format = NumberFormat.decimalPattern("vi");
 
     return Row(
@@ -162,18 +174,14 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
+  // =================== LOADING ===================
+
   Widget _loading(BuildContext context) {
-    final isDark = Theme
-        .of(context)
-        .brightness == Brightness.dark;
-
-    // Màu nền card
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-
-    // Màu shimmer: base và highlight
     final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
-    final highlightShimmer = isDark ? Colors.grey.shade700 : Colors.grey
-        .shade100;
+    final highlightShimmer =
+    isDark ? Colors.grey.shade700 : Colors.grey.shade100;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -198,8 +206,11 @@ class SummarySpending extends StatelessWidget {
     );
   }
 
-  Widget _shimmerRow(Color baseShimmer, Color highlightShimmer,
-      {bool isBold = false}) {
+  Widget _shimmerRow(
+      Color baseShimmer,
+      Color highlightShimmer, {
+        bool isBold = false,
+      }) {
     return Row(
       children: [
         Shimmer.fromColors(
@@ -208,19 +219,14 @@ class SummarySpending extends StatelessWidget {
           child: Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(
-              color: baseShimmer,
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
+              color: Colors.grey,
             ),
           ),
         ),
         const SizedBox(width: 14),
-        Expanded(
-          child: Container(
-            height: 14,
-            color: Colors.transparent,
-          ),
-        ),
+        Expanded(child: Container()),
         Shimmer.fromColors(
           baseColor: baseShimmer,
           highlightColor: highlightShimmer,

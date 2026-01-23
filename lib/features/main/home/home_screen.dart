@@ -2,12 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/extension.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_spending_widget.dart';
 import 'package:personal_financial_management/features/main/home/widget/summary_spending.dart';
-import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -19,7 +20,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin {
   late TabController _monthController;
-  List<DateTime> months = [];
+  final List<DateTime> months = [];
 
   @override
   void initState() {
@@ -29,61 +30,56 @@ class _HomePageState extends State<HomePage>
     _monthController.index = 17;
 
     DateTime now = DateTime(DateTime.now().year, DateTime.now().month);
-    months = [DateTime(now.year, now.month + 1), now];
 
-    for (int i = 1; i < 19; i++) {
+    months.add(DateTime(now.year, now.month + 1));
+    months.add(now);
+
+    for (int i = 1; i < 18; i++) {
       now = DateTime(now.year, now.month - 1);
       months.add(now);
     }
-  }
 
+    _monthController.addListener(() {
+      setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: StreamBuilder(
+        child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection("data")
-              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .collection("spending")
+              .where(
+            "userId",
+            isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+          )
+              .orderBy("date", descending: true)
               .snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return _loading();
             }
 
-            List<String> list = [];
+            // ===== ALL DATA (LŨY KẾ) =====
+            final allSpendingList = snapshot.data!.docs
+                .map((e) => Spending.fromFirebase(e))
+                .toList();
 
-            if (snapshot.requireData.data() != null) {
-              var data =
-              snapshot.requireData.data() as Map<String, dynamic>;
+            // ===== MONTH SELECTED =====
+            final selectedMonth =
+            months[18 - _monthController.index];
 
-              final key = DateFormat("MM_yyyy")
-                  .format(months[18 - _monthController.index]);
+            // ===== FILTER BY MONTH =====
+            final monthSpendingList = allSpendingList.where((e) {
+              return e.dateTime.year == selectedMonth.year &&
+                  e.dateTime.month == selectedMonth.month;
+            }).toList();
 
-              if (data[key] != null) {
-                list = (data[key] as List<dynamic>)
-                    .map((e) => e.toString())
-                    .toList();
-              }
-            }
-
-            return StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection("spending")
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return _loading();
-                }
-
-                final spendingList = snapshot.data!.docs
-                    .where((e) => list.contains(e.id))
-                    .map((e) => Spending.fromFirebase(e))
-                    .toList();
-
-                return _body(spendingList);
-              },
+            return _body(
+              allSpendingList: allSpendingList,
+              monthSpendingList: monthSpendingList,
             );
           },
         ),
@@ -93,10 +89,14 @@ class _HomePageState extends State<HomePage>
 
   // ================= BODY =================
 
-  Widget _body(List<Spending> spendingList) {
+  Widget _body({
+    required List<Spending> allSpendingList,
+    required List<Spending> monthSpendingList,
+  }) {
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(child: const SizedBox(height: 10)),
+        const SliverToBoxAdapter(child: SizedBox(height: 10)),
+
         SliverToBoxAdapter(
           child: SizedBox(
             height: 40,
@@ -134,17 +134,20 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         ),
+
         SliverToBoxAdapter(
-          child: SummarySpending(spendingList: spendingList),
+          child: SummarySpending(
+            monthSpendingList: monthSpendingList,
+            allSpendingList: allSpendingList,
+          ),
         ),
+
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
-              "${AppLocalizations.of(context).translate('spending_list')} "
-                  "${_monthController.index == 17
-                  ? AppLocalizations.of(context).translate('this_month')
-                  : DateFormat("MM/yyyy").format(months[18 - _monthController.index])}",
+              AppLocalizations.of(context)
+                  .translate('spending_list'),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
@@ -154,10 +157,11 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         ),
-        spendingList.isNotEmpty
+
+        monthSpendingList.isNotEmpty
             ? SliverFillRemaining(
           child: ItemSpendingWidget(
-            spendingList: spendingList,
+            spendingList: monthSpendingList,
           ),
         )
             : SliverFillRemaining(
@@ -166,7 +170,8 @@ class _HomePageState extends State<HomePage>
               AppLocalizations.of(context)
                   .translate('no_data'),
               style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -174,11 +179,18 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  // ================= LOADING =================
+
   Widget _loading() {
     return CustomScrollView(
       slivers: const [
         SliverToBoxAdapter(child: SizedBox(height: 10)),
-        SliverToBoxAdapter(child: SummarySpending()),
+        SliverToBoxAdapter(
+          child: SummarySpending(
+            monthSpendingList: [],
+            allSpendingList: [],
+          ),
+        ),
         SliverFillRemaining(child: ItemSpendingWidget()),
       ],
     );

@@ -1,0 +1,22 @@
+# FastAPI framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Data processing
+numpy>=1.26.0
+pandas>=2.1.0
+scikit-learn>=1.4.0
+
+# Deep Learning for LSTM (compatible with Python 3.12)
+tensorflow>=2.16.0
+
+# Pydantic for data validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Date handling
+python-dateutil>=2.8.2
+
+# Environment variables
+python-dotenv>=1.0.0
