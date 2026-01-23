@@ -136,25 +136,30 @@ class _AIInsightsScreenState extends State<AIInsightsScreen>
         ),
         elevation: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(72),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: _isDarkMode
-                  ? const Color(0xFF1E1E1E)
-                  : const Color(0xFFF2F4F7),
-              borderRadius: BorderRadius.circular(30),
+                  ? const Color(0xFF1C1C1E)
+                  : const Color(0xFFF4F6F8),
+              borderRadius: BorderRadius.circular(36),
             ),
             child: TabBar(
               controller: _tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
               indicator: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: _isDarkMode ? Colors.amber : Colors.blue,
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  colors: _isDarkMode
+                      ? [Colors.amber, Colors.orangeAccent]
+                      : [Colors.blue, Colors.lightBlueAccent],
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: (_isDarkMode ? Colors.amber : Colors.blue)
-                        .withOpacity(0.35),
+                    color: Colors.black.withOpacity(0.12),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -167,17 +172,25 @@ class _AIInsightsScreenState extends State<AIInsightsScreen>
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
+              overlayColor: MaterialStateProperty.all(Colors.transparent),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 8),
               tabs: [
-                _buildTab(
-                  icon: Icons.trending_up,
+                Tab(
+                  height: 48,
+                  iconMargin: const EdgeInsets.only(bottom: 2),
+                  icon: const Icon(Icons.trending_up_rounded, size: 20),
                   text: AppLocalizations.of(context).translate('prediction'),
                 ),
-                _buildTab(
-                  icon: Icons.pie_chart_rounded,
+                Tab(
+                  height: 48,
+                  iconMargin: const EdgeInsets.only(bottom: 2),
+                  icon: const Icon(Icons.pie_chart_rounded, size: 20),
                   text: AppLocalizations.of(context).translate('behavior'),
                 ),
-                _buildTab(
-                  icon: Icons.warning_amber_rounded,
+                Tab(
+                  height: 48,
+                  iconMargin: const EdgeInsets.only(bottom: 2),
+                  icon: const Icon(Icons.warning_amber_rounded, size: 20),
                   text: AppLocalizations.of(context).translate('anomaly'),
                 ),
               ],
@@ -200,16 +213,16 @@ class _AIInsightsScreenState extends State<AIInsightsScreen>
     );
   }
 
-  Widget _buildTab({
+  Widget _aiTab({
     required IconData icon,
     required String text,
   }) {
     return Tab(
-      child: Row(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 6),
+          Icon(icon, size: 20),
+          const SizedBox(height: 4),
           Text(text),
         ],
       ),
