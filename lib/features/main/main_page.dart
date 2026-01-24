@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:personal_financial_management/features/ai_insights/ai_insights_screen.dart';
+import 'package:personal_financial_management/features/main/profile/ai_insights_screen.dart';
 
 import 'package:personal_financial_management/features/notification/notification_page.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
@@ -132,6 +134,20 @@ class _MainPageState extends State<MainPage> {
             );
           },
           badge: unreadNotification,
+        ),
+        _floatingButton(
+          context,
+          bottom: 160,
+          icon: Icons.insights,
+          gradient: const [
+            Color(0xFF7F00FF),
+            Color(0xFF3F51B5),
+          ],
+          onTap: () {
+            Navigator.of(context).push(
+              createRoute(screen: const AIInsightsScreen()),
+            );
+          },
         ),
       ],
     );

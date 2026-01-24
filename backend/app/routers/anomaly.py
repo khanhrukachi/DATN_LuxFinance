@@ -1,132 +1,203 @@
 from fastapi import APIRouter, HTTPException
-from typing import Optional
+from datetime import datetime
 
-from app.schemas.spending import AnomalyRequest
-from app.schemas.response import AnomalyDetectionResponse
+from app.schemas.spending import AnomalyRequest, SpendingItem
 from app.services.isolation_forest_service import isolation_forest_service
 
 router = APIRouter(prefix="/detect", tags=["Anomaly Detection"])
 
 
+# =====================================================
+# =================== NORMAL API ======================
+# =====================================================
 @router.post("/anomaly")
 async def detect_anomaly(request: AnomalyRequest):
     try:
+        # ✅ CHỈ LẤY CHI TIÊU
+        expense_transactions = [
+            t for t in request.transactions if t.money < 0
+        ]
+
+        if not expense_transactions:
+            return {
+                "success": True,
+                "anomalies": [],
+                "message": "No expense transactions to analyze"
+            }
+
         result = isolation_forest_service.detect_anomalies(
             user_id=request.user_id,
-            transactions=request.transactions,
+            transactions=expense_transactions,
             sensitivity=request.sensitivity
         )
+
         return result.model_dump(by_alias=True)
+
     except Exception as e:
-        import traceback
-        error_detail = f"Anomaly detection error: {str(e)}\n{traceback.format_exc()}"
-        print(error_detail)
-        raise HTTPException(status_code=500, detail=error_detail)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Anomaly detection error: {str(e)}"
+        )
 
 
+# =====================================================
+# =================== QUICK API =======================
+# =====================================================
 @router.post("/anomaly/quick")
 async def quick_detect(user_id: str, transactions: list, sensitivity: float = 0.1):
     try:
-        from app.schemas.spending import SpendingItem
-        from datetime import datetime
+        spending_items: list[SpendingItem] = []
 
-        spending_items = []
         for t in transactions:
             try:
-                dt = t.get('dateTime') or t.get('date_time')
+                # -------- Parse datetime --------
+                dt = t.get("dateTime") or t.get("date_time")
                 if isinstance(dt, str):
-                    for fmt in ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+                    for fmt in (
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%d %H:%M:%S",
+                        "%Y-%m-%d"
+                    ):
                         try:
                             dt = datetime.strptime(dt, fmt)
                             break
-                        except:
+                        except ValueError:
                             continue
 
+                money = int(t.get("money", 0))
+
+                # ❌ BỎ QUA THU NHẬP
+                if money >= 0:
+                    continue
+
                 item = SpendingItem(
-                    id=t.get('id', ''),
-                    money=int(t.get('money', 0)),
-                    type=int(t.get('type', 0)),
-                    typeName=t.get('typeName') or t.get('type_name', 'Other'),
-                    note=t.get('note'),
+                    id=t.get("id", ""),
+                    money=abs(money),   # ⚠️ MODEL HỌC ĐỘ LỚN CHI TIÊU
+                    type=0,
+                    typeName="Expense",
+                    note=t.get("note"),
                     dateTime=dt,
-                    image=t.get('image'),
-                    location=t.get('location')
+                    image=t.get("image"),
+                    location=t.get("location"),
                 )
+
                 spending_items.append(item)
-            except:
+
+            except Exception:
                 continue
 
         if not spending_items:
-            return {"success": False, "message": "No valid transactions provided"}
+            return {
+                "success": True,
+                "anomalies": [],
+                "message": "No expense transactions to analyze"
+            }
 
         result = isolation_forest_service.detect_anomalies(
             user_id=user_id,
             transactions=spending_items,
             sensitivity=sensitivity
         )
+
         return result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quick anomaly detection error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Quick anomaly detection error: {str(e)}"
+        )
 
 
+# =====================================================
+# ================= SEVERITY LEVELS ===================
+# =====================================================
 @router.get("/severity-levels")
 async def get_severity_levels():
     return {
         "levels": [
             {"level": "high", "name": "Cao", "color": "#FF4444"},
-            {"level": "medium", "name": "Trung binh", "color": "#FFAA00"},
-            {"level": "low", "name": "Thap", "color": "#44AA44"}
+            {"level": "medium", "name": "Trung bình", "color": "#FFAA00"},
+            {"level": "low", "name": "Thấp", "color": "#44AA44"},
         ]
     }
 
 
+# =====================================================
+# =============== CHECK SINGLE TRAN ===================
+# =====================================================
 @router.post("/check-single")
 async def check_single_transaction(user_id: str, transaction: dict, history: list):
     try:
-        from app.schemas.spending import SpendingItem
-        from datetime import datetime
+        def parse_expense(t):
+            money = int(t.get("money", 0))
+            if money >= 0:
+                return None
 
-        def parse_transaction(t):
-            dt = t.get('dateTime') or t.get('date_time')
+            dt = t.get("dateTime") or t.get("date_time")
             if isinstance(dt, str):
-                for fmt in ['%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
+                for fmt in (
+                    "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%d"
+                ):
                     try:
                         dt = datetime.strptime(dt, fmt)
                         break
-                    except:
+                    except ValueError:
                         continue
+
             return SpendingItem(
-                id=t.get('id', 'check'),
-                money=int(t.get('money', 0)),
-                type=int(t.get('type', 0)),
-                typeName=t.get('typeName') or t.get('type_name', 'Other'),
-                note=t.get('note'),
+                id=t.get("id", "check"),
+                money=abs(money),
+                type=0,
+                typeName="Expense",
+                note=t.get("note"),
                 dateTime=dt,
-                image=t.get('image'),
-                location=t.get('location')
+                image=t.get("image"),
+                location=t.get("location"),
             )
 
-        all_transactions = [parse_transaction(t) for t in history]
-        target = parse_transaction(transaction)
-        all_transactions.append(target)
+        history_items = list(
+            filter(None, (parse_expense(t) for t in history))
+        )
+
+        target_item = parse_expense(transaction)
+
+        if not target_item:
+            return {
+                "isAnomaly": False,
+                "message": "Thu nhập không được kiểm tra bất thường"
+            }
+
+        history_items.append(target_item)
 
         result = isolation_forest_service.detect_anomalies(
             user_id=user_id,
-            transactions=all_transactions,
+            transactions=history_items,
             sensitivity=0.1
         )
 
-        target_id = transaction.get('id', 'check')
-        is_anomaly = any(a.transaction_id == target_id for a in result.anomalies)
-        anomaly_info = next((a for a in result.anomalies if a.transaction_id == target_id), None)
+        is_anomaly = any(
+            a.transaction_id == target_item.id
+            for a in result.anomalies
+        )
+
+        anomaly_info = next(
+            (a for a in result.anomalies if a.transaction_id == target_item.id),
+            None
+        )
 
         return {
             "isAnomaly": is_anomaly,
             "transaction": transaction,
             "anomalyDetails": anomaly_info.dict() if anomaly_info else None,
-            "message": "Giao dich bat thuong!" if is_anomaly else "Giao dich binh thuong"
+            "message": "Giao dịch chi tiêu bất thường!"
+            if is_anomaly else
+            "Giao dịch bình thường"
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Check error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Check error: {str(e)}"
+        )

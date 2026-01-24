@@ -55,38 +55,45 @@ class KMeansService:
 
     def _extract_features(self, transactions: List[SpendingItem]) -> pd.DataFrame:
         data = []
+
         for t in transactions:
-            is_expense = t.money < 0 or (t.money > 0 and t.type not in self.INCOME_TYPES)
-            if is_expense:
-                data.append({
-                    'id': t.id,
-                    'amount': abs(t.money),
-                    'type': t.type,
-                    'type_name': t.type_name,
-                    'hour': t.date_time.hour,
-                    'weekday': t.date_time.weekday(),
-                    'day_of_month': t.date_time.day,
-                    'month': t.date_time.month
-                })
+            # ✅ CHỈ LẤY CHI TIÊU
+            if t.money >= 0:
+                continue
+
+            data.append({
+                "id": t.id,
+                "amount": abs(t.money),  # chuẩn hóa về dương
+                "type": t.type,
+                "type_name": t.type_name,
+                "hour": t.date_time.hour,
+                "weekday": t.date_time.weekday(),
+                "day_of_month": t.date_time.day,
+                "month": t.date_time.month
+            })
 
         if not data:
             return pd.DataFrame()
 
         df = pd.DataFrame(data)
 
-        df['is_weekend'] = df['weekday'].isin([5, 6]).astype(int)
-        df['is_morning'] = df['hour'].between(6, 11).astype(int)
-        df['is_afternoon'] = df['hour'].between(12, 17).astype(int)
-        df['is_evening'] = df['hour'].between(18, 23).astype(int)
-        df['is_early_month'] = (df['day_of_month'] <= 10).astype(int)
-        df['is_mid_month'] = df['day_of_month'].between(11, 20).astype(int)
-        df['is_late_month'] = (df['day_of_month'] > 20).astype(int)
+        # ---------- TIME FEATURES ----------
+        df["is_weekend"] = df["weekday"].isin([5, 6]).astype(int)
+        df["is_morning"] = df["hour"].between(6, 11).astype(int)
+        df["is_afternoon"] = df["hour"].between(12, 17).astype(int)
+        df["is_evening"] = df["hour"].between(18, 23).astype(int)
 
-        df['is_essential'] = df['type'].isin(self.CATEGORY_GROUPS['essential']).astype(int)
-        df['is_entertainment'] = df['type'].isin(self.CATEGORY_GROUPS['entertainment']).astype(int)
+        df["is_early_month"] = (df["day_of_month"] <= 10).astype(int)
+        df["is_mid_month"] = df["day_of_month"].between(11, 20).astype(int)
+        df["is_late_month"] = (df["day_of_month"] > 20).astype(int)
 
-        df['log_amount'] = np.log1p(df['amount'])
-        df['amount_normalized'] = df['amount'] / df['amount'].max() if df['amount'].max() > 0 else 0
+        # ---------- CATEGORY FLAGS ----------
+        df["is_essential"] = df["type"].isin(self.CATEGORY_GROUPS["essential"]).astype(int)
+        df["is_entertainment"] = df["type"].isin(self.CATEGORY_GROUPS["entertainment"]).astype(int)
+
+        # ---------- AMOUNT FEATURES ----------
+        df["log_amount"] = np.log1p(df["amount"])
+        df["amount_normalized"] = df["amount"] / df["amount"].max()
 
         return df
 
