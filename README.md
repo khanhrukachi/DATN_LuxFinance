@@ -101,39 +101,39 @@ cd personal-financial-management
 
 ### 2️⃣ Chạy Python Backend (Virtual Environment)
 
-Tạo môi trường ảo
----
+### Tạo môi trường ảo
+
 python -m venv venv          
 ---
-Kích hoạt môi trường ảo
----
+### Kích hoạt môi trường ảo
+
 venv\Scripts\activate         
 ---
-Cài đặt thư viện cần thiết
----
+### Cài đặt thư viện cần thiết
+
 pip install -r requirements.txt    
 ---
-Chạy server backend
----
+### Chạy server backend
+
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ---
 
 ### 3️⃣ Chạy ứng dụng Flutter
 
-Xóa cài đặt dependencies
----
+### Xóa cài đặt dependencies
+
 flutter clean
 ---
-Cài đặt dependencies
----
+### Cài đặt dependencies
+ 
 flutter pub get
 ---
-Kiểm tra thiết bị
----
+### Kiểm tra thiết bị
+
 flutter devices
 ---
-Chạy ứng dụng
----
+### Chạy ứng dụng
+
 flutter run
 ---
 
