@@ -96,7 +96,6 @@
 
 ---
 git clone https://github.com/your-username/personal-financial-management.git
-cd personal-financial-management                                            
 ---
 
 ### 2️⃣ Chạy Python Backend (Virtual Environment)
