@@ -36,8 +36,7 @@ class ClusterItemCard extends StatelessWidget {
                   ),
                   child: Text(
                     '${cluster.percentage.toStringAsFixed(1)}%',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: color),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: color),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -51,7 +50,17 @@ class ClusterItemCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(cluster.description),
+
+            Text(
+              cluster.description,
+              textAlign: TextAlign.justify,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            // ------------------------------
+
             if (cluster.characteristics['averageAmount'] != null) ...[
               const SizedBox(height: 8),
               Text(

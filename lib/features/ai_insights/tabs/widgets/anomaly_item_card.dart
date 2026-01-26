@@ -18,46 +18,94 @@ class AnomalyItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final severity = _severity();
 
-    return Container(
+    return Card(
+      elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border(left: BorderSide(color: severity.color, width: 4)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _badge(severity),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(anomaly.typeName,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black)),
-              ),
-              Text(
-                numberFormat.format(anomaly.money),
-                style: TextStyle(
-                    color: anomaly.money < 0 ? Colors.red : Colors.green,
-                    fontWeight: FontWeight.bold),
-              ),
-            ],
+      color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border(
+            left: BorderSide(color: severity.color, width: 4),
           ),
-          const SizedBox(height: 8),
-          Text(anomaly.dateTime,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: isDarkMode ? Colors.white60 : Colors.black45)),
-          const SizedBox(height: 8),
-          Text(anomaly.anomalyReason,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: isDarkMode ? Colors.white70 : Colors.black54)),
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(severity),
+            const SizedBox(height: 8),
+            _buildDate(),
+            const SizedBox(height: 10),
+            _buildReason(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Header: badge + loại + tiền
+  Widget _buildHeader(_Severity severity) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _badge(severity),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            anomaly.typeName,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+        Text(
+          numberFormat.format(anomaly.money),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: anomaly.money < 0 ? Colors.redAccent : Colors.green,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Ngày giờ
+  Widget _buildDate() {
+    return Row(
+      children: [
+        Icon(
+          Icons.schedule,
+          size: 14,
+          color: isDarkMode ? Colors.white54 : Colors.black45,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          anomaly.dateTime,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode ? Colors.white60 : Colors.black45,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Lý do bất thường
+  Widget _buildReason() {
+    return Text(
+      anomaly.anomalyReason,
+      textAlign: TextAlign.justify,
+      style: TextStyle(
+        fontSize: 13,
+        height: 1.4,
+        color: isDarkMode ? Colors.white70 : Colors.black54,
       ),
     );
   }
@@ -65,9 +113,9 @@ class AnomalyItemCard extends StatelessWidget {
   _Severity _severity() {
     switch (anomaly.severity) {
       case 'high':
-        return _Severity("Cao", Colors.red);
+        return _Severity("Cao", Colors.redAccent);
       case 'medium':
-        return _Severity("TB", Colors.orange);
+        return _Severity("TB", Colors.orangeAccent);
       default:
         return _Severity("Thấp", Colors.green);
     }
@@ -75,13 +123,19 @@ class AnomalyItemCard extends StatelessWidget {
 
   Widget _badge(_Severity s) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: s.color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(4),
+        color: s.color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(s.text,
-          style: TextStyle(color: s.color, fontSize: 12)),
+      child: Text(
+        s.text,
+        style: TextStyle(
+          color: s.color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

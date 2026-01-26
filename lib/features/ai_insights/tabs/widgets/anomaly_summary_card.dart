@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AnomalySummaryCard extends StatelessWidget {
   final int total;
   final int detected;
-  final dynamic rate;
+  final double rate;
   final bool isDarkMode;
 
   const AnomalySummaryCard({
@@ -16,51 +16,109 @@ class AnomalySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _card(
-      title: "Tổng quan phát hiện",
-      children: [
-        _row("Tổng giao dịch", "$total", Colors.blue),
-        _row("Giao dịch bất thường", "$detected", Colors.red),
-        _row("Tỷ lệ bất thường", "$rate%", Colors.orange),
-      ],
-    );
-  }
+    final bgColor =
+    isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary =
+    isDarkMode ? Colors.white : Colors.black87;
+    final textSecondary =
+    isDarkMode ? Colors.white70 : Colors.black54;
 
-  Widget _row(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54)),
-          Text(value,
-              style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _card({required String title, required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(blurRadius: 4, offset: Offset(0, 2), color: Colors.black12)
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.4)
+                : Colors.black12,
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: TextStyle(
+          // ===== HEADER =====
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.insights_rounded,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "Tổng quan phát hiện",
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black)),
-          const SizedBox(height: 12),
-          ...children,
+                  color: textPrimary,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          _statRow(
+            label: "Tổng giao dịch",
+            value: "$total",
+            color: Colors.blue,
+            textSecondary: textSecondary,
+          ),
+          _statRow(
+            label: "Giao dịch bất thường",
+            value: "$detected",
+            color: Colors.red,
+            textSecondary: textSecondary,
+          ),
+          _statRow(
+            label: "Tỷ lệ bất thường",
+            value: "${rate.toStringAsFixed(2)}%",
+            color: Colors.orange,
+            textSecondary: textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statRow({
+    required String label,
+    required String value,
+    required Color color,
+    required Color textSecondary,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 13,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

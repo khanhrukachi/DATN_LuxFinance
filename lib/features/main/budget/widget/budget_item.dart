@@ -28,17 +28,33 @@ class BudgetItem extends StatelessWidget {
 
   Widget _buildItem(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     final Map<String, dynamic> typeItem =
     (type >= 0 && type < listType.length) ? listType[type] : {};
+
     final String titleKey = typeItem['title'] ?? 'other';
     final String? imagePath = typeItem['image'];
     final Color baseColor = typeItem['color'] ?? Colors.blue;
+
+    // ===== THRESHOLD LOGIC =====
+    final bool isWarning = progress >= 0.8 && progress < 1.0;
     final bool isOver = progress >= 1.0;
+
+    final Color warningColor = Colors.orange;
+    final Color dangerColor = const Color(0xFFE5533D);
+
+    final Color mainColor = isOver
+        ? dangerColor
+        : isWarning
+        ? warningColor
+        : baseColor;
+
     final double percent = (progress * 100).clamp(0, 999);
-    final Color mainColor = isOver ? const Color(0xFFE5533D) : baseColor;
+
     final Color surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
     final Color textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
-    final Color textSecondary = isDark ? Colors.grey.shade400 : Colors.grey.shade700;
+    final Color textSecondary =
+    isDark ? Colors.grey.shade400 : Colors.grey.shade700;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -51,12 +67,12 @@ class BudgetItem extends StatelessWidget {
             color: surface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: mainColor.withOpacity(isDark ? 0.25 : 0.12),
+              color: mainColor.withOpacity(isDark ? 0.3 : 0.15),
             ),
             boxShadow: [
               if (!isDark)
                 BoxShadow(
-                  color: mainColor.withOpacity(0.15),
+                  color: mainColor.withOpacity(0.18),
                   blurRadius: 18,
                   offset: const Offset(0, 10),
                 ),
@@ -64,6 +80,7 @@ class BudgetItem extends StatelessWidget {
           ),
           child: Row(
             children: [
+              // ICON CATEGORY
               Container(
                 width: 54,
                 height: 54,
@@ -71,7 +88,7 @@ class BudgetItem extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      mainColor.withOpacity(0.30),
+                      mainColor.withOpacity(0.35),
                       mainColor.withOpacity(0.08),
                     ],
                     begin: Alignment.topLeft,
@@ -90,10 +107,13 @@ class BudgetItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
+
+              // CONTENT
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // TITLE + %
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -116,6 +136,7 @@ class BudgetItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
+
                     // PROGRESS BAR
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -125,27 +146,37 @@ class BudgetItem extends StatelessWidget {
                         backgroundColor: isDark
                             ? Colors.white12
                             : Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation<Color>(mainColor),
+                        valueColor:
+                        AlwaysStoppedAnimation<Color>(mainColor),
                       ),
                     ),
                     const SizedBox(height: 8),
+
                     // SPENT / LIMIT
                     Text(
                       "${_formatCurrency(spent)} / ${_formatCurrency(limit)} đ",
                       style: TextStyle(
                         fontSize: 13,
-                        color: isOver ? mainColor : textSecondary,
-                        fontWeight:
-                        isOver ? FontWeight.w600 : FontWeight.normal,
+                        color: (isWarning || isOver)
+                            ? mainColor
+                            : textSecondary,
+                        fontWeight: (isWarning || isOver)
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              // ICON END
+
+              // STATUS ICON
               Icon(
-                isOver ? Icons.warning_amber_rounded : Icons.chevron_right,
+                isOver
+                    ? Icons.warning_rounded
+                    : isWarning
+                    ? Icons.warning_amber_rounded
+                    : Icons.chevron_right,
                 color: mainColor,
                 size: 26,
               ),
@@ -156,6 +187,7 @@ class BudgetItem extends StatelessWidget {
     );
   }
 
+  // ================= LOADING =================
   Widget _loading(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
@@ -170,95 +202,48 @@ class BudgetItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // ICON TYPE SHIMMER
             Shimmer.fromColors(
-              baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-              highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
+              baseColor:
+              isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+              highlightColor:
+              isDark ? Colors.grey.shade600 : Colors.grey.shade100,
               child: Container(
                 width: 54,
                 height: 54,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                  color: Colors.grey,
                 ),
               ),
             ),
             const SizedBox(width: 16),
-            // TEXT + PROGRESS SHIMMER
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Shimmer.fromColors(
-                        baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                        highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
-                        child: Container(
-                          width: 120,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                      Shimmer.fromColors(
-                        baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                        highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
-                        child: Container(
-                          width: 30,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // PROGRESS BAR
                   Shimmer.fromColors(
-                    baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                    highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        height: 9,
-                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                      ),
+                    baseColor:
+                    isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                    highlightColor:
+                    isDark ? Colors.grey.shade600 : Colors.grey.shade100,
+                    child: Container(
+                      width: 140,
+                      height: 16,
+                      color: Colors.grey,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  // SPENT / LIMIT
+                  const SizedBox(height: 12),
                   Shimmer.fromColors(
-                    baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                    highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
+                    baseColor:
+                    isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                    highlightColor:
+                    isDark ? Colors.grey.shade600 : Colors.grey.shade100,
                     child: Container(
-                      width: 100,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                      height: 9,
+                      color: Colors.grey,
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Shimmer.fromColors(
-              baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-              highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-                ),
               ),
             ),
           ],

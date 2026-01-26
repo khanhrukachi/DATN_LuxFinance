@@ -7,6 +7,7 @@ class PredictedValue(BaseModel):
     predicted_income: float = Field(..., alias="predictedIncome")
     predicted_expense: float = Field(..., alias="predictedExpense")
     confidence: float = Field(..., ge=0, le=1)
+    description: Optional[str] = None
 
     model_config = {
         "populate_by_name": True,

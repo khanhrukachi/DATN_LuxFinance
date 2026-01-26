@@ -12,15 +12,51 @@ class ClusterRecommendationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.tips_and_updates, color: Colors.amber, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text))
-        ],
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildIcon(),
+            const SizedBox(width: 14),
+            Expanded(child: _buildText()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIcon() {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.15),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.tips_and_updates_rounded,
+        color: Colors.amber,
+        size: 20,
+      ),
+    );
+  }
+
+  Widget _buildText() {
+    return Text(
+      text,
+      textAlign: TextAlign.justify,
+      style: TextStyle(
+        fontSize: 14,
+        height: 1.5,
+        color: isDarkMode ? Colors.white70 : Colors.black87,
       ),
     );
   }

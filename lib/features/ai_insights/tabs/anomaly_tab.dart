@@ -24,39 +24,46 @@ class AnomalyTab extends StatelessWidget {
     final alerts = result.alerts ?? [];
     final stats = result.statistics ?? {};
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AnomalySummaryCard(
-            total: result.totalTransactions,
-            detected: result.anomaliesDetected,
-            rate: (stats['anomalyRate'] as num?)?.toDouble() ?? 0.0,
-            isDarkMode: isDarkMode,
-          ),
-
-          const SizedBox(height: 16),
-
-          if (alerts.isNotEmpty)
-            AnomalyAlertCard(
-              alerts: alerts,
+    return Container(
+      // ✅ NỀN CHUẨN CHO SÁNG / TỐI
+      color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F6FA),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnomalySummaryCard(
+              total: result.totalTransactions,
+              detected: result.anomaliesDetected,
+              rate: (stats['anomalyRate'] as num?)?.toDouble() ?? 0.0,
               isDarkMode: isDarkMode,
             ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          if (anomalies.isNotEmpty)
-            ...anomalies.map(
-                  (a) => AnomalyItemCard(
-                anomaly: a,
+            if (alerts.isNotEmpty)
+              AnomalyAlertCard(
+                alerts: alerts,
                 isDarkMode: isDarkMode,
-                numberFormat: numberFormat,
               ),
-            )
-          else
-            AnomalyEmptyCard(isDarkMode: isDarkMode),
-        ],
+
+            const SizedBox(height: 16),
+
+            if (anomalies.isNotEmpty)
+              ...anomalies.map(
+                    (a) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: AnomalyItemCard(
+                    anomaly: a,
+                    isDarkMode: isDarkMode,
+                    numberFormat: numberFormat,
+                  ),
+                ),
+              )
+            else
+              AnomalyEmptyCard(isDarkMode: isDarkMode),
+          ],
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/models/ml_service.dart';
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 import 'tabs/trend_tab.dart';
 import 'tabs/cluster_tab.dart';
@@ -20,12 +21,10 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // ===== UI STATE =====
   bool _isDarkMode = false;
   bool _isLoading = true;
   String? _errorMessage;
 
-  // ===== DATA =====
   List<Spending> _transactions = [];
 
   TrendPredictionResult? _trendResult;
@@ -39,9 +38,6 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     _loadAllData();
   }
 
-  // ======================
-  // LOAD ALL AI DATA
-  // ======================
   Future<void> _loadAllData() async {
     setState(() {
       _isLoading = true;
@@ -49,7 +45,6 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     });
 
     try {
-      // 1. Load transactions
       _transactions = await SpendingFirebase.getAllSpendingForAI();
 
       if (_transactions.length < 10) {
@@ -59,7 +54,6 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
 
       final userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // 2. Run all ML in parallel
       final results = await Future.wait([
         MLService.predictTrend(
           userId: userId,
@@ -92,28 +86,85 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     super.dispose();
   }
 
-  // ======================
-  // UI
-  // ======================
   @override
   Widget build(BuildContext context) {
+    final bgColor = _isDarkMode ? const Color(0xFF121212) : Colors.white;
+    final tabTrackColor = _isDarkMode ? Colors.grey[800] : Colors.grey[100];
+    final indicatorColor = _isDarkMode ? Colors.grey[700] : Colors.white;
+    final selectedLabelColor = _isDarkMode ? Colors.white : Colors.black87;
+    final unselectedLabelColor = _isDarkMode ? Colors.white54 : Colors.grey[500];
+
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('AI Insights'),
+        title:  Text(
+            AppLocalizations.of(context).translate('ai_insights'),
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.trending_up), text: 'Xu hướng'),
-            Tab(icon: Icon(Icons.scatter_plot), text: 'Phân cụm'),
-            Tab(icon: Icon(Icons.warning_amber), text: 'Bất thường'),
-          ],
+        backgroundColor: bgColor,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Container(
+            height: 45,
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: tabTrackColor,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              overlayColor: MaterialStateProperty.all(Colors.transparent),
+              labelColor: selectedLabelColor,
+              unselectedLabelColor: unselectedLabelColor,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: indicatorColor,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              dividerColor: Colors.transparent,
+              padding: const EdgeInsets.all(4),
+
+              tabs: [
+                _buildCompactTab(Icons.trending_up_rounded, 'Xu hướng'),
+                _buildCompactTab(Icons.bubble_chart_rounded, 'Phân cụm'),
+                _buildCompactTab(Icons.warning_amber_rounded, 'Bất thường'),
+              ],
+            ),
+          ),
         ),
       ),
       body: _buildBody(),
     );
   }
 
+  Widget _buildCompactTab(IconData icon, String label) {
+    return Tab(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 4),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -126,19 +177,16 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     return TabBarView(
       controller: _tabController,
       children: [
-        // ===== TREND =====
         TrendTab(
           result: _trendResult!,
           isDarkMode: _isDarkMode,
         ),
 
-        // ===== CLUSTER =====
         ClusterTab(
           result: _clusterResult!,
           isDarkMode: _isDarkMode,
         ),
 
-        // ===== ANOMALY =====
         AnomalyTab(
           result: _anomalyResult!,
           isDarkMode: _isDarkMode,
@@ -158,17 +206,40 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+            ),
             const SizedBox(height: 16),
+            Text(
+              "Đã xảy ra lỗi",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _isDarkMode ? Colors.white : Colors.black87
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(
+                  fontSize: 14,
+                  color: _isDarkMode ? Colors.white70 : Colors.black54
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadAllData,
-              icon: const Icon(Icons.refresh),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Thử lại'),
             )
           ],

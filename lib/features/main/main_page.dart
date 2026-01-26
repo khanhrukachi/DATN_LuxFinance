@@ -145,7 +145,7 @@ class _MainPageState extends State<MainPage> {
           ],
           onTap: () {
             Navigator.of(context).push(
-              createRoute(screen: const AIInsightsScreen()),
+              createRoute(screen: const AiInsightsScreen()),
             );
           },
         ),

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:personal_financial_management/core/constants/app_colors.dart';
@@ -11,6 +12,7 @@ import 'package:personal_financial_management/features/main/home/home_screen.dar
 import 'package:personal_financial_management/features/main/main_page.dart';
 import 'package:personal_financial_management/features/main/profile/edit_profile_screen.dart';
 import 'package:personal_financial_management/features/onboarding/onboarding_screen.dart';
+import 'package:personal_financial_management/models/notification_service.dart';
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 import 'package:personal_financial_management/setting/bloc/setting_state.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations_setup.dart';
@@ -28,6 +30,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await NotificationService().initialize();
+
   final prefs = await SharedPreferences.getInstance();
   language = prefs.getInt('language');
   isDark = prefs.getBool("isDark") ?? false;

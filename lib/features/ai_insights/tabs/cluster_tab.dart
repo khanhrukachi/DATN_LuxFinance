@@ -21,8 +21,16 @@ class ClusterTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!result.success) {
-      return Center(
-        child: Text(result.errorMessage ?? 'Không có dữ liệu phân cụm'),
+      return Container(
+        color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F6FA),
+        child: Center(
+          child: Text(
+            result.errorMessage ?? 'Không có dữ liệu phân cụm',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+        ),
       );
     }
 
@@ -30,57 +38,68 @@ class ClusterTab extends StatelessWidget {
     final profile = result.userProfile;
     final recommendations = result.recommendations;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// ===== SUMMARY =====
-          ClusterSummaryCard(
-            profile: profile,
-            numberFormat: numberFormat,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 16),
-
-          /// ===== PIE CHART =====
-          ClusterPieChart(
-            clusters: clusters,
-            isDarkMode: isDarkMode,
-          ),
-          const SizedBox(height: 16),
-
-          /// ===== CLUSTERS =====
-          const Text(
-            'Các nhóm hành vi',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-
-          ...clusters.map(
-                (c) => ClusterItemCard(
-              cluster: c,
+    return Container(
+      // ✅ NỀN RIÊNG – KHÔNG DÍNH TAB KHÁC
+      color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F6FA),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClusterSummaryCard(
+              profile: profile,
               numberFormat: numberFormat,
               isDarkMode: isDarkMode,
             ),
-          ),
-
-          /// ===== RECOMMEND =====
-          if (recommendations.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text(
-              'Khuyến nghị',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+            ClusterPieChart(
+              clusters: clusters,
+              isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 8),
-            ...recommendations.map(
-                  (r) => ClusterRecommendationItem(
-                text: r,
-                isDarkMode: isDarkMode,
+            const SizedBox(height: 16),
+
+            Text(
+              'Các nhóm hành vi',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
+            const SizedBox(height: 8),
+
+            ...clusters.map(
+                  (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ClusterItemCard(
+                  cluster: c,
+                  numberFormat: numberFormat,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+            ),
+
+            if (recommendations.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Khuyến nghị',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...recommendations.map(
+                    (r) => ClusterRecommendationItem(
+                  text: r,
+                  isDarkMode: isDarkMode,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

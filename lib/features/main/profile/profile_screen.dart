@@ -7,9 +7,9 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:personal_financial_management/core/constants/app_colors.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
+import 'package:personal_financial_management/features/ai_insights/ai_insights_screen.dart';
 import 'package:personal_financial_management/features/auth/change_password/change_password.dart';
 import 'package:personal_financial_management/features/main/profile/export_csv.dart';
 import 'package:personal_financial_management/features/main/profile/language_selector.dart';
@@ -20,9 +20,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_switch/flutter_switch.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:personal_financial_management/features/main/profile/history_screen.dart';
-import 'package:personal_financial_management/features/main/profile/currency_exchange_rate.dart';
 import 'package:personal_financial_management/features/main/profile/about_screen.dart';
-import 'package:personal_financial_management/features/main/profile/ai_insights_screen.dart';
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -140,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       color: Colors.purple,
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
-                        screen: const AIInsightsScreen(),
+                        screen: AiInsightsScreen(),
                         begin: const Offset(1, 0),
                       )),
                     ),

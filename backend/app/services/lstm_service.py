@@ -1,332 +1,341 @@
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from sklearn.preprocessing import MinMaxScaler
 
+# ==============================================================================
+# 1. CẤU HÌNH IMPORT & MÔI TRƯỜNG
+# ==============================================================================
+try:
+    from app.schemas.spending import SpendingItem
+    from app.schemas.response import TrendPredictionResponse, PredictedValue
+    from app.config import settings
+    SEQ_LENGTH = getattr(settings, 'LSTM_SEQUENCE_LENGTH', 14)
+except ImportError:
+    # Fallback dự phòng
+    class SpendingItem:
+        def __init__(self, money, date_time):
+            self.money = money
+            self.date_time = date_time
+    class PredictedValue:
+        def __init__(self, **kwargs):
+            self.__dict__ = kwargs
+    class TrendPredictionResponse:
+        def __init__(self, **kwargs):
+            self.__dict__ = kwargs
+    SEQ_LENGTH = 14
+
+# Cấu hình TensorFlow
 try:
     import tensorflow as tf
     from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import LSTM, Dense, Dropout
+    from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+    from tensorflow.keras.callbacks import EarlyStopping
+    from tensorflow.keras.optimizers import Adam
+    import os
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
 
-from app.schemas.spending import SpendingItem
-from app.schemas.response import TrendPredictionResponse, PredictedValue
-from app.config import settings
-
+# ==============================================================================
+# 2. CLASS LOGIC CHÍNH: LSTMService
+# ==============================================================================
 
 class LSTMService:
-
-    INCOME_TYPES = [8, 9, 10]
-
     def __init__(self):
-        self.sequence_length = settings.LSTM_SEQUENCE_LENGTH
+        self.sequence_length = SEQ_LENGTH
+        self.min_samples_for_dl = 40 
         self.income_scaler = MinMaxScaler(feature_range=(0, 1))
         self.expense_scaler = MinMaxScaler(feature_range=(0, 1))
 
-    def _prepare_daily_data(self, transactions: List[SpendingItem]) -> pd.DataFrame:
-        data = []
-        print(f"[LSTM] Processing {len(transactions)} transactions")
+    # --------------------------------------------------------------------------
+    # BƯỚC 1: CHUẨN BỊ DỮ LIỆU
+    # --------------------------------------------------------------------------
+    def _prepare_daily_data(self, transactions: List[Any]) -> pd.DataFrame:
+        if not transactions:
+            return pd.DataFrame()
 
+        data = []
         for t in transactions:
-            is_income = t.money > 0
             try:
-                if hasattr(t.date_time, 'date'):
-                    date_val = t.date_time.date()
-                else:
-                    date_val = t.date_time
+                raw_amount = float(t.money)
+                is_income = raw_amount > 0
+                abs_amount = abs(raw_amount)
+
+                dt = t.date_time
+                if hasattr(dt, 'date'): date_val = dt.date()
+                elif isinstance(dt, str): date_val = datetime.strptime(dt, "%Y-%m-%d").date()
+                else: date_val = dt
+
                 data.append({
-                    'date': date_val,
-                    'amount': abs(t.money),
+                    'date': pd.to_datetime(date_val),
+                    'amount': abs_amount,
                     'is_income': is_income
                 })
-            except Exception as e:
-                print(f"[LSTM] Error processing transaction: {e}")
+            except Exception:
                 continue
 
         df = pd.DataFrame(data)
-        if df.empty:
-            print("[LSTM] DataFrame is empty!")
-            return pd.DataFrame(columns=['date', 'income', 'expense'])
+        if df.empty: return pd.DataFrame()
 
-        all_dates = df['date'].unique()
-        print(f"[LSTM] Unique dates: {len(all_dates)} - {sorted(all_dates)[:5]}")
-
-        daily_data = []
-        for date in all_dates:
-            day_df = df[df['date'] == date]
-            income = day_df[day_df['is_income'] == True]['amount'].sum()
-            expense = day_df[day_df['is_income'] == False]['amount'].sum()
-            daily_data.append({
-                'date': date,
-                'income': income,
-                'expense': expense
-            })
-
-        daily = pd.DataFrame(daily_data).sort_values('date').reset_index(drop=True)
-        print(f"[LSTM] Daily data rows: {len(daily)}")
-
-        if len(daily) > 1:
-            date_range = pd.date_range(start=daily['date'].min(), end=daily['date'].max())
-            daily = daily.set_index('date').reindex(date_range, fill_value=0).reset_index()
-            daily.columns = ['date', 'income', 'expense']
+        daily = df.groupby(['date', 'is_income'])['amount'].sum().unstack(fill_value=0.0).reset_index()
+        daily.columns.name = None
+        
+        if False not in daily.columns: daily[False] = 0.0
+        if True not in daily.columns: daily[True] = 0.0
+        
+        daily = daily.rename(columns={True: 'income', False: 'expense'})
+        
+        if len(daily) > 0:
+            full_idx = pd.date_range(start=daily['date'].min(), end=daily['date'].max())
+            daily = daily.set_index('date').reindex(full_idx, fill_value=0.0).reset_index()
+            daily.rename(columns={'index': 'date'}, inplace=True)
 
         return daily
 
-    def _create_sequences(self, data: np.ndarray, seq_length: int) -> Tuple[np.ndarray, np.ndarray]:
-        X, y = [], []
-        for i in range(len(data) - seq_length):
-            X.append(data[i:(i + seq_length)])
-            y.append(data[i + seq_length])
-        return np.array(X), np.array(y)
+    # --------------------------------------------------------------------------
+    # BƯỚC 2: CÁC ENGINE DỰ BÁO
+    # --------------------------------------------------------------------------
+    
+    def _predict_lstm(self, values: np.ndarray, scaler, days: int) -> Tuple[List[float], float]:
+        try:
+            scaled_data = scaler.fit_transform(values.reshape(-1, 1))
+            X, y = [], []
+            for i in range(len(scaled_data) - self.sequence_length):
+                X.append(scaled_data[i:(i + self.sequence_length)])
+                y.append(scaled_data[i + self.sequence_length])
+            X, y = np.array(X), np.array(y)
+            
+            if len(X) < 5: return [], 0.0
 
-    def _build_model(self, input_shape: Tuple[int, int]) -> Any:
-        if not TF_AVAILABLE:
-            return None
+            model = Sequential([
+                Input(shape=(self.sequence_length, 1)),
+                LSTM(64, return_sequences=False),
+                Dense(32, activation='relu'),
+                Dense(1)
+            ])
+            model.compile(optimizer=Adam(learning_rate=0.001), loss='huber')
+            early_stop = EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)
+            model.fit(X, y, epochs=30, batch_size=16, verbose=0, callbacks=[early_stop])
 
-        model = Sequential([
-            LSTM(50, return_sequences=True, input_shape=input_shape),
-            Dropout(0.2),
-            LSTM(50, return_sequences=False),
-            Dropout(0.2),
-            Dense(25),
-            Dense(1)
-        ])
-        model.compile(optimizer='adam', loss='mse')
-        return model
-
-    def _train_and_predict(
-        self,
-        data: np.ndarray,
-        scaler: MinMaxScaler,
-        prediction_days: int
-    ) -> Tuple[List[float], float]:
-        if len(data) < self.sequence_length + 5:
-            avg = np.mean(data[-7:]) if len(data) >= 7 else np.mean(data)
-            std = np.std(data[-7:]) if len(data) >= 7 else np.std(data)
-            std = max(std, avg * 0.1)
             predictions = []
-            for i in range(prediction_days):
-                variation = np.random.normal(0, std * 0.3)
-                pred = max(0, avg + variation)
-                predictions.append(float(pred))
-            confidence = 0.3
-            return predictions, confidence
-
-        data_scaled = scaler.fit_transform(data.reshape(-1, 1))
-        X, y = self._create_sequences(data_scaled, self.sequence_length)
-
-        if len(X) < 5:
-            avg = np.mean(data[-7:]) if len(data) >= 7 else np.mean(data)
-            predictions = [float(avg)] * prediction_days
-            return predictions, 0.3
-
-        if TF_AVAILABLE:
-            model = self._build_model((self.sequence_length, 1))
-            X = X.reshape((X.shape[0], X.shape[1], 1))
-            model.fit(X, y, epochs=50, batch_size=16, verbose=0, validation_split=0.1)
-
-            last_sequence = data_scaled[-self.sequence_length:].reshape(1, self.sequence_length, 1)
-            predictions = []
-
-            for _ in range(prediction_days):
-                pred = model.predict(last_sequence, verbose=0)[0, 0]
+            curr_seq = scaled_data[-self.sequence_length:].reshape(1, self.sequence_length, 1)
+            for _ in range(days):
+                pred = model.predict(curr_seq, verbose=0)[0, 0]
                 predictions.append(pred)
-                last_sequence = np.roll(last_sequence, -1, axis=1)
-                last_sequence[0, -1, 0] = pred
+                curr_seq = np.roll(curr_seq, -1, axis=1)
+                curr_seq[0, -1, 0] = pred
 
-            predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
-            predictions = [max(0, float(p)) for p in predictions]
-            confidence = min(0.9, 0.5 + len(data) / 200)
+            pred_inv = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
+            return [max(0.0, float(p)) for p in pred_inv], 0.8
+        except Exception:
+            return [], 0.0
+
+    def _predict_statistical(self, values: np.ndarray, days: int) -> Tuple[List[float], float]:
+        n = len(values)
+        if n < 1: return [0.0] * days, 0.0
+        
+        alpha, beta = 0.3, 0.1
+        level = values[0]
+        trend = values[1] - values[0] if n > 1 else 0
+        
+        for i in range(1, n):
+            prev_level = level
+            level = alpha * values[i] + (1 - alpha) * (prev_level + trend)
+            trend = beta * (level - prev_level) + (1 - beta) * trend
+            
+        preds = []
+        damped_trend = trend * 0.8
+        for h in range(1, days + 1):
+            val = level + h * damped_trend
+            preds.append(max(0.0, float(val)))
+
+        total_hist = np.sum(values)
+        if sum(preds) < 1000 and total_hist > 0:
+            daily_avg = total_hist / max(1, n)
+            return [float(daily_avg)] * days, 0.4 
+
+        return preds, 0.5
+
+    def _execute_prediction_strategy(self, values: np.ndarray, scaler, days: int) -> Tuple[List[float], float]:
+        if TF_AVAILABLE and len(values) >= self.min_samples_for_dl and np.std(values) > 5000:
+            p, c = self._predict_lstm(values, scaler, days)
+            if p: return p, c
+        return self._predict_statistical(values, days)
+
+    # --------------------------------------------------------------------------
+    # BƯỚC 3: PHÂN TÍCH XU HƯỚNG (NÂNG CẤP LOGIC)
+    # --------------------------------------------------------------------------
+    
+    def _analyze_trend_text(
+        self,
+        history: np.ndarray,
+        forecast: List[float],
+        is_income: bool
+    ) -> str:
+        """
+        Phân tích xu hướng CHỈ DỰA TRÊN LỊCH SỬ.
+        Forecast chỉ dùng để xác nhận xu hướng.
+        """
+
+        if len(history) < 28:
+            return "Chưa đủ dữ liệu (cần ít nhất 28 ngày) để phân tích xu hướng."
+
+        # =========================
+        # 1. CHIA LỊCH SỬ CÙNG THANG
+        # =========================
+        prev_period = history[-28:-14]   # 14 ngày trước
+        recent_period = history[-14:]    # 14 ngày gần nhất
+
+        avg_prev = np.mean(prev_period)
+        avg_recent = np.mean(recent_period)
+
+        # Bỏ nhiễu cực nhỏ
+        if avg_prev < 10000 and avg_recent < 10000:
+            return "Không phát sinh đáng kể."
+
+        # % thay đổi lịch sử
+        change_rate = (avg_recent - avg_prev) / (avg_prev + 1e-6)
+
+        # =========================
+        # 2. XÁC ĐỊNH TREND LỊCH SỬ
+        # =========================
+        threshold = 0.15  # 15%
+
+        if abs(change_rate) < threshold:
+            trend = "stable"
+        elif change_rate > 0:
+            trend = "up"
         else:
-            alpha = 0.3
-            predictions = []
-            last_val = data[-1]
-            for _ in range(prediction_days):
-                pred = alpha * last_val + (1 - alpha) * np.mean(data[-7:])
-                predictions.append(float(pred))
-                last_val = pred
-            confidence = 0.4
+            trend = "down"
 
-        return predictions, confidence
+        # =========================
+        # 3. FORECAST CHỈ ĐỂ XÁC NHẬN
+        # =========================
+        avg_forecast = np.mean(forecast[:7]) if forecast else avg_recent
+        confirm_up = avg_forecast > avg_recent * 1.05
+        confirm_down = avg_forecast < avg_recent * 0.95
 
-    def _simple_prediction(
-        self,
-        user_id: str,
-        daily_df: pd.DataFrame,
-        transactions: List[SpendingItem],
-        prediction_days: int
-    ) -> TrendPredictionResponse:
-        total_income = daily_df['income'].sum()
-        total_expense = daily_df['expense'].sum()
-        num_days = max(1, len(daily_df))
+        # =========================
+        # 4. SINH TEXT
+        # =========================
+        if is_income:
+            if trend == "up":
+                text = "Thu nhập có xu hướng TĂNG trong thời gian gần đây."
+                if confirm_up:
+                    text += " Dự báo cho thấy xu hướng này có thể tiếp diễn."
+                return text
 
-        avg_daily_income = total_income / num_days
-        avg_daily_expense = total_expense / num_days
+            if trend == "down":
+                text = "Thu nhập đang GIẢM so với giai đoạn trước."
+                if confirm_down:
+                    text += " Dự báo tiếp tục cho thấy xu hướng giảm."
+                return text
 
-        std_income = daily_df['income'].std() if len(daily_df) > 1 else avg_daily_income * 0.2
-        std_expense = daily_df['expense'].std() if len(daily_df) > 1 else avg_daily_expense * 0.2
-        std_income = max(std_income, avg_daily_income * 0.1) if avg_daily_income > 0 else 0
-        std_expense = max(std_expense, avg_daily_expense * 0.1) if avg_daily_expense > 0 else 0
+            return "Thu nhập duy trì ỔN ĐỊNH."
 
-        last_date = daily_df['date'].iloc[-1]
-        if hasattr(last_date, 'date'):
-            last_date = last_date
-        elif isinstance(last_date, str):
-            last_date = datetime.strptime(last_date, '%Y-%m-%d').date()
+        # =========================
+        # EXPENSE
+        # =========================
+        if trend == "up":
+            text = "Chi tiêu đang TĂNG trong 2 tuần gần đây."
+            if confirm_up:
+                text += " Dự báo cho thấy chi tiêu vẫn có xu hướng cao."
+            return text
 
-        predictions = []
-        for i in range(prediction_days):
-            pred_date = last_date + timedelta(days=i + 1)
-            pred_income = max(0, avg_daily_income + np.random.normal(0, std_income * 0.3))
-            pred_expense = max(0, avg_daily_expense + np.random.normal(0, std_expense * 0.3))
-            predictions.append(PredictedValue(
-                date=pred_date.strftime('%Y-%m-%d'),
-                predicted_income=round(pred_income, 0),
-                predicted_expense=round(pred_expense, 0),
-                confidence=0.3
-            ))
+        if trend == "down":
+            text = "Chi tiêu có xu hướng GIẢM – tín hiệu quản lý tài chính tích cực."
+            if confirm_down:
+                text += " Dự báo xác nhận xu hướng này."
+            return text
 
-        summary = {
-            "predictionPeriod": f"{prediction_days} ngày",
-            "totalPredictedIncome": round(avg_daily_income * prediction_days, 0),
-            "totalPredictedExpense": round(avg_daily_expense * prediction_days, 0),
-            "predictedBalance": round((avg_daily_income - avg_daily_expense) * prediction_days, 0),
-            "averageDailyIncome": round(avg_daily_income, 0),
-            "averageDailyExpense": round(avg_daily_expense, 0),
-            "trend": {
-                "incomeTrend": "chưa đủ dữ liệu",
-                "expenseTrend": "chưa đủ dữ liệu",
-                "recommendation": f"Cần thêm dữ liệu từ nhiều ngày khác nhau để dự báo chính xác hơn. Hiện có {num_days} ngày dữ liệu."
-            },
-            "dataPointsUsed": num_days,
-            "modelConfidence": 0.3,
-            "note": "Dự báo đơn giản dựa trên trung bình chi tiêu"
-        }
+        return "Mức chi tiêu đang ỔN ĐỊNH."
 
-        return TrendPredictionResponse(
-            success=True,
-            user_id=user_id,
-            predictions=predictions,
-            summary=summary,
-            message="Dự báo đơn giản (cần thêm dữ liệu để dự báo LSTM)"
-        )
 
-    def predict_trend(
-        self,
-        user_id: str,
-        transactions: List[SpendingItem],
-        prediction_days: int = 7
-    ) -> TrendPredictionResponse:
+    def _generate_smart_recommendation(self, total_inc, total_exp):
+        """Đưa ra lời khuyên tài chính"""
+        balance = total_inc - total_exp
+        
+        if total_inc < 1000 and total_exp > 0:
+            return "CẢNH BÁO: Bạn đang tiêu dùng mà không có nguồn thu dự kiến. Hãy kiểm soát ngay!"
+        
+        if balance < 0:
+            ratio = abs(balance) / (total_inc if total_inc > 0 else 1)
+            if ratio > 0.5:
+                return f"BÁO ĐỘNG: Thâm hụt lớn ({abs(balance):,.0f}đ). Cần cắt giảm ngay các khoản không thiết yếu."
+            return f"Dự kiến thâm hụt nhẹ {abs(balance):,.0f}đ. Hạn chế mua sắm tuần này."
+            
+        if balance > 0:
+            save_ratio = balance / total_inc if total_inc > 0 else 0
+            if save_ratio > 0.3:
+                return f"Tài chính rất tốt! Bạn có thể tiết kiệm {balance:,.0f}đ ({(save_ratio*100):.0f}% thu nhập)."
+            return f"Tài chính an toàn. Dự kiến dư {balance:,.0f}đ."
+            
+        return "Tài chính cân bằng."
+
+    # --------------------------------------------------------------------------
+    # BƯỚC 4: MAIN FUNCTION
+    # --------------------------------------------------------------------------
+    def predict_trend(self, user_id: str, transactions: List[Any], prediction_days: int = 7) -> TrendPredictionResponse:
         daily_df = self._prepare_daily_data(transactions)
-
-        print(f"[DEBUG] Transactions count: {len(transactions)}")
-        print(f"[DEBUG] Daily data rows: {len(daily_df)}")
-
+        
         if daily_df.empty:
             return TrendPredictionResponse(
-                success=False,
-                user_id=user_id,
-                predictions=[],
-                summary={
-                    "message": "Không có dữ liệu giao dịch.",
-                    "dataPoints": 0
-                },
-                message="No transaction data"
+                success=False, user_id=user_id, predictions=[], 
+                summary={}, message="Chưa có dữ liệu giao dịch"
             )
 
-        if len(daily_df) < 3:
-            return self._simple_prediction(user_id, daily_df, transactions, prediction_days)
-
-        income_data = daily_df['income'].values.astype(float)
-        expense_data = daily_df['expense'].values.astype(float)
-
-        income_predictions, income_confidence = self._train_and_predict(
-            income_data, self.income_scaler, prediction_days
-        )
-
-        expense_predictions, expense_confidence = self._train_and_predict(
-            expense_data, self.expense_scaler, prediction_days
-        )
-
+        inc_vals = daily_df['income'].values
+        exp_vals = daily_df['expense'].values
         last_date = daily_df['date'].iloc[-1]
-        if isinstance(last_date, str):
-            last_date = datetime.strptime(last_date, '%Y-%m-%d').date()
 
-        predictions = []
+        # Chạy dự báo (Forecast)
+        inc_preds, inc_conf = self._execute_prediction_strategy(inc_vals, self.income_scaler, prediction_days)
+        exp_preds, exp_conf = self._execute_prediction_strategy(exp_vals, self.expense_scaler, prediction_days)
+
+        predictions_obj = []
         for i in range(prediction_days):
-            pred_date = last_date + timedelta(days=i + 1)
-            predictions.append(PredictedValue(
-                date=pred_date.strftime('%Y-%m-%d'),
-                predicted_income=round(income_predictions[i], 0),
-                predicted_expense=round(expense_predictions[i], 0),
-                confidence=round((income_confidence + expense_confidence) / 2, 2)
+            curr_date = last_date + timedelta(days=i+1)
+            p_inc = round(inc_preds[i])
+            p_exp = round(exp_preds[i])
+            
+            desc_parts = []
+            if p_inc > 0: desc_parts.append(f"Thu {p_inc:,.0f}")
+            if p_exp > 0: desc_parts.append(f"Chi {p_exp:,.0f}")
+            if not desc_parts: desc_parts.append("Ít biến động")
+            
+            predictions_obj.append(PredictedValue(
+                date=curr_date.strftime('%Y-%m-%d'),
+                predicted_income=p_inc,
+                predicted_expense=p_exp,
+                confidence=round((inc_conf + exp_conf)/2, 2),
+                description=", ".join(desc_parts)
             ))
 
-        total_predicted_income = sum(income_predictions)
-        total_predicted_expense = sum(expense_predictions)
-        avg_daily_income = np.mean(income_data[-30:]) if len(income_data) >= 30 else np.mean(income_data)
-        avg_daily_expense = np.mean(expense_data[-30:]) if len(expense_data) >= 30 else np.mean(expense_data)
-
+        total_inc = sum(inc_preds)
+        total_exp = sum(exp_preds)
+        balance = total_inc - total_exp
+        
         summary = {
-            "predictionPeriod": f"{prediction_days} ngày",
-            "totalPredictedIncome": round(total_predicted_income, 0),
-            "totalPredictedExpense": round(total_predicted_expense, 0),
-            "predictedBalance": round(total_predicted_income - total_predicted_expense, 0),
-            "averageDailyIncome": round(avg_daily_income, 0),
-            "averageDailyExpense": round(avg_daily_expense, 0),
-            "trend": self._analyze_trend(income_data, expense_data),
-            "dataPointsUsed": len(daily_df),
-            "modelConfidence": round((income_confidence + expense_confidence) / 2, 2)
+            "predictionPeriod": f"{prediction_days} ngày tới",
+            "totalPredictedIncome": round(total_inc),
+            "totalPredictedExpense": round(total_exp),
+            "predictedBalance": round(balance),
+            "trend": {
+                # Gọi hàm phân tích mới với đầy đủ lịch sử
+                "incomeTrend": self._analyze_trend_text(inc_vals, inc_preds, is_income=True),
+                "expenseTrend": self._analyze_trend_text(exp_vals, exp_preds, is_income=False),
+                "recommendation": self._generate_smart_recommendation(total_inc, total_exp)
+            },
+            "modelConfidence": round((inc_conf + exp_conf)/2, 2)
         }
 
         return TrendPredictionResponse(
-            success=True,
-            user_id=user_id,
-            predictions=predictions,
-            summary=summary,
-            message="Dự báo thành công"
+            success=True, user_id=user_id, predictions=predictions_obj,
+            summary=summary, message="Dự báo thành công"
         )
 
-    def _analyze_trend(self, income: np.ndarray, expense: np.ndarray) -> Dict[str, Any]:
-        recent_days = 7
-        older_days = 14
-
-        if len(income) >= older_days:
-            recent_income = np.mean(income[-recent_days:])
-            older_income = np.mean(income[-older_days:-recent_days])
-            income_trend = "tăng" if recent_income > older_income * 1.1 else \
-                          "giảm" if recent_income < older_income * 0.9 else "ổn định"
-        else:
-            income_trend = "chưa đủ dữ liệu"
-
-        if len(expense) >= older_days:
-            recent_expense = np.mean(expense[-recent_days:])
-            older_expense = np.mean(expense[-older_days:-recent_days])
-            expense_trend = "tăng" if recent_expense > older_expense * 1.1 else \
-                           "giảm" if recent_expense < older_expense * 0.9 else "ổn định"
-        else:
-            expense_trend = "chưa đủ dữ liệu"
-
-        return {
-            "incomeTrend": income_trend,
-            "expenseTrend": expense_trend,
-            "recommendation": self._get_recommendation(income_trend, expense_trend)
-        }
-
-    def _get_recommendation(self, income_trend: str, expense_trend: str) -> str:
-        if income_trend == "tăng" and expense_trend == "giảm":
-            return "Xu hướng tài chính rất tốt! Tiếp tục duy trì."
-        elif income_trend == "giảm" and expense_trend == "tăng":
-            return "Cảnh báo: Thu nhập giảm trong khi chi tiêu tăng. Cần điều chỉnh ngân sách."
-        elif income_trend == "giảm":
-            return "Thu nhập có xu hướng giảm. Nên tìm cách tăng nguồn thu."
-        elif expense_trend == "tăng":
-            return "Chi tiêu có xu hướng tăng. Nên xem xét cắt giảm các khoản không cần thiết."
-        else:
-            return "Tài chính ổn định. Tiếp tục theo dõi và lập kế hoạch."
-
-
+# Khởi tạo instance
 lstm_service = LSTMService()

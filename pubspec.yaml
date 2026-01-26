@@ -49,6 +49,8 @@ dependencies:
   html: ^0.15.1
   excel: ^2.0.0
   diacritic: ^0.1.6
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
 
 
 dependency_overrides:
