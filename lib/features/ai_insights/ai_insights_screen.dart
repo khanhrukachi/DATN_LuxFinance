@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/models/ml_service.dart';
 import 'package:personal_financial_management/models/spending.dart';
@@ -21,7 +22,6 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  bool _isDarkMode = false;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -31,11 +31,37 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
   ClusteringResult? _clusterResult;
   AnomalyResult? _anomalyResult;
 
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadAllData();
+  }
+
+  /// Tải lại đúng số ngày người dùng chọn trên TrendTab.
+  /// Không dùng lại kết quả 7 ngày cũ và không tự tạo dữ liệu giả ở UI.
+  Future<TrendPredictionResult> _loadTrendForecast(int days) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn.');
+    }
+
+    final loaded = await MLService.predictTrend(
+      userId: user.uid,
+      transactions: _transactions,
+      predictionDays: days,
+    );
+
+    if (!loaded.success) {
+      throw Exception(loaded.errorMessage ?? 'Không tải được dự báo.');
+    }
+
+    if (mounted) {
+      setState(() => _trendResult = loaded);
+    }
+    return loaded;
   }
 
   Future<void> _loadAllData() async {
@@ -98,7 +124,7 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
       backgroundColor: bgColor,
       appBar: AppBar(
         title:  Text(
-            AppLocalizations.of(context).translate('ai_insights'),
+          AppLocalizations.of(context).translate('ai_insights'),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -165,9 +191,62 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
       ),
     );
   }
+
+  /// Loading animation dùng chung cho màn hình AI, thay cho spinner đơn.
+  /// Màu skeleton tự đổi theo light/dark theme hiện tại.
+  Widget loadingAnimation() {
+    final dark = _isDarkMode;
+    final baseColor = dark ? const Color(0xFF303030) : const Color(0xFFE0E0E0);
+    final highlightColor = dark ? const Color(0xFF4A4A4A) : const Color(0xFFF5F5F5);
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      itemCount: 5,
+      itemBuilder: (_, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(
+            height: index == 0 ? 118 : 86,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: dark ? const Color(0xFF303030) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 14, width: double.infinity, color: Colors.white),
+                      const SizedBox(height: 10),
+                      Container(height: 11, width: index == 0 ? 190 : 130, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return loadingAnimation();
     }
 
     if (_errorMessage != null) {
@@ -180,6 +259,8 @@ class _AiInsightsScreenState extends State<AiInsightsScreen>
         TrendTab(
           result: _trendResult!,
           isDarkMode: _isDarkMode,
+          isLoading: _isLoading,
+          forecastLoader: _loadTrendForecast,
         ),
 
         ClusterTab(

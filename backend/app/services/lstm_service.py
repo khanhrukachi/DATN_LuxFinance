@@ -1,5 +1,11 @@
 import os
 import calendar
+import math
+import hashlib
+import re
+import unicodedata
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 import warnings
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Tuple, Optional
@@ -386,7 +392,9 @@ class LSTMService:
             return [], {"model": "unavailable", "mae": None, "confidence": 0.0}
         values = np.asarray(values, dtype=np.float32)
         scaler = RobustScaler(quantile_range=(10.0, 90.0))
-        scaled = scaler.fit_transform(values.reshape(-1, 1)).astype(np.float32)
+        validation_count = max(7, int((len(values) - self.sequence_length) * 0.2))
+        scaler.fit(values[:-validation_count].reshape(-1, 1))
+        scaled = scaler.transform(values.reshape(-1, 1)).astype(np.float32)
         X, y = self._build_sequences(scaled)
         if len(X) < 30:
             return [], {"model": "insufficient_sequences", "mae": None, "confidence": 0.0}
@@ -643,10 +651,12 @@ class LSTMService:
         bt = self._expense_short_backtest(hist)
 
         # 4) LSTM chỉ correction, không làm model chính.
-        lstm_preds, lm = self._fit_lstm_and_forecast(
-            hist["expense"].to_numpy(dtype=float),
-            len(target_dates),
-        )
+        if (target_dates[0] - hist["date"].max()).days > 7:
+            lstm_preds, lm = [], {"model": "stale_history", "mae": None}
+        else:
+            lstm_preds, lm = self._fit_lstm_and_forecast(
+                hist["expense"].to_numpy(dtype=float), len(target_dates)
+            )
 
         lstm_weight = 0.0
         if lstm_preds and lm.get("mae") is not None and bt.get("mae") is not None:
@@ -1165,7 +1175,7 @@ class LSTMService:
                 "spendingProbabilityPercent": behavior.get("spendingProbabilityPercent"),
                 "estimatedAmountIfSpending": behavior.get("estimatedAmountIfSpending"),
                 "incomeIsAllocation": inc_meta.get("forecastType") == "monthly_income",
-                "expenseIsAllocation": exp_meta.get("forecastType") == "monthly_expense",
+                "expenseIsAllocation": exp_meta.get("forecastType") == "monthly_expense" and not bool(behavior),
             })
 
         return details
@@ -1262,14 +1272,18 @@ class LSTMService:
     # ------------------------------------------------------------------
     # MAIN - API cũ vẫn dùng được, thêm year/month để phân tích đúng tháng
     # ------------------------------------------------------------------
-    def predict_trend(
+    def _predict_month_trend(
         self,
         user_id: str,
         transactions: List[Any],
         prediction_days: Optional[int] = None,
         year: Optional[int] = None,
         month: Optional[int] = None,
+        reference_date: Optional[pd.Timestamp] = None,
     ) -> TrendPredictionResponse:
+        today = pd.Timestamp(reference_date).normalize() if reference_date is not None else pd.Timestamp.now().normalize()
+        if year is None and month is None:
+            year, month = today.year, today.month
         daily = self._prepare_daily_data(transactions)
         if daily.empty:
             return TrendPredictionResponse(
@@ -1285,8 +1299,6 @@ class LSTMService:
             )
 
         month_start, month_end = self._month_bounds(target_year, target_month)
-        today = pd.Timestamp.now().normalize()
-
         # Diagnostic rõ ràng: transaction cũ là HISTORY, không phải TARGET MONTH.
         observed = daily[daily.get("observed", True) == True] if "observed" in daily.columns else daily
         first_tx = observed["date"].min() if not observed.empty else None
@@ -1311,7 +1323,7 @@ class LSTMService:
             cutoff = today
             forecast_start = today + timedelta(days=1)
         else:
-            cutoff = month_start - timedelta(days=1)
+            cutoff = today
             forecast_start = month_start
 
         # Actual chỉ thuộc đúng tháng đang phân tích. Nếu tháng hiện tại chưa có
@@ -1323,7 +1335,7 @@ class LSTMService:
         # - current month: dữ liệu tới hôm nay, bao gồm actual tháng hiện tại nếu có.
         # - future month: chỉ dữ liệu TRƯỚC ngày đầu tháng mục tiêu.
         # - past month: chỉ dữ liệu tới cuối tháng đó.
-        history = daily[daily["date"] <= cutoff].copy()
+        history = daily[daily["date"] <= min(cutoff, today)].copy()
 
         print(f"[FORECAST] HISTORY     : {history['date'].min().strftime('%Y-%m-%d') if not history.empty else 'N/A'} -> {history['date'].max().strftime('%Y-%m-%d') if not history.empty else 'N/A'}")
         print(f"[FORECAST] ACTUAL TARGET TX DAYS: {int(actual_month['observed'].sum()) if (not actual_month.empty and 'observed' in actual_month.columns) else 0}")
@@ -1365,6 +1377,22 @@ class LSTMService:
                 history, actual_expense, target_year, target_month, target_dates
             )
 
+        # Full-month accounting with adaptive short-term expense for the first week.
+        if is_current_month and len(target_dates) > 7:
+            short_preds, short_meta = self._expense_short_forecast(history, target_dates[:7])
+            old_total = float(exp_meta.get("expectedMonthlyExpense", actual_expense + sum(exp_preds)))
+            margin = max(old_total - float(exp_meta.get("forecastLow", old_total)),
+                         float(exp_meta.get("forecastHigh", old_total)) - old_total, 0.0)
+            exp_preds = short_preds + exp_preds[7:]
+            revised_total = actual_expense + sum(exp_preds)
+            exp_meta.update({"expectedMonthlyExpense": revised_total,
+                             "remainingExpenseForecast": sum(exp_preds),
+                             "forecastLow": max(actual_expense, revised_total-margin),
+                             "forecastHigh": revised_total+margin,
+                             "shortTermModel": short_meta,
+                             "dailyBehavior": short_meta.get("dailyBehavior", []),
+                             "hybridFirstWeek": True})
+
         print(f"[FORECAST] INCOME MODEL : {inc_meta.get('model')} / {inc_meta.get('forecastType')}")
         print(f"[FORECAST] EXPENSE MODEL: {exp_meta.get('model')} / {exp_meta.get('forecastType')}")
         print(f"[FORECAST] FORECAST DAYS: {len(target_dates)}")
@@ -1405,6 +1433,12 @@ class LSTMService:
             actual_expense + forecast_expense,
             float(exp_meta.get("expectedMonthlyExpense", actual_expense + forecast_expense))
         )
+        if month_end <= today:
+            expected_income, expected_expense = actual_income, actual_expense
+            for meta, value in ((inc_meta, actual_income), (exp_meta, actual_expense)):
+                if meta is exp_meta and meta.get("forecastType") == "short_daily_expense":
+                    value = 0.0
+                meta["forecastLow"] = meta["forecastHigh"] = value
         expected_balance = expected_income - expected_expense
 
         # So sánh tuần lịch thực tế (Thứ 2 -> hôm nay) với đúng cùng số ngày tuần trước.
@@ -1610,6 +1644,1137 @@ class LSTMService:
             summary=summary,
             message=message,
         )
+
+
+    # ------------------------------------------------------------------
+    # PERSONAL ADVISOR — additive API, no Firebase/UI side effects.
+    # ------------------------------------------------------------------
+    # Existing calls remain valid:
+    #   predict_trend(uid, transactions, prediction_days=7)
+    # Optional keyword-only input:
+    #   advisor_context={
+    #     "available_balance": 5000000,  # snapshot at reference_date; includes actuals
+    #     "reserve_amount": 1000000, "savings_hold": 0,
+    #     "horizon_days": 30, "timezone": "Asia/Ho_Chi_Minh",
+    #     "reference_date": "2026-09-29T18:00:00+07:00",
+    #     "events": [{"id":"rent-oct", "title":"Tiền nhà",
+    #       "due_date":"2026-10-03", "amount":2000000, "kind":"expense",
+    #       "confirmed":True, "status":"pending", "required":True,
+    #       "category":"rent", "recurrence_id":"rent-series",
+    #       "transaction_ids":[]}],
+    #     "budgets": [{"id":"food", "limit":3000000, "spent":1000000,
+    #       "year":2026, "month":9, "category":"food"}],
+    #     "notification_opt_in": True, "notification_hour": 9,
+    #     "dismissed_card_ids": [], "sent_notification_keys": []
+    #   }
+    # Monetary unit: VND. Pass numbers, NOT formatted strings. Existing snapshot
+    # must already include paid transactions; they are never deducted again.
+    # Events are dated occurrences, not recurrence rules: caller persists/generates
+    # confirmed future occurrences. Detected candidates require user confirmation.
+    # Caller owns auth/uid filtering, transactions completeness, persistent action
+    # state, idempotent payment write, FCM token, scheduler and dispatch.
+    # Action descriptors and notificationPlan are proposals, never executions.
+    # On Windows, install tzdata if ZoneInfo cannot find Asia/Ho_Chi_Minh.
+
+    @staticmethod
+    def _field(obj: Any, *keys: str, default: Any = None) -> Any:
+        for key in keys:
+            value = obj.get(key) if isinstance(obj, dict) else getattr(obj, key, None)
+            if value is not None:
+                return value
+        return default
+
+    @staticmethod
+    def _number(value: Any, name: str, allow_negative: bool = False) -> float:
+        if isinstance(value, bool):
+            raise ValueError(f"{name} phải là số tiền hợp lệ.")
+        try:
+            result = float(value)
+        except (ValueError, TypeError):
+            raise ValueError(f"{name} phải là số tiền hợp lệ.")
+        if not math.isfinite(result) or (not allow_negative and result < 0):
+            raise ValueError(f"{name} phải hữu hạn" + ("." if allow_negative else " và không âm."))
+        return result
+
+    @staticmethod
+    def _local_day(value: Any, timezone: str) -> pd.Timestamp:
+        ts = pd.Timestamp(value)
+        if pd.isna(ts):
+            raise ValueError("Ngày không hợp lệ.")
+        if ts.tzinfo is not None:
+            ts = ts.tz_convert(timezone).tz_localize(None)
+        return ts.normalize()
+
+    @staticmethod
+    def _stable_id(*parts: Any) -> str:
+        return hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:20]
+
+    def _advisor_transactions(self, transactions: List[Any], timezone: str,
+                              today: pd.Timestamp) -> Tuple[List[Any], List[str]]:
+        clean, warnings_out, seen = [], [], set()
+        for index, tx in enumerate(transactions or []):
+            try:
+                amount = self._number(self._field(tx, "money", "amount", default=0), "money", True)
+                day = self._local_day(self._field(tx, "date_time", "dateTime", "date"), timezone)
+                if amount == 0:
+                    continue
+                if day > today:
+                    warnings_out.append(f"Giao dịch tương lai #{index} không được dùng làm thực tế; hãy khai báo events.")
+                    continue
+                tid = str(self._field(tx, "id", default=""))
+                if tid and tid in seen:
+                    warnings_out.append(f"Bỏ giao dịch trùng id: {tid}.")
+                    continue
+                if tid:
+                    seen.add(tid)
+                # Explicit transfer flags prevent treating own-account transfers as income.
+                if self._field(tx, "is_transfer", "isTransfer", default=False) is True:
+                    continue
+                expense = self._field(tx, "is_expense", "isExpense")
+                income = self._field(tx, "is_income", "isIncome")
+                if expense is True and income is True:
+                    raise ValueError("Giao dịch không thể đồng thời là thu và chi.")
+                kind = "expense" if expense is True else "income" if income is True else (
+                    "expense" if amount < 0 else "income")
+                clean.append(SimpleNamespace(
+                    id=tid, money=abs(amount) * (-1 if kind == "expense" else 1),
+                    date_time=day, is_expense=kind == "expense", is_income=kind == "income",
+                    category=str(self._field(tx, "category_name", "type_name", "typeName", "category", "type", default="")),
+                    category_id=str(self._field(tx, "category_id", "type", default="")),
+                    note=str(self._field(tx, "note", default="")),
+                    merchant=str(self._field(tx, "merchant", "payee", default="")),
+                    recurrence_id=str(self._field(tx, "recurrence_id", "recurrenceId", default="")),
+                ))
+            except (ValueError, TypeError, OverflowError) as exc:
+                warnings_out.append(f"Bỏ giao dịch #{index}: {exc}")
+        return sorted(clean, key=lambda x: x.date_time), warnings_out
+
+    def _detect_recurring(self, transactions: List[Any], today: pd.Timestamp) -> List[Dict[str, Any]]:
+        """Conservative heuristic: 3+ separate dates, stable amount and cadence.
+        Group by recurrence id OR merchant/note + category; category alone is weak.
+        These are candidates, not guaranteed future income or reserved expenses.
+        """
+        groups: Dict[Any, List[Any]] = {}
+        for tx in transactions:
+            label = tx.recurrence_id or tx.merchant or re.sub(r"\s+", " ", tx.note.strip().lower())
+            if not label:
+                continue
+            key = ("expense" if tx.is_expense else "income", tx.category, label)
+            groups.setdefault(key, []).append(tx)
+        result = []
+        for key, records in groups.items():
+            records = records[-12:]
+            dates = sorted(set(x.date_time for x in records))
+            if len(dates) < 3 or len(dates) != len(records):
+                continue
+            amounts = np.array([abs(x.money) for x in records])
+            median = float(np.median(amounts))
+            if median <= 0 or float(np.max(np.abs(amounts - median))) / median > .25:
+                continue
+            gaps = np.array([(b - a).days for a, b in zip(dates, dates[1:])])
+            if np.all((gaps >= 6) & (gaps <= 8)):
+                cadence, step = "weekly", 7
+            elif np.all((gaps >= 13) & (gaps <= 15)):
+                cadence, step = "biweekly", 14
+            elif np.all((gaps >= 27) & (gaps <= 32)):
+                cadence, step = "monthly", 0
+            else:
+                continue
+            if (today - dates[-1]).days > (65 if cadence == "monthly" else step * 2):
+                continue
+            due = dates[-1]
+            anchor_day = int(np.median([d.day for d in dates]))
+            end_of_month = all(d.day == calendar.monthrange(d.year, d.month)[1] for d in dates)
+            for _ in range(100):
+                if cadence == "monthly":
+                    period = due.to_period("M") + 1
+                    last = calendar.monthrange(period.year, period.month)[1]
+                    due = pd.Timestamp(period.year, period.month, last if end_of_month else min(anchor_day, last))
+                else:
+                    due += timedelta(days=step)
+                if due > today:
+                    break
+            result.append({
+                "id": self._stable_id(*key), "title": records[-1].merchant or records[-1].note or key[2],
+                "kind": key[0], "category": key[1], "amount": round(median),
+                "cadence": cadence, "nextDueDate": due.strftime("%Y-%m-%d"),
+                "sampleCount": len(records), "transactionIds": [x.id for x in records if x.id],
+                "recurrenceId": records[-1].recurrence_id or None,
+                "status": "needs_confirmation", "confidenceType": "heuristic_not_probability",
+            })
+        return result
+
+    def _advisor_events(self, context: Dict[str, Any], transactions: List[Any],
+                        today: pd.Timestamp, timezone: str) -> List[Dict[str, Any]]:
+        events, seen = [], set()
+        actual_ids = {t.id for t in transactions if t.id}
+        for item in context.get("events", []):
+            eid = str(item.get("id", "")).strip()
+            if not eid or eid in seen:
+                raise ValueError("Mỗi event phải có id duy nhất, không rỗng.")
+            seen.add(eid)
+            status = item.get("status", "pending")
+            if status not in ("pending", "paid", "received", "cancelled"):
+                raise ValueError(f"Event {eid}: status không hợp lệ.")
+            # Status and explicit actual links are authoritative, no fuzzy auto-payment.
+            linked = list(map(str, item.get("transaction_ids", [])))
+            if status != "pending" or (set(linked) & actual_ids):
+                continue
+            kind = item.get("kind")
+            if kind not in ("income", "expense"):
+                raise ValueError(f"Event {eid}: kind phải là income hoặc expense.")
+            amount = self._number(item.get("amount"), f"event {eid}.amount")
+            if amount <= 0:
+                raise ValueError(f"Event {eid}: amount phải lớn hơn 0.")
+            due = self._local_day(item.get("due_date"), timezone)
+            events.append({
+                "id": eid, "title": str(item.get("title", eid)), "amount": amount,
+                "kind": kind, "dueDate": due.strftime("%Y-%m-%d"),
+                "effectiveDate": max(due, today + timedelta(days=1)).strftime("%Y-%m-%d"),
+                "overdue": due < today, "dueToday": due == today,
+                "confirmed": item.get("confirmed") is True,
+                "required": item.get("required", True) is True,
+                "category": str(item.get("category", "")),
+                "recurrenceId": str(item.get("recurrence_id", "")),
+                "transactionIds": linked,
+                # Overdue income cannot support safe spending until date is reconfirmed.
+                "usableIncome": kind == "income" and item.get("confirmed") is True and due > today,
+            })
+        return sorted(events, key=lambda e: (e["effectiveDate"], e["id"]))
+
+    def build_advisor(self, user_id: str, transactions: List[Any],
+                      context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Pure recalculation. Reinvoke after add/edit/delete/payment/balance change.
+        Timeline starts tomorrow; due/overdue unpaid expenses are reserved immediately.
+        No scheduled job, persistence, push dispatch or financial action occurs here.
+        """
+        c = dict(context or {})
+        for key in ("events", "budgets"):
+            if not isinstance(c.get(key, []), list) or not all(isinstance(x, dict) for x in c.get(key, [])):
+                raise ValueError(f"{key} phải là danh sách object.")
+        timezone = str(c.get("timezone", "Asia/Ho_Chi_Minh"))
+        ZoneInfo(timezone)  # fail clearly instead of silently using server timezone
+        now = pd.Timestamp(c.get("reference_date") or datetime.now(ZoneInfo(timezone)))
+        now = now.tz_localize(timezone) if now.tzinfo is None else now.tz_convert(timezone)
+        today = now.tz_localize(None).normalize()
+        raw_horizon = c.get("horizon_days", 30)
+        horizon = int(raw_horizon)
+        if isinstance(raw_horizon, bool) or horizon != float(raw_horizon) or not 1 <= horizon <= 30:
+            raise ValueError("horizon_days phải là số nguyên từ 1 đến 30.")
+        reserve = self._number(c.get("reserve_amount", 0), "reserve_amount")
+        savings = self._number(c.get("savings_hold", 0), "savings_hold")
+        balance = None if c.get("available_balance") is None else self._number(
+            c["available_balance"], "available_balance", True)
+        clean, warnings_out = self._advisor_transactions(transactions, timezone, today)
+        candidates = self._detect_recurring(clean, today)
+        events = self._advisor_events(c, clean, today, timezone)
+        dates = [today + timedelta(days=i) for i in range(1, horizon + 1)]
+        end = dates[-1].strftime("%Y-%m-%d")
+        active = [e for e in events if e["effectiveDate"] <= end]
+        # Remove only explicitly linked recurring historical expenses. Unknown
+        # overlaps remain conservative and are surfaced as a data warning.
+        recurring_ids = {e["recurrenceId"] for e in active if e["confirmed"] and e["recurrenceId"]}
+        excluded_ids = set()
+        for event in active:
+            if event["confirmed"]:
+                excluded_ids.update(event["transactionIds"])
+        # Candidate matching by an explicit series ID lets confirmed occurrences
+        # refer to historical records without misusing payment transaction_ids.
+        excluded_ids.update(str(x) for x in c.get("fixed_expense_transaction_ids", []))
+        flex_records = [t for t in clean if t.is_expense and t.id not in excluded_ids
+                        and not (t.recurrence_id and t.recurrence_id in recurring_ids)]
+        full_daily = self._prepare_daily_data(clean)
+        flex_daily = self._prepare_daily_data(flex_records)
+        if not full_daily.empty:
+            # Preserve zero-expense dates in observed history after removing fixed bills.
+            skeleton = full_daily[["date", "observed"]].copy()
+            flex_daily = skeleton.merge(flex_daily[["date", "expense"]], on="date", how="left")
+            flex_daily["expense"] = flex_daily["expense"].fillna(0.0)
+            flex_daily["income"] = 0.0
+        stale = not clean or (today - clean[-1].date_time).days > 7
+        if stale:
+            warnings_out.append("Lịch sử thiếu hoặc quá 7 ngày chưa cập nhật; dự báo chi linh hoạt có thể không phản ánh hiện tại.")
+        if any(e["confirmed"] and e["kind"] == "expense" for e in active) and not (recurring_ids or excluded_ids):
+            warnings_out.append("Chưa liên kết khoản cố định với lịch sử; dự báo chi linh hoạt có thể còn chứa khoản cố định.")
+        # Adviser uses robust daily behavior. Old monthly forecast retains optional LSTM.
+        probs = self._expense_occurrence_probability(flex_daily, dates)
+        amounts, _ = self._expense_amount_when_spending(flex_daily, dates)
+        flex = [0.0 if p < .18 else p * a for p, a in zip(probs, amounts)]
+        running = balance
+        fixed_cash = balance
+        safe_caps, timeline, first_shortfall = [], [], None
+        for i, (day, flexible) in enumerate(zip(dates, flex), 1):
+            day_key = day.strftime("%Y-%m-%d")
+            day_events = [e for e in active if e["effectiveDate"] == day_key]
+            income = sum(e["amount"] for e in day_events if e["usableIncome"])
+            # All confirmed spending is a commitment until cancelled by the user.
+            committed = sum(e["amount"] for e in day_events if e["kind"] == "expense" and e["confirmed"])
+            if running is not None:
+                opening = running
+                # Expenses before same-day income: do not assume salary arrives first.
+                low = opening - committed - flexible
+                running = low + income
+                if low < 0 and first_shortfall is None:
+                    first_shortfall = day_key
+                fixed_cash -= committed
+                safe_caps.append((fixed_cash - reserve - savings) / i)
+                fixed_cash += income
+            else:
+                opening = low = None
+            timeline.append({
+                "date": day_key, "openingBalance": round(opening) if opening is not None else None,
+                "confirmedIncome": round(income), "committedExpense": round(committed),
+                "flexibleExpenseForecast": round(flexible),
+                "projectedBalance": round(running) if running is not None else None,
+                "conservativeIntradayBalance": round(low) if low is not None else None,
+                "belowReserve": low < reserve + savings if low is not None else None,
+                "events": day_events,
+            })
+        allowance = math.floor(max(0.0, min(safe_caps))) if safe_caps else None
+        budgets = []
+        seen_budgets = set()
+        for b in c.get("budgets", []):
+            bid = str(b.get("id", ""))
+            if not bid or bid in seen_budgets:
+                raise ValueError("Mỗi budget phải có id duy nhất.")
+            seen_budgets.add(bid)
+            limit = self._number(b.get("limit", b.get("limitMoney")), "budget.limit")
+            spent = self._number(b.get("spent"), "budget.spent")
+            if int(b.get("year", today.year)) != today.year or int(b.get("month", today.month)) != today.month:
+                continue
+            days_left = calendar.monthrange(today.year, today.month)[1] - today.day
+            budgets.append({"id": bid, "category": str(b.get("category", bid)),
+                            "limit": round(limit), "spent": round(spent),
+                            "remaining": round(max(0.0, limit-spent)),
+                            "remainingPerDay": math.floor(max(0.0, limit-spent)/days_left) if days_left else 0,
+                            "usagePercent": round(spent/limit*100, 1) if limit else None,
+                            "overBudget": spent > limit})
+        cards = []
+        def add_card(kind, key, title, body, priority, actions, due=None):
+            cid = self._stable_id(user_id, kind, key)
+            cards.append({"id": cid, "type": kind, "title": title, "body": body,
+                          "priority": priority, "dueDate": due, "actions": actions})
+        def action(name, label, payload):
+            return {"type": name, "label": label, "payload": payload,
+                    "requiresUserConfirmation": name not in ("view_timeline", "view_budget"),
+                    "execution": "client_or_authenticated_api"}
+        if balance is None:
+            add_card("missing_balance", "balance", "Cập nhật số dư khả dụng",
+                     "Cần số dư thực tế để tính mức chi an toàn và nguy cơ thiếu tiền.", 1,
+                     [action("update_balance", "Cập nhật số dư", {})])
+        elif first_shortfall:
+            add_card("cash_shortfall", first_shortfall, "Có nguy cơ thiếu tiền",
+                     f"Dòng tiền có thể âm vào {first_shortfall}; kiểm tra khoản đến hạn và giảm chi linh hoạt.", 1,
+                     [action("view_timeline", "Xem kế hoạch", {"date": first_shortfall}),
+                      action("review_budget", "Điều chỉnh ngân sách", {})])
+        if allowance is not None and flex and float(np.mean(flex)) > allowance:
+            add_card("reduce_spending", today.strftime("%Y-%m-%d"), "Giảm nhịp chi linh hoạt",
+                     f"Chi dự báo trung bình {np.mean(flex):,.0f}đ/ngày; mức khả dụng thận trọng {allowance:,.0f}đ/ngày.", 2,
+                     [action("review_budget", "Xem lại ngân sách", {"dailyTarget": allowance})])
+        for e in active:
+            if not e["confirmed"]:
+                continue
+            due = pd.Timestamp(e["dueDate"])
+            if e["kind"] == "expense":
+                add_card("bill_due", e["id"], e["title"],
+                         f"{'Quá hạn' if e['overdue'] else 'Đến hạn'} {e['dueDate']}: {e['amount']:,.0f}đ.",
+                         1 if (due-today).days <= 3 else 3,
+                         [action("mark_paid", "Ghi nhận đã thanh toán", {"eventId": e["id"]}),
+                          action("reschedule_event", "Đổi ngày", {"eventId": e["id"]})], e["dueDate"])
+            elif e["usableIncome"]:
+                obligations = sum(x["amount"] for x in active if x["kind"] == "expense" and x["confirmed"]
+                                  and x["effectiveDate"] >= e["effectiveDate"])
+                fixed_share = min(e["amount"], obligations)
+                # Proposal only, not a transfer or a guaranteed salary recognition.
+                add_card("allocate_income", e["id"], "Lập kế hoạch cho khoản thu sắp tới",
+                         f"{e['title']}: {e['amount']:,.0f}đ dự kiến ngày {e['dueDate']}. Xem và chỉnh phương án trước khi áp dụng.", 3,
+                         [action("review_income_allocation", "Phân bổ khoản thu", {
+                             "eventId": e["id"], "amount": round(e["amount"]),
+                             "suggestedCommitted": round(fixed_share),
+                             "unallocated": round(e["amount"]-fixed_share)})], e["dueDate"])
+        for b in budgets:
+            if b["overBudget"] or (b["usagePercent"] is not None and b["usagePercent"] >= 85):
+                add_card("budget_pressure", b["id"], f"Kiểm tra ngân sách {b['category']}",
+                         f"Đã chi {b['spent']:,.0f}đ trên hạn mức {b['limit']:,.0f}đ.", 2,
+                         [action("view_budget", "Xem ngân sách", {"budgetId": b["id"]}),
+                          action("edit_budget", "Điều chỉnh", {"budgetId": b["id"]})])
+        for candidate in candidates:
+            if candidate["recurrenceId"] and candidate["recurrenceId"] in recurring_ids:
+                continue
+            add_card("confirm_recurring", candidate["id"], "Có thể là khoản định kỳ",
+                     f"{candidate['title']}: khoảng {candidate['amount']:,.0f}đ. Xác nhận lịch trước khi đưa vào kế hoạch.", 4,
+                     [action("confirm_recurring", "Xác nhận lịch", {"candidateId": candidate["id"], "candidate": candidate})])
+        dismissed = set(map(str, c.get("dismissed_card_ids", [])))
+        cards = sorted([x for x in cards if x["id"] not in dismissed], key=lambda x: (x["priority"], x["id"]))
+        notification_plan = []
+        hour = int(c.get("notification_hour", 9))
+        if not 8 <= hour <= 20:
+            raise ValueError("notification_hour phải nằm trong 8..20 để tránh giờ nghỉ.")
+        sent = set(map(str, c.get("sent_notification_keys", [])))
+        if c.get("notification_opt_in") is True:
+            for card in cards:
+                if card["type"] not in ("bill_due", "cash_shortfall", "budget_pressure"):
+                    continue
+                notify_day = max(today, pd.Timestamp(card["dueDate"])-timedelta(days=3)) if card["dueDate"] else today
+                send_at = (notify_day + timedelta(hours=hour)).tz_localize(timezone)
+                if send_at < now:
+                    send_at = now.ceil("min")
+                    if send_at.hour < 8:
+                        send_at = send_at.normalize() + timedelta(hours=hour)
+                    elif send_at.hour >= 21:
+                        send_at = send_at.normalize() + timedelta(days=1, hours=hour)
+                key = self._stable_id(user_id, card["id"], send_at.strftime("%Y-%m-%d"))
+                if key in sent:
+                    continue
+                notification_plan.append({"deduplicationKey": key, "cardId": card["id"],
+                                          "scheduledAt": send_at.isoformat(), "title": card["title"],
+                                          "body": card["body"], "status": "planned_not_sent",
+                                          "revalidateBeforeSend": True})
+            notification_plan = sorted(notification_plan, key=lambda x: x["scheduledAt"])[:3]
+        if balance is None:
+            warnings_out.append("Thiếu available_balance: không tính số dư hoặc mức chi an toàn.")
+        warnings_out.append("Khoản thu dự báo thống kê và khoản định kỳ chưa xác nhận không làm tăng mức chi an toàn.")
+        return {
+            "version": "v12_personal_advisor", "userId": user_id, "timezone": timezone,
+            "asOf": now.isoformat(), "horizonDays": horizon,
+            "dailySafeToSpend": {
+                "amount": allowance, "currency": "VND", "availableBalance": balance,
+                "reserveAmount": reserve, "savingsHold": savings,
+                "status": "missing_balance" if balance is None else "no_headroom" if allowance == 0 else "estimated",
+                "startDate": dates[0].strftime("%Y-%m-%d"), "endDate": end,
+                "method": "minimum_prefix_cash_after_commitments_and_reserves_divided_by_elapsed_days",
+                "assumptions": ["Số dư đã bao gồm giao dịch thực tế đến thời điểm tính.",
+                                "Khoản chi trong ngày có thể đến trước khoản thu cùng ngày.",
+                                "Đây là hạn mức dòng tiền; ngân sách từng danh mục vẫn áp dụng riêng.",
+                                "Chỉ bảo vệ trong khoảng ngày hiển thị; tính lại khi dữ liệu thay đổi."],
+            },
+            "timeline": timeline, "recurringCandidates": candidates, "actionCards": cards,
+            "budgets": budgets, "notificationPlan": notification_plan,
+            "firstShortfallDate": first_shortfall, "warnings": list(dict.fromkeys(warnings_out)),
+            "integration": {"actionsExecuted": False, "notificationsSent": False,
+                            "requiresRecalculationAfterMutation": True,
+                            "forecastConfidenceIsAccuracy": False},
+        }
+
+    def _predict_legacy_month(self, user_id: str, transactions: List[Any],
+                      prediction_days: Optional[int] = None, year: Optional[int] = None,
+                      month: Optional[int] = None, *,
+                      advisor_context: Optional[Dict[str, Any]] = None) -> TrendPredictionResponse:
+        """Compatible entry point. Old monthly keys + summary.personalAdvisor.
+        Monthly prediction_days is capped at month end for legacy compatibility.
+        personalAdvisor.timeline independently spans 7-30 days across months.
+        available_balance always describes NOW, not the selected analysis month.
+        Pass advisor_context through the route/schema to enable additional inputs.
+        """
+        try:
+            context = dict(advisor_context or {})
+            advisor = self.build_advisor(user_id, transactions, context)
+            today = self._local_day(advisor["asOf"], advisor["timezone"])
+            clean, _ = self._advisor_transactions(transactions, advisor["timezone"], today)
+            if year is not None or month is not None:
+                if year is None or month is None or not 1 <= int(month) <= 12 or not 1 <= int(year) <= 9999:
+                    raise ValueError("Phải truyền đồng thời year hợp lệ và month trong 1..12.")
+            if prediction_days is not None and (isinstance(prediction_days, bool) or int(prediction_days) < 1
+                                                or int(prediction_days) != float(prediction_days)):
+                raise ValueError("prediction_days phải là số nguyên dương.")
+            # Always calculate complete month before slicing UI horizon, preventing
+            # a 7-day estimate being mislabeled as the full month-end result.
+            response = self._predict_month_trend(user_id, clean, None, year, month, today)
+            summary = response.summary
+            summary["personalAdvisor"] = advisor
+            summary["insightVersion"] = "v11_personal_advisor"
+            summary["balanceMeaning"] = "net_cash_flow_not_wallet_balance"
+            summary["confidenceMeaning"] = "heuristic_score_not_accuracy_probability"
+            details = summary.get("dailyForecastDetail", [])
+            if prediction_days is not None and details:
+                kept = details[:int(prediction_days)]
+                response.predictions = response.predictions[:len(kept)]
+                income = sum(x["predictedIncome"] for x in kept)
+                expense = sum(x["predictedExpense"] for x in kept)
+                summary.update({"dailyForecastDetail": kept, "dailyForecastCount": len(kept),
+                                "totalPredictedIncome": income, "totalPredictedExpense": expense,
+                                "predictedBalance": income-expense,
+                                "forecastRemaining": {"days": len(kept), "income": income,
+                                                      "expense": expense, "balance": income-expense}})
+                summary["dailyForecastPeriod"].update({"end": kept[-1]["date"], "days": len(kept)})
+                summary["predictionPeriod"] = f"{kept[0]['date']} - {kept[-1]['date']}"
+                summary["forecastExplanation"]["forecastDays"] = len(kept)
+            summary["forecastScopeNote"] = (
+                "forecastRemaining là khoảng đang hiển thị; expectedMonthEnd tính toàn phần còn lại của tháng. "
+                "personalAdvisor dùng số dư hiện tại và lịch 7–30 ngày độc lập với tháng đang xem.")
+            if not response.success and advisor_context is not None:
+                response.success = True
+                response.message = "Đã lập kế hoạch từ số dư/sự kiện; chưa có lịch sử để dự báo thống kê."
+            return response
+        except (ValueError, TypeError, KeyError, OverflowError) as exc:
+            return TrendPredictionResponse(success=False, user_id=user_id, predictions=[], summary={},
+                                           message=f"Dữ liệu đầu vào không hợp lệ: {exc}")
+
+
+    def _predict_v12(self, user_id: str, transactions: List[Any],
+                      prediction_days: Optional[int] = None, year: Optional[int] = None,
+                      month: Optional[int] = None, *,
+                      advisor_context: Optional[Dict[str, Any]] = None,
+                      forecast_mode: str = "rolling") -> TrendPredictionResponse:
+        """V12: default rolling tomorrow -> tomorrow + N - 1, even across years.
+
+        rolling: prediction_days defaults to context.horizon_days or 7; supports
+                 1..30 days. year/month select MONTHLY REPORT only, never trim
+                 rolling predictions. Adviser uses the identical date window.
+        month: explicit legacy month view; days may be truncated at month end.
+
+        predictions/dailyForecastDetail/totals all describe forecastWindow.
+        actualSoFar/expectedMonthEnd/financialAnalysis describe analysisMonth.
+        monthlyBreakdown explicitly separates each partial window from its
+        full month estimate. Income allocation is not a dated salary promise.
+        """
+        try:
+            if forecast_mode not in ("rolling", "month"):
+                raise ValueError("forecast_mode phải là rolling hoặc month.")
+            if forecast_mode == "month":
+                response = self._predict_legacy_month(user_id, transactions, prediction_days,
+                                                      year, month, advisor_context=advisor_context)
+                if response.success:
+                    response.summary["forecastMode"] = "month"
+                    response.summary["insightVersion"] = "v12_cross_month"
+                return response
+            context = dict(advisor_context or {})
+            raw_days = prediction_days if prediction_days is not None else context.get("horizon_days", 7)
+            days = int(raw_days)
+            if isinstance(raw_days, bool) or days != float(raw_days) or not 1 <= days <= 30:
+                raise ValueError("prediction_days phải là số nguyên từ 1 đến 30.")
+            context["horizon_days"] = days
+            advisor = self.build_advisor(user_id, transactions, context)
+            today = self._local_day(advisor["asOf"], advisor["timezone"])
+            clean, warnings_out = self._advisor_transactions(transactions, advisor["timezone"], today)
+            if (year is None) != (month is None):
+                raise ValueError("Phải truyền đồng thời year và month hoặc bỏ cả hai.")
+            selected_year = int(year) if year is not None else today.year
+            selected_month = int(month) if month is not None else today.month
+            if year is not None and (isinstance(year, bool) or isinstance(month, bool)
+                                      or float(year) != selected_year or float(month) != selected_month):
+                raise ValueError("year/month phải là số nguyên.")
+            self._month_bounds(selected_year, selected_month)
+            dates = [today + timedelta(days=i) for i in range(1, days+1)]
+            periods = list(dict.fromkeys((d.year, d.month) for d in dates))
+            reports = {}
+            # Each month uses the same real history cutoff. Never feed generated
+            # September forecasts into October training as if they were actuals.
+            for yy, mm in list(dict.fromkeys(periods + [(selected_year, selected_month)])):
+                reports[(yy, mm)] = self._predict_month_trend(user_id, clean, None, yy, mm, today)
+            selected = reports[(selected_year, selected_month)]
+            summary = dict(selected.summary)
+            daily_rows = {}
+            for key, response in reports.items():
+                for row in response.summary.get("dailyForecastDetail", []):
+                    daily_rows[row["date"]] = dict(row)
+            details, predictions, suggestions = [], [], []
+            cumulative_income = cumulative_expense = 0
+            plan_by_date = {r["date"]: r for r in advisor["timeline"]}
+            safe = advisor["dailySafeToSpend"]["amount"]
+            for index, day in enumerate(dates, 1):
+                date_key = day.strftime("%Y-%m-%d")
+                row = daily_rows.get(date_key)
+                available = row is not None
+                if row is None:
+                    # Numeric zeros preserve legacy response schemas. Explicit
+                    # availability prevents interpreting missing history as no spending.
+                    row = {"date": date_key, "displayDate": day.strftime("%d/%m/%Y"),
+                           "weekday": ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"][day.weekday()],
+                           "predictedIncome": 0, "predictedExpense": 0, "confidence": 0.0,
+                           "incomeIsAllocation": True, "expenseIsAllocation": True,
+                           "description": "Chưa đủ lịch sử để ước tính thu–chi ngày này."}
+                income, expense = int(row["predictedIncome"]), int(row["predictedExpense"])
+                cumulative_income += income
+                cumulative_expense += expense
+                row.update({"index": index, "analysisMonth": day.strftime("%m/%Y"),
+                            "forecastAvailable": available, "predictedBalance": income-expense,
+                            "cumulativeIncome": cumulative_income, "cumulativeExpense": cumulative_expense,
+                            "cumulativeBalance": cumulative_income-cumulative_expense})
+                plan = plan_by_date[date_key]
+                # Statistics and cash commitments remain distinct; not added twice.
+                plan["statisticalForecast"] = {
+                    "income": income if available else None, "expense": expense if available else None,
+                    "incomeIsAllocation": row["incomeIsAllocation"],
+                    "expenseIsAllocation": row["expenseIsAllocation"],
+                    "usedAsConfirmedCash": False,
+                }
+                if plan["conservativeIntradayBalance"] is not None and plan["conservativeIntradayBalance"] < 0:
+                    kind, text = "cash_shortfall", "Có nguy cơ thiếu tiền; kiểm tra khoản đến hạn trước khi chi thêm."
+                elif plan["committedExpense"] > 0:
+                    kind, text = "bill_due", f"Giữ {plan['committedExpense']:,.0f}đ cho khoản chi đã xác nhận."
+                elif plan["confirmedIncome"] > 0:
+                    kind, text = "income_due", f"Có khoản thu xác nhận {plan['confirmedIncome']:,.0f}đ; chỉ cập nhật số dư khi thực nhận."
+                elif safe is not None:
+                    kind, text = "daily_plan", f"Mức chi linh hoạt thận trọng trong kế hoạch: tối đa khoảng {safe:,.0f}đ/ngày."
+                else:
+                    kind, text = "missing_balance", "Cập nhật số dư và lịch hóa đơn để tính mức chi an toàn."
+                suggestion = {"date": date_key, "type": kind, "text": text,
+                              "dailySafeToSpend": safe, "forecastAvailable": available,
+                              "action": {"type": "view_timeline", "label": "Xem kế hoạch ngày",
+                                         "payload": {"date": date_key}, "requiresUserConfirmation": False}}
+                row["suggestion"] = suggestion
+                plan["suggestion"] = suggestion
+                suggestions.append(suggestion)
+                details.append(row)
+                predictions.append(PredictedValue(date=date_key, predicted_income=income,
+                                                  predicted_expense=expense, confidence=row["confidence"],
+                                                  description=row["description"]))
+            breakdown = []
+            for yy, mm in periods:
+                rows = [r for r in details if r["analysisMonth"] == f"{mm:02d}/{yy}"]
+                monthly = reports[(yy, mm)].summary
+                inc = sum(r["predictedIncome"] for r in rows)
+                exp = sum(r["predictedExpense"] for r in rows)
+                breakdown.append({"month": f"{mm:02d}/{yy}", "start": rows[0]["date"],
+                                  "end": rows[-1]["date"], "daysInWindow": len(rows),
+                                  "forecastInWindow": {"income": inc, "expense": exp, "balance": inc-exp},
+                                  "actualSoFar": monthly.get("actualSoFar"),
+                                  "expectedFullMonth": monthly.get("expectedMonthEnd"),
+                                  "model": monthly.get("model"),
+                                  "forecastAvailable": reports[(yy, mm)].success})
+            total = {"days": days, "income": cumulative_income, "expense": cumulative_expense,
+                     "balance": cumulative_income-cumulative_expense}
+            window = {"start": dates[0].strftime("%Y-%m-%d"), "end": dates[-1].strftime("%Y-%m-%d"),
+                      "days": days, "crossesMonth": len(periods) > 1 or periods[0] != (today.year, today.month),
+                      "crossesYear": dates[0].year != dates[-1].year or dates[-1].year != today.year,
+                      "completeDailySeries": True, "startsTomorrow": True}
+            # Retain monthly financial insights with an explicit scope; do not
+            # relabel the rolling total as an end-of-month balance.
+            summary.update({
+                "insightVersion": "v12_cross_month", "forecastMode": "rolling",
+                "analysisMonth": f"{selected_month:02d}/{selected_year}",
+                "monthlyAnalysisScope": f"{selected_month:02d}/{selected_year}",
+                "currentDate": today.strftime("%Y-%m-%d"), "dataUntil": today.strftime("%Y-%m-%d"),
+                "predictionPeriod": f"{window['start']} - {window['end']}",
+                "forecastWindow": window, "dailyForecastPeriod": dict(window),
+                "dailyForecastCount": days, "dailyForecastDetail": details,
+                "totalPredictedIncome": cumulative_income, "totalPredictedExpense": cumulative_expense,
+                "predictedBalance": cumulative_income-cumulative_expense,
+                "forecastRemaining": total, "rollingForecast": dict(total),
+                "modelConfidence": round(sum(r["confidence"] for r in details)/days, 2),
+                "monthlyBreakdown": breakdown, "dailySuggestions": suggestions,
+                "personalAdvisor": advisor, "forecastAvailable": all(r["forecastAvailable"] for r in details),
+                "balanceMeaning": "net_cash_flow_not_wallet_balance",
+                "confidenceMeaning": "heuristic_score_not_accuracy_probability",
+                "forecastScopeNote": (
+                    "predictions và forecastRemaining thuộc forecastWindow xuyên tháng. "
+                    "actualSoFar, expectedMonthEnd, financialAnalysis thuộc monthlyAnalysisScope. "
+                    "personalAdvisor.timeline dùng số dư thật và khoản xác nhận; không cộng thu phân bổ vào số dư."),
+                "forecastExplanation": {
+                    "method": "Tính đầy đủ từng tháng từ cùng lịch sử thật, lấy đúng ngày trong cửa sổ, ghép liên tục và tính lại lũy kế.",
+                    "income": "Thu theo ngày là phân bổ tổng thu còn lại của từng tháng; không phải cam kết nhận tiền ngày đó.",
+                    "expense": "Giữ mô hình ngắn hạn cho phần tháng hiện tại theo engine; ngày thuộc tháng tương lai dùng phân bổ tổng tháng.",
+                    "forecastDays": days, "dailyDetailAvailable": True,
+                    "dailyDetailKey": "summary.dailyForecastDetail",
+                },
+                "warnings": list(dict.fromkeys(warnings_out + advisor["warnings"])),
+            })
+            if "trend" in summary:
+                summary["trend"] = dict(summary["trend"])
+                summary["trend"]["recommendation"] = (
+                    f"Xem kế hoạch {days} ngày từ {window['start']} đến {window['end']}; "
+                    "ưu tiên khoản đến hạn và đề xuất có căn cứ trong personalAdvisor.")
+            summary.setdefault("forecastStrategy", {})["windowPolicy"] = "rolling_calendar_days_no_month_cutoff"
+            # A useful card exists even without explicit upcoming events. Daily
+            # suggestions do not generate a push per day (avoids notification spam).
+            plan_id = self._stable_id(user_id, "rolling_plan", window["start"], window["end"])
+            if plan_id not in set(map(str, context.get("dismissed_card_ids", []))):
+                advisor["actionCards"].append({"id": plan_id, "type": "rolling_plan", "priority": 5,
+                    "title": f"Kế hoạch {days} ngày sắp tới",
+                    "body": f"Theo dõi liên tục từ {window['start']} đến {window['end']}, không dừng ở cuối tháng.",
+                    "dueDate": None,
+                    "actions": [{"type": "view_timeline", "label": "Xem các ngày sắp tới",
+                                 "payload": {"start": window["start"], "end": window["end"]},
+                                 "requiresUserConfirmation": False, "execution": "client_or_authenticated_api"}]})
+            return TrendPredictionResponse(
+                success=True, user_id=user_id, predictions=predictions, summary=summary,
+                message=(f"Dự báo liên tục {days} ngày: {window['start']} đến {window['end']}. "
+                         + ("" if clean else "Chưa có lịch sử: số 0 trong dự báo là placeholder, forecastAvailable=False. ")
+                         + "Số liệu theo tháng và lịch dòng tiền được tách riêng."))
+        except (ValueError, TypeError, KeyError, OverflowError) as exc:
+            return TrendPredictionResponse(success=False, user_id=user_id, predictions=[], summary={},
+                                           message=f"Dữ liệu đầu vào không hợp lệ: {exc}")
+
+
+    @staticmethod
+    def _normalized_text(value: Any) -> str:
+        value = unicodedata.normalize("NFD", str(value).lower().replace("đ", "d"))
+        return re.sub(r"\s+", " ", "".join(c for c in value if unicodedata.category(c) != "Mn")).strip()
+
+    def prepare_import_candidates(self, items: List[Dict[str, Any]],
+                                  existing_transactions: Optional[List[Any]] = None,
+                                  timezone: str = "Asia/Ho_Chi_Minh") -> Dict[str, Any]:
+        """Parse already-authorized notification text or OCR TEXT, not image bytes.
+        No device access, OCR engine, bank login or automatic ledger write here.
+        Input: id, source(bank_notification|wallet_notification|ocr_text), text,
+        occurred_at(optional ISO), account_id(optional), direction(optional enum).
+        Original text is not echoed/logged (may contain balances/account numbers).
+        Notification permission/OCR consent and storage belong to caller.
+        Exact source IDs should be persisted with imported transactions as import_id.
+        Soft matches are review flags, never silently discard legitimate transactions.
+        """
+        if not isinstance(items, list) or not all(isinstance(x, dict) for x in items):
+            raise ValueError("import_items phải là danh sách object.")
+        ZoneInfo(timezone)
+        candidates, seen = [], set()
+        existing = existing_transactions or []
+        imported_ids = {str(self._field(t, "import_id", default="")) for t in existing}
+        for item in items:
+            source = item.get("source")
+            sid = str(item.get("id", "")).strip()
+            if source not in ("bank_notification", "wallet_notification", "ocr_text") or not sid:
+                raise ValueError("Import cần id ổn định và source hợp lệ.")
+            account = str(item.get("account_id", ""))
+            key = self._stable_id(source, account, sid)
+            if key in seen:
+                continue
+            seen.add(key)
+            txt = self._normalized_text(item.get("text", ""))
+            direction = item.get("direction")
+            if direction not in (None, "income", "expense", "transfer"):
+                raise ValueError("direction phải là income, expense hoặc transfer.")
+            debit = bool(re.search(r"ghi no|thanh toan|chi tieu|tru tien|\bdebit\b", txt))
+            credit = bool(re.search(r"ghi co|nhan tien|cong tien|\bcredit\b", txt))
+            if direction is None and debit != credit:
+                direction = "expense" if debit else "income"
+            values = []
+            # Only amounts attached to transaction labels, never the available balance.
+            amount_pattern = r"([0-9][0-9.,]*(?:\s[0-9]{3})*)\s*(?:vnd|vnđ|dong|đ)\b"
+            label = (r"(?:tong thanh toan|tong cong|grand total|total)\s*[:=]?\s*" if source == "ocr_text"
+                     else r"(?:ghi no|ghi co|thanh toan|nhan tien|tru tien|cong tien|debit|credit|so tien(?: giao dich)?)\s*[:=]?\s*[+-]?\s*")
+            for match in re.finditer(label + amount_pattern, txt):
+                raw = match.group(1).replace(" ", "")
+                # VND whole amounts only; avoid interpreting 12.50 as 1,250.
+                if re.fullmatch(r"\d+|\d{1,3}(?:[.,]\d{3})+", raw):
+                    amount = int(raw.replace(",", "").replace(".", ""))
+                    if amount > 0:
+                        values.append(amount)
+            amounts = sorted(set(values))
+            amount = amounts[0] if len(amounts) == 1 else None
+            if source == "ocr_text" and direction is None:
+                direction = "expense"  # receipt candidate only; user confirms it was paid
+            day = None
+            if item.get("occurred_at") is not None:
+                day = self._local_day(item["occurred_at"], timezone).strftime("%Y-%m-%d")
+            possible_duplicate = False
+            if amount is not None and day and direction in ("income", "expense"):
+                for tx in existing:
+                    try:
+                        tx_day = self._local_day(self._field(tx, "date_time", "dateTime", "date"), timezone).strftime("%Y-%m-%d")
+                        money = self._number(self._field(tx, "money", "amount"), "money", True)
+                        tx_kind = "expense" if self._field(tx, "is_expense", "isExpense") is True else (
+                            "income" if self._field(tx, "is_income", "isIncome") is True else "expense" if money < 0 else "income")
+                        if tx_day == day and abs(money) == amount and tx_kind == direction:
+                            possible_duplicate = True
+                    except (ValueError, TypeError):
+                        continue
+            missing = [name for name, value in (("amount", amount), ("date", day), ("direction", direction)) if value is None]
+            candidates.append({"importId": key, "sourceId": sid, "source": source,
+                               "amount": amount, "currency": "VND", "direction": direction, "date": day,
+                               "status": "already_imported" if key in imported_ids else "needs_review",
+                               "missingFields": missing, "possibleDuplicate": possible_duplicate,
+                               "ambiguousAmount": len(amounts) > 1, "requiresUserConfirmation": True,
+                               "ledgerWritten": False})
+        return {"candidates": candidates, "writesPerformed": 0,
+                "capability": "parse_notification_or_ocr_text_only",
+                "note": "Thiếu/không rõ số tiền hoặc ngày phải xác nhận; chuyển khoản nội bộ không tính thành thu nhập."}
+
+    def summarize_net_worth(self, assets: List[Dict[str, Any]], liabilities: List[Dict[str, Any]],
+                            reference_date: Any, timezone: str = "Asia/Ho_Chi_Minh") -> Dict[str, Any]:
+        """Snapshot only. VND valuations supplied by caller, no live market prices.
+        Each holding exactly once. Do not pass both an account total and positions
+        inside it. parent_id links children to a parent; overlapping input is rejected.
+        Real estate/stock values do not become available cash automatically.
+        Assets: id, type(cash|savings|stocks|real_estate|other), value, valued_at.
+        Liabilities: id, outstanding, valued_at. Currency defaults VND.
+        """
+        today = self._local_day(reference_date, timezone)
+        if not all(isinstance(v, list) and all(isinstance(x, dict) for x in v) for v in (assets, liabilities)):
+            raise ValueError("assets/liabilities phải là danh sách object.")
+        ids = [str(x.get("id", "")).strip() for x in assets+liabilities]
+        if any(not x for x in ids) or len(ids) != len(set(ids)):
+            raise ValueError("Mỗi tài sản/khoản nợ cần id duy nhất.")
+        if any(str(x.get("parent_id", "")) in set(ids) for x in assets):
+            raise ValueError("Không cộng đồng thời tổng tài khoản và tài sản con; chỉ gửi một cấp.")
+        asset_rows, debt_rows, warnings_out = [], [], []
+        totals = {key: 0.0 for key in ("cash", "savings", "stocks", "real_estate", "other")}
+        for source, is_debt in ((assets, False), (liabilities, True)):
+            for x in source:
+                if x.get("currency", "VND") != "VND":
+                    raise ValueError("Cần quy đổi tài sản/nợ về VND trước khi tổng hợp.")
+                value = self._number(x.get("outstanding") if is_debt else x.get("value"), "valuation")
+                valued = self._local_day(x.get("valued_at"), timezone)
+                if valued > today:
+                    raise ValueError("Ngày định giá không được nằm trong tương lai.")
+                kind = "debt" if is_debt else x.get("type")
+                if not is_debt and kind not in totals:
+                    raise ValueError("Loại tài sản không hợp lệ.")
+                age = (today-valued).days
+                stale_after = 7 if kind == "stocks" else 180 if kind == "real_estate" else 30
+                stale = age > stale_after
+                row = {"id": str(x["id"]), "type": kind, "value": round(value),
+                       "valuedAt": valued.strftime("%Y-%m-%d"), "valuationAgeDays": age, "stale": stale}
+                if stale:
+                    warnings_out.append(f"Định giá {x['id']} đã cũ ({age} ngày).")
+                if is_debt:
+                    debt_rows.append(row)
+                else:
+                    totals[kind] += value
+                    asset_rows.append(row)
+        total_assets = sum(totals.values())
+        total_debt = sum(x["value"] for x in debt_rows)
+        available = bool(asset_rows or debt_rows)
+        return {"currency": "VND", "asOf": today.strftime("%Y-%m-%d"),
+                "totalAssets": round(total_assets) if available else None,
+                "totalLiabilities": round(total_debt) if available else None,
+                "netWorth": round(total_assets-total_debt) if available else None,
+                "assetsByType": {k:round(v) for k,v in totals.items()}, "assets": asset_rows,
+                "liabilities": debt_rows, "warnings": warnings_out,
+                "status": "provided_holdings_only" if available else "missing_data",
+                "usedForSafeToSpend": False,
+                "note": "Chỉ tổng hợp tài sản đã cung cấp; số dư khả dụng được truyền riêng, không cộng thêm lần nữa."}
+
+    def _balanced_trend(self, clean: List[Any], today: pd.Timestamp,
+                        complete_history: bool, advisor: Dict[str, Any]) -> Dict[str, Any]:
+        """Compare completed 7-day windows, not partial week vs full week.
+        No 'improvement' conclusion when missing data can masquerade as lower spend.
+        """
+        end = today-timedelta(days=1)
+        start = end-timedelta(days=6)
+        prior_start, prior_end = start-timedelta(days=7), start-timedelta(days=1)
+        recent = [x for x in clean if start <= x.date_time <= end]
+        previous = [x for x in clean if prior_start <= x.date_time <= prior_end]
+        enough = complete_history and bool(clean) and clean[0].date_time <= prior_start
+        def totals(rows):
+            inc = sum(abs(t.money) for t in rows if t.is_income)
+            exp = sum(abs(t.money) for t in rows if t.is_expense)
+            return {"income": round(inc), "expense": round(exp), "netCashFlow": round(inc-exp)}
+        a, b = totals(recent), totals(previous)
+        change = ((a["expense"]-b["expense"])/b["expense"]*100) if b["expense"] else None
+        positives, attention = [], []
+        if enough and change is not None and change <= -5:
+            positives.append({"text": f"Tổng chi 7 ngày đã kết thúc giảm {abs(change):.1f}% so với 7 ngày trước.",
+                              "basis": "observed_expense_change", "doesNotImply": "Mọi khoản giảm đều tốt; kiểm tra hóa đơn bị dời lịch."})
+        if enough and a["netCashFlow"] > 0:
+            positives.append({"text": f"Thu trừ chi trong 7 ngày đạt {a['netCashFlow']:,.0f}đ.",
+                              "basis": "observed_net_cash_flow", "doesNotImply": "Đây là khoản tiết kiệm hoặc số dư ví."})
+        if enough and change is not None and change >= 20:
+            attention.append({"type": "spending_change", "text": f"Chi tăng {change:.1f}%; xem khoản lớn và hóa đơn định kỳ trước khi kết luận chi quá mức."})
+        if advisor.get("firstShortfallDate"):
+            attention.append({"type": "cash_shortfall", "text": f"Kế hoạch hiện tại có nguy cơ thiếu tiền vào {advisor['firstShortfallDate']}."})
+        if not enough:
+            status, headline = "insufficient_evidence", "Cần lịch sử đầy đủ để đánh giá xu hướng đáng tin cậy."
+        elif any(x["type"] == "cash_shortfall" for x in attention):
+            status, headline = "needs_action", "Có khoản cần sắp xếp để tránh thiếu tiền; xem lịch đến hạn."
+        elif positives and attention:
+            status, headline = "mixed", "Dòng tiền có điểm tích cực và một số khoản cần kiểm tra."
+        elif positives:
+            status, headline = "positive_signals", "Đã có tín hiệu tích cực trong dữ liệu gần đây."
+        else:
+            status, headline = "monitor", "Tiếp tục theo dõi theo kế hoạch; chưa có cơ sở kết luận xấu đi."
+        return {"status": status, "headline": headline, "positiveSignals": positives, "attentionPoints": attention,
+                "comparisonType": "last_7_completed_days_vs_previous_7_completed_days",
+                "currentPeriod": {"start": str(start.date()), "end": str(end.date()), **a},
+                "previousPeriod": {"start": str(prior_start.date()), "end": str(prior_end.date()), **b},
+                "expenseChangePercent": round(change,1) if change is not None else None,
+                "historyConfirmedComplete": complete_history, "conclusionsSupported": enough,
+                "note": "Loại hôm nay vì ngày chưa kết thúc. Không diễn giải lịch nhận lương theo tuần thành tăng/giảm thu nhập dài hạn."}
+
+    def _category_recommendations(self, clean: List[Any], dates: List[str],
+                                  context: Dict[str, Any], advisor: Dict[str, Any],
+                                  today: pd.Timestamp) -> List[Dict[str, Any]]:
+        """V14: observed facts -> dated, conditional action. Never invent a category.
+        category_labels maps IDs to labels; type_name/typeName are also supported.
+        A budget warning is scheduled once in the matching month; spending trends
+        require complete history. Habit advice needs >=3 matching weekday samples.
+        Only near-term habits (next 7 days) are used; future events keep exact dates.
+        """
+        labels = context.get("category_labels", {})
+        policies = context.get("category_policies", {})
+        if not isinstance(labels, dict) or not isinstance(policies, dict):
+            raise ValueError("category_labels và category_policies phải là object.")
+        normalize = lambda v: self._normalized_text(v).replace("_", " ")
+        label_map = {str(k): str(v).strip() for k,v in labels.items()}
+        policy_map = {normalize(k): v for k,v in policies.items()}
+        aliases = {
+            "coffee": ("Cà phê, đồ uống", "coffee"), "ca phe": ("Cà phê, đồ uống", "coffee"),
+            "food": ("Ăn uống", "food"), "an uong": ("Ăn uống", "food"),
+            "eating out": ("Ăn ngoài", "food"), "an ngoai": ("Ăn ngoài", "food"),
+            "shopping": ("Mua sắm", "shopping"), "mua sam": ("Mua sắm", "shopping"),
+            "entertainment": ("Giải trí", "entertainment"), "giai tri": ("Giải trí", "entertainment"),
+            "transport": ("Đi lại", "transport"), "di lai": ("Đi lại", "transport"),
+            "rent": ("Tiền nhà", "essential"), "tien nha": ("Tiền nhà", "essential"),
+            "health": ("Y tế", "essential"), "y te": ("Y tế", "essential"),
+            "education": ("Học tập", "essential"), "hoc tap": ("Học tập", "essential"),
+        }
+        def identity(raw, cid=""):
+            label = label_map.get(str(cid)) or label_map.get(str(raw)) or str(raw).strip()
+            if not label or re.fullmatch(r"[+-]?\d+(?:\.0+)?", label):
+                return None
+            return normalize(label)
+        buckets = {}
+        for tx in clean:
+            if not tx.is_expense:
+                continue
+            cid = getattr(tx, "category_id", "")
+            key = identity(tx.category, cid)
+            if key is None:
+                continue
+            b = buckets.setdefault(key, {"label": label_map.get(cid) or label_map.get(tx.category) or tx.category,
+                                         "ids": set(), "transactions": []})
+            b["ids"].add(cid)
+            b["transactions"].append(tx)
+        timeline = {r["date"]:r for r in advisor.get("timeline", [])}
+        output = []
+        emitted = set()
+        advised_categories = set()
+        complete = context.get("history_complete") is True
+        history_start = min((t.date_time for t in clean), default=today)
+        history_last = max((t.date_time for t in clean), default=today-timedelta(days=999))
+        for date_key in dates:
+            day = pd.Timestamp(date_key)
+            if day <= today:
+                output.append({"date":date_key,"recommendations":[],"status":"historical_no_action"})
+                continue
+            candidates = []
+            def add(kind, category_key, title, reason, suggestion, priority, evidence, label=None):
+                token = (kind, category_key)
+                if token in emitted:
+                    return
+                candidates.append({"id":self._stable_id("v14",date_key,kind,category_key),
+                    "date":date_key,"type":kind,"category":label,
+                    "title":title,"reason":reason,"suggestion":suggestion,
+                    "priority":priority,"evidence":evidence,"amountIsSpendingTarget":False,
+                    "action":{}, "_token":token})
+            plan = timeline.get(date_key,{})
+            # Only actual confirmed commitments create payment advice.
+            for event in plan.get("events",[]):
+                if event.get("confirmed") is not True or event.get("kind") != "expense":
+                    continue
+                amount = float(event["amount"])
+                add("scheduled_payment",event["id"],f"Ưu tiên khoản {event['title']}",
+                    f"Khoản đã xác nhận {amount:,.0f}đ, đến hạn {event['dueDate']}.",
+                    "Kiểm tra đã thanh toán chưa; nếu chưa, dành tiền cho khoản này trước khi mua sắm thêm.",
+                    1,{"source":"confirmed_event","eventId":event["id"],"amount":round(amount),"dueDate":event["dueDate"]})
+            for key,bucket in buckets.items():
+                raw_label=bucket["label"]
+                default_label, default_kind=aliases.get(key,(raw_label,"unknown"))
+                policy=policy_map.get(key,{})
+                for cid in bucket["ids"]:
+                    if cid and normalize(cid) in policy_map:
+                        policy=policy_map[normalize(cid)]
+                if not isinstance(policy,dict):
+                    raise ValueError("Mỗi category_policy phải là object.")
+                label=str(policy.get("label") or default_label)
+                kind=str(policy.get("advice_type") or default_kind)
+                essential=policy.get("essential") is True or default_kind=="essential"
+                txs=bucket["transactions"]
+                end=today-timedelta(days=1)
+                recent_start=end-timedelta(days=27)
+                daily={}
+                for t in txs:
+                    if recent_start<=t.date_time<=end:
+                        daily[t.date_time]=daily.get(t.date_time,0)+abs(t.money)
+                evidence={"source":"recorded_transactions","asOf":str(today.date()),
+                          "category":label,"historyStart":str(recent_start.date()),"historyEnd":str(end.date()),
+                          "transactionCount":sum(1 for t in txs if recent_start<=t.date_time<=end),
+                          "spendingDays":len(daily)}
+                # Match budget by stable category ID OR normalized label, never budget document ID.
+                relevant=[]
+                for budget in context.get("budgets",[]):
+                    if budget.get("isActive",True) is False:
+                        continue
+                    by_id=str(budget.get("type",budget.get("category_id","")))
+                    by_label=identity(budget.get("category",budget.get("typeName",budget.get("type_name",""))),by_id)
+                    match=(by_id and by_id in bucket["ids"]) or by_label==key
+                    if match and int(budget.get("year",today.year))==day.year and int(budget.get("month",today.month))==day.month:
+                        relevant.append(budget)
+                if len(relevant)==1 and (day.year,day.month)==(today.year,today.month):
+                    budget=relevant[0]
+                    limit=self._number(budget.get("limit",budget.get("limitMoney")),"budget.limit")
+                    actual=sum(abs(t.money) for t in txs if (t.date_time.year,t.date_time.month)==(day.year,day.month))
+                    spent=self._number(budget["spent"],"budget.spent") if budget.get("spent") is not None else actual
+                    if budget.get("spent") is not None or complete:
+                        remaining=max(limit-spent,0)
+                        elapsed=today.day
+                        month_days=calendar.monthrange(today.year,today.month)[1]
+                        pressure=spent>limit or (limit>0 and spent>=limit*.85 and elapsed/month_days<.85)
+                        if pressure:
+                            over=max(spent-limit,0)
+                            title=(f"{label}: đã vượt ngân sách" if over else f"{label}: ngân sách đang dùng nhanh")
+                            reason=f"Tháng {day.month:02d}/{day.year} đã ghi nhận {spent:,.0f}đ / {limit:,.0f}đ; còn {remaining:,.0f}đ."
+                            instruction=("Giữ các khoản thiết yếu; xem lại khoản có thể dời lịch hoặc điều chỉnh ngân sách theo nhu cầu thực tế."
+                                if essential else "Hoãn khoản chưa cần thiết trong danh mục này; kiểm tra phần ngân sách còn lại trước khi mua thêm.")
+                            add("budget_pressure",key+str(day.to_period('M')),title,reason,instruction,2,
+                                {**evidence,"source":"budget_and_actuals","budgetId":str(budget["id"]),"limit":round(limit),
+                                 "spent":round(spent),"remaining":round(remaining),"overBudget":round(over),
+                                 "elapsedDays":elapsed,"daysInMonth":month_days},label)
+                # Compare two complete equal windows; only assert increase with reliable input.
+                last7={d:v for d,v in daily.items() if end-timedelta(days=6)<=d<=end}
+                prev7={d:v for d,v in daily.items() if end-timedelta(days=13)<=d<end-timedelta(days=6)}
+                a,b=sum(last7.values()),sum(prev7.values())
+                if complete and history_start<=end-timedelta(days=13) and (today-history_last).days<=3 and len(last7)>=2 and len(prev7)>=2 and b>0 and a>=b*1.25 and a-b>=50000 and day<=today+timedelta(days=7):
+                    increase=(a-b)/b*100
+                    instruction=("Đối chiếu các khoản phát sinh mới với nhu cầu thực tế; không cắt khoản thiết yếu chỉ vì tổng chi tăng."
+                        if essential else "Kiểm tra các lần mua phát sinh thêm; thử hoãn một khoản không cần thiết trước khi mua tiếp.")
+                    add("category_increase",key,f"Kiểm tra khoản tăng ở {label}",
+                        f"7 ngày đã kết thúc chi {a:,.0f}đ, so với {b:,.0f}đ trong 7 ngày trước (+{increase:.0f}%).",
+                        instruction,3,{**evidence,"current7Days":round(a),"previous7Days":round(b),
+                            "increasePercent":round(increase,1),"comparisonStart":str((end-timedelta(days=13)).date())},label)
+                # Habit alone is not overspending. Give preparation advice, no demand to spend/cut.
+                weekday_values=[v for d,v in daily.items() if d.weekday()==day.weekday()]
+                if day<=today+timedelta(days=7) and len(daily)>=6 and len(weekday_values)>=3 and (today-history_last).days<=7:
+                    steps={
+                        "coffee":"Nếu hôm nay vẫn mua đồ uống, chọn một lần mua theo nhu cầu; có thể mang đồ uống từ nhà nếu thuận tiện.",
+                        "food":"Nếu có kế hoạch ăn ngoài hôm nay, chọn trước bữa ăn phù hợp; tự chuẩn bị một bữa nếu thuận tiện.",
+                        "shopping":"Nếu định mua sắm hôm nay, lập danh sách món cần mua; để món chưa cần thiết sang ngày khác.",
+                        "entertainment":"Nếu có lịch giải trí hôm nay, chọn trước hoạt động và kiểm tra ngân sách còn lại.",
+                        "transport":"Nếu cần đi lại hôm nay, gộp các việc cùng tuyến khi thuận tiện; ưu tiên nhu cầu đi lại thiết yếu.",
+                    }
+                    if not essential and kind in steps:
+                        typical=round(float(np.median(weekday_values)))
+                        add("weekday_preparation",key,f"Chuẩn bị trước cho {label}",
+                            f"Trong 28 ngày đã có {len(weekday_values)} ngày cùng thứ chi {label}; trung vị {typical:,.0f}đ mỗi ngày có phát sinh.",
+                            steps[kind],4,{**evidence,"sameWeekdaySamples":len(weekday_values),"medianActiveDayAmount":typical},label)
+            candidates.sort(key=lambda r:(r['priority'],r['title']))
+            chosen=[]
+            categories=set()
+            for candidate in candidates:
+                cat=candidate.get("category")
+                if cat and (cat in categories or cat in advised_categories):
+                    continue
+                if len(chosen)>=2:
+                    break
+                categories.add(cat)
+                if cat:
+                    advised_categories.add(cat)
+                emitted.add(candidate.pop("_token"))
+                chosen.append(candidate)
+            output.append({"date":date_key,"recommendations":chosen,
+                           "status":"grounded" if chosen else "no_new_evidence",
+                           "note":"Không tạo gợi ý mới khi chưa có căn cứ hoặc nội dung đã được nhắc trong kế hoạch."})
+        return output
+
+    def predict_trend(self, user_id: str, transactions: List[Any],
+                      prediction_days: Optional[int] = None, year: Optional[int] = None,
+                      month: Optional[int] = None, *,
+                      advisor_context: Optional[Dict[str, Any]] = None,
+                      forecast_mode: str = "rolling") -> TrendPredictionResponse:
+        """V13 additive summary: trendAnalysis, spendingRecommendations, importReview,
+        netWorth. Extra context: history_complete (explicit True only), import_items,
+        assets, liabilities, category_policies. See module documentation for schemas.
+        Import candidates NEVER enter forecasts until confirmed in the real ledger.
+        """
+        try:
+            c=dict(advisor_context or {})
+            if not isinstance(c.get("category_labels", {}), dict):
+                raise ValueError("category_labels phải là object.")
+            # Firestore budget items often omit spent: derive only when the caller
+            # explicitly confirms a complete transaction history; never assume 0.
+            budget_warnings = []
+            if c.get("budgets"):
+                timezone = str(c.get("timezone", "Asia/Ho_Chi_Minh"))
+                ref = self._local_day(c.get("reference_date") or datetime.now(ZoneInfo(timezone)), timezone)
+                normalized_txs, _ = self._advisor_transactions(transactions, timezone, ref)
+                normalized_budgets = []
+                for original in c["budgets"]:
+                    budget = dict(original)
+                    if budget.get("isActive", True) is False:
+                        continue
+                    if budget.get("spent") is None:
+                        if c.get("history_complete") is not True:
+                            budget_warnings.append("Có ngân sách chưa có số đã chi; chưa dùng để kết luận vượt hạn mức.")
+                            continue
+                        bid = str(budget.get("type", budget.get("category_id", "")))
+                        name = self._normalized_text(budget.get("category", budget.get("typeName", budget.get("type_name", ""))))
+                        yy, mm = int(budget.get("year", ref.year)), int(budget.get("month", ref.month))
+                        if (yy, mm) > (ref.year, ref.month):
+                            budget["spent"] = 0.0
+                        else:
+                            budget["spent"] = sum(abs(t.money) for t in normalized_txs if t.is_expense
+                                and (t.date_time.year, t.date_time.month)==(yy, mm)
+                                and ((bid and t.category_id==bid) or (name and self._normalized_text(t.category)==name)))
+                    normalized_budgets.append(budget)
+                c["budgets"] = normalized_budgets
+            response=self._predict_v12(user_id,transactions,prediction_days,year,month,
+                                       advisor_context=c,forecast_mode=forecast_mode)
+            if not response.success:
+                return response
+            summary=response.summary
+            summary.setdefault("warnings", []).extend(budget_warnings)
+            advisor=summary["personalAdvisor"]
+            today=self._local_day(advisor["asOf"],advisor["timezone"])
+            clean,_=self._advisor_transactions(transactions,advisor["timezone"],today)
+            unresolved = sorted({t.category for t in clean if t.is_expense
+                and re.fullmatch(r"[+-]?\d+(?:\.0+)?", t.category)
+                and not c.get("category_labels", {}).get(t.category)
+                and not c.get("category_labels", {}).get(getattr(t, "category_id", ""))})
+            if unresolved:
+                summary.setdefault("warnings", []).append(
+                    "Một số giao dịch chỉ có mã danh mục; chưa đủ tên danh mục để đưa ra gợi ý cụ thể.")
+            summary["categoryResolution"] = {"unresolvedIds": unresolved,
+                "requiredFields": "type_name/typeName hoặc advisor_context.category_labels"}
+            balanced=self._balanced_trend(clean,today,c.get("history_complete") is True,advisor)
+            detail=summary.get("dailyForecastDetail",[])
+            advice=self._category_recommendations(clean,[d["date"] for d in detail],c,advisor,today)
+            by_date={x["date"]:x for x in advice}
+            for row in detail:
+                row["spendingRecommendations"]=by_date[row["date"]]["recommendations"]
+            for row in advisor["timeline"]:
+                row["spendingRecommendations"]=by_date.get(row["date"],{}).get("recommendations",[])
+            # Remove obsolete daily-allowance UI text and duplicated generic cards.
+            advisor["actionCards"] = [x for x in advisor.get("actionCards", [])
+                if x.get("type") not in ("missing_balance", "reduce_spending", "budget_pressure")]
+            advisor.pop("dailySafeToSpend", None)
+            advisor["warnings"] = [w for w in advisor.get("warnings", [])
+                if "available_balance" not in w and "mức chi an toàn" not in w]
+            summary["warnings"] = [w for w in summary.get("warnings", [])
+                if "available_balance" not in w and "mức chi an toàn" not in w]
+            # Keep dailySuggestions legacy object shape; enrich with concrete actions.
+            for row in summary.get("dailySuggestions",[]):
+                recs=by_date.get(row["date"],{}).get("recommendations",[])
+                row["recommendations"]=recs
+                row.pop("dailySafeToSpend", None)
+                if row.get("type") in ("daily_plan", "missing_balance", "reduce_spending"):
+                    row["type"] = "category_advice" if recs else "no_new_evidence"
+                    row["text"] = recs[0]["suggestion"] if recs else ""
+                    row["action"] = {}
+            for row in detail + advisor.get("timeline", []):
+                date_key = row["date"]
+                suggestion = next((x for x in summary.get("dailySuggestions", []) if x["date"] == date_key), None)
+                if suggestion is not None:
+                    row["suggestion"] = suggestion
+                else:
+                    row.pop("suggestion", None)
+            for day in advice[:7]:
+                for rec in day["recommendations"]:
+                    if rec["id"] in set(map(str,c.get("dismissed_card_ids",[]))):
+                        continue
+                    advisor["actionCards"].append({"id":rec["id"],"type":"category_advice",
+                        "title":rec["title"],"body":rec["suggestion"],"reason":rec["reason"],
+                        "priority":rec["priority"]+2,"dueDate":rec["date"],"actions":[], "evidence":rec["evidence"]})
+            advisor["actionCards"].sort(key=lambda x:(x["priority"],x.get("dueDate") or "",x["id"]))
+            summary.update({"insightVersion":"v14_evidence_based_advice", "trendAnalysis":balanced,
+                            "spendingRecommendations":advice,
+                            "importReview":self.prepare_import_candidates(c.get("import_items",[]),transactions,advisor["timezone"]),
+                            "netWorth":self.summarize_net_worth(c.get("assets",[]),c.get("liabilities",[]),today,advisor["timezone"])})
+            # Change old UI text too: do not leave an unqualified pessimistic legacy headline.
+            summary.setdefault("trend",{})["recommendation"]=balanced["headline"]
+            summary["trend"]["expenseTrend"]=(
+                f"Chi trong 7 ngày đã kết thúc: {balanced['currentPeriod']['expense']:,.0f}đ; "
+                f"7 ngày trước: {balanced['previousPeriod']['expense']:,.0f}đ. "
+                + ("" if balanced["conclusionsSupported"] else "Chưa xác nhận lịch sử đầy đủ để kết luận xu hướng."))
+            summary["trend"]["incomeTrend"]="Thu nhập cần xem theo kỳ nhận tiền; không kết luận tăng/giảm chỉ từ lịch trả lương giữa hai tuần."
+            financial=summary.get("financialAnalysis")
+            if financial is not None:
+                financial["interpretation"]=balanced["headline"]
+                if not balanced["conclusionsSupported"] and not advisor.get("firstShortfallDate"):
+                    financial["risk"]={"level":"unknown","reason":"Lịch sử chưa được xác nhận đầy đủ; chưa đủ cơ sở kết luận rủi ro thấp hay cao."}
+            return response
+        except (ValueError,TypeError,KeyError,OverflowError) as exc:
+            return TrendPredictionResponse(success=False,user_id=user_id,predictions=[],summary={},
+                                           message=f"Dữ liệu đầu vào không hợp lệ: {exc}")
 
 
 lstm_service = LSTMService()
