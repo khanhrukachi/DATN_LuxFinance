@@ -2,7 +2,6 @@ import 'package:currency_text_input_formatter/currency_text_input_formatter.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/features/spending/add_spending/add_friend_screen.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';

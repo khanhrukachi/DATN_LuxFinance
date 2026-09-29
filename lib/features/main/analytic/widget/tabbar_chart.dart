@@ -52,8 +52,8 @@ Widget tabBarChart({required TabController controller}) {
                 unselectedLabelColor:
                 isDark ? Colors.white70 : Colors.black54,
                 tabs: const [
-                  Icon(FontAwesomeIcons.chartColumn, size: 20),
-                  Icon(FontAwesomeIcons.chartPie, size: 20),
+                  FaIcon(FontAwesomeIcons.chartColumn, size: 20),
+                  FaIcon(FontAwesomeIcons.chartPie, size: 20),
                 ],
               ),
             ),

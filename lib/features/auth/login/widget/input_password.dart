@@ -56,7 +56,7 @@ class InputPassword extends StatelessWidget {
             action();
           },
           splashColor: Colors.transparent,
-          icon: Icon(
+          icon: FaIcon(
             hide ? FontAwesomeIcons.eyeSlash : FontAwesomeIcons.eye,
             size: 20,
           ),

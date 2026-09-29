@@ -41,3 +41,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ==========================================
+# Python & Backend Virtual Environment
+# ==========================================
+.venv/
+backend/.venv/
+**/__pycache__/
+*.pyc
+.env
+
+# ==========================================
+# Android & Flutter Sub-builds
+# ==========================================
+build/
+**/build/
+android/.gradle/
+android/app/build/

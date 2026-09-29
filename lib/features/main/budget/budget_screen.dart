@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/edit_budget/edit_budget_screen.dart';
 import 'package:personal_financial_management/features/main/budget/widget/total_budget_card.dart';

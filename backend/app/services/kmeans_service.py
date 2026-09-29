@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
 from collections import Counter
 from datetime import datetime
 
@@ -196,7 +197,26 @@ class KMeansService:
         df['is_investment'] = df.apply(lambda x: check_group(x, 'investment'), axis=1)
         
         df['log_amount'] = np.log1p(df['amount'])
-        
+
+        # Cyclical time encoding: 23:00 and 00:00 / Sunday and Monday are close in time.
+        df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24.0)
+        df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24.0)
+        df['weekday_sin'] = np.sin(2 * np.pi * df['weekday'] / 7.0)
+        df['weekday_cos'] = np.cos(2 * np.pi * df['weekday'] / 7.0)
+
+        # Relative spending features make clustering personalized to each user.
+        user_avg = max(float(df['amount'].mean()), 1.0)
+        df['amount_vs_user_avg'] = df['amount'] / user_avg
+
+        category_avg = df.groupby('original_key')['amount'].transform('mean').replace(0, np.nan)
+        df['amount_vs_category_avg'] = (df['amount'] / category_avg).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+
+        # Frequency/context features. Values are ratios so they remain comparable across users.
+        category_counts = df.groupby('original_key')['id'].transform('count')
+        df['category_frequency'] = category_counts / max(len(df), 1)
+        daily_counts = df.groupby('date')['id'].transform('count')
+        df['daily_frequency'] = daily_counts / max(float(daily_counts.max()), 1.0)
+
         return df
 
     def _get_profile_key_strategy(self, segment_df: pd.DataFrame, full_df: pd.DataFrame) -> str:
@@ -254,43 +274,93 @@ class KMeansService:
             percentage=round(len(merged_df) / len(full_df) * 100, 1)
         )
 
+    def _select_optimal_k(self, X: np.ndarray, requested_k: Optional[int] = None) -> tuple[int, float]:
+        """Select K with Silhouette Score. Returns (best_k, best_score)."""
+        n_samples = len(X)
+        if n_samples < 3:
+            return 1, 0.0
+
+        if requested_k is not None:
+            k = max(2, min(int(requested_k), n_samples - 1))
+            labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
+            if len(np.unique(labels)) < 2:
+                return k, 0.0
+            return k, float(silhouette_score(X, labels))
+
+        # Avoid creating tiny, meaningless clusters for small personal datasets.
+        max_k = min(6, n_samples - 1, max(2, n_samples // 8))
+        best_k, best_score = 2, -1.0
+        for k in range(2, max_k + 1):
+            labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
+            if len(np.unique(labels)) < 2:
+                continue
+            score = float(silhouette_score(X, labels))
+            if score > best_score:
+                best_k, best_score = k, score
+        return best_k, max(best_score, 0.0)
+
     def cluster_spending(self, user_id: str, transactions: List[SpendingItem], n_clusters: int = None) -> ClusteringResponse:
         df = self._extract_features(transactions)
-        
-        if df.empty or len(df) < 5:
+
+        # K-Means on very small samples is unstable. Keep a conservative minimum.
+        if df.empty or len(df) < 10:
             return ClusteringResponse(
-                success=False, user_id=user_id, clusters=[], user_profile={}, 
-                recommendations=["Bạn cần nhập ít nhất 5 giao dịch chi tiêu để hệ thống có đủ dữ liệu phân tích."], 
+                success=False, user_id=user_id, clusters=[], user_profile={},
+                recommendations=[
+                    "Bạn cần ít nhất 10 giao dịch chi tiêu để hệ thống bắt đầu phân tích hành vi. "
+                    "Từ 30 giao dịch trở lên, kết quả thường có ý nghĩa hơn."
+                ],
                 message="Dữ liệu chưa đủ"
             )
 
-        n_clusters_calc = max(3, min(6, len(df) // 5))
-        
-        X_features = df[['log_amount', 'is_weekend', 'is_essential', 'is_entertainment', 'is_investment']].values
+        feature_columns = [
+            'log_amount',
+            'hour_sin', 'hour_cos',
+            'weekday_sin', 'weekday_cos',
+            'is_weekend', 'is_start_month', 'is_end_month',
+            'amount_vs_user_avg', 'amount_vs_category_avg',
+            'category_frequency', 'daily_frequency',
+            'is_essential', 'is_entertainment', 'is_investment',
+        ]
+
+        X_features = df[feature_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0).values
         X = self.scaler.fit_transform(X_features)
-        
-        kmeans = KMeans(n_clusters=n_clusters_calc, random_state=42, n_init=10)
+
+        best_k, silhouette = self._select_optimal_k(X, n_clusters)
+        kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
         df['temp_cluster_id'] = kmeans.fit_predict(X)
 
-        merged_groups = {}
-        for cid in range(n_clusters_calc):
-            segment = df[df['temp_cluster_id'] == cid]
-            if segment.empty: continue
-            
-            p_key = self._get_profile_key_strategy(segment, df)
-            merged_groups.setdefault(p_key, []).append(segment)
-
+        # IMPORTANT: keep every K-Means cluster. We interpret it, but do not merge it
+        # back into hand-written groups, otherwise useful behavior patterns are lost.
         final_clusters = []
-        for i, (key, segments) in enumerate(merged_groups.items()):
-            merged_df = pd.concat(segments)
-            final_clusters.append(self._build_merged_cluster_response(key, merged_df, df, i))
+        for cid in range(best_k):
+            segment = df[df['temp_cluster_id'] == cid].copy()
+            if segment.empty:
+                continue
+            profile_key = self._get_profile_key_strategy(segment, df)
+            final_clusters.append(
+                self._build_merged_cluster_response(profile_key, segment, df, cid)
+            )
 
-        final_clusters.sort(key=lambda x: x.characteristics['totalAmount'], reverse=True)
+        final_clusters.sort(
+            key=lambda x: x.characteristics['totalAmount'], reverse=True
+        )
+
+        user_profile = self._build_user_profile(df, final_clusters)
+        # Add ML diagnostics without changing the response schema.
+        user_profile['kMeans'] = {
+            'optimalK': int(best_k),
+            'silhouetteScore': float(round(silhouette, 4)),
+            'sampleSize': int(len(df)),
+            'featureCount': int(len(feature_columns)),
+            'analysisMode': 'personalized_per_user'
+        }
 
         return ClusteringResponse(
-            success=True, user_id=user_id,
+            success=True,
+            user_id=user_id,
             clusters=final_clusters,
-            user_profile=self._build_user_profile(df, final_clusters),
+            user_profile=user_profile,
             recommendations=self._generate_recommendations(df, final_clusters),
             message="Phân tích thành công"
         )
@@ -431,8 +501,10 @@ class KMeansService:
 
         micro_cluster = next((c for c in clusters if "Nhỏ Lẻ" in c.cluster_name), None)
         if micro_cluster and micro_cluster.percentage > 30:
-            avg_daily_micro = micro_cluster.characteristics['totalAmount']
-            yearly_loss = avg_daily_micro * 12 
+            micro_total = float(micro_cluster.characteristics['totalAmount'])
+            observed_days = max((pd.to_datetime(df['date']).max() - pd.to_datetime(df['date']).min()).days + 1, 1)
+            monthly_micro_avg = micro_total / observed_days * 30.4375
+            yearly_loss = monthly_micro_avg * 12
             yearly_str = "{:,.0f}".format(yearly_loss).replace(",", ".")
             recs.append(f"☕ **Hiệu ứng Latte Factor:** Các khoản chi vặt chiếm {micro_cluster.percentage}% số giao dịch. Nếu xu hướng này kéo dài cả năm, bạn có thể mất khoảng **{yearly_str} VNĐ** cho những thứ không thực sự cần thiết.")
 

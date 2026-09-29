@@ -517,7 +517,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: CircleAvatar(
               radius: 20,
               backgroundColor: Colors.white,
-              child: const Icon(
+              child: const FaIcon(
                 FontAwesomeIcons.circlePlus,
                 color: Colors.blue,
                 size: 20,
@@ -555,18 +555,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _pickItem(IconData icon, String textKey, VoidCallback onTap) {
+  Widget _pickItem(
+      FaIconData icon,
+      String textKey,
+      VoidCallback onTap,
+      ) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 10,
+        ),
         child: Row(
           children: [
-            Icon(icon, size: 24),
+            FaIcon(
+              icon,
+              size: 24,
+            ),
             const SizedBox(width: 12),
             Text(
               AppLocalizations.of(context).translate(textKey),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),

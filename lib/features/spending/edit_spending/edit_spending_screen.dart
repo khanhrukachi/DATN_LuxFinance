@@ -3,16 +3,12 @@ import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
-import 'package:personal_financial_management/core/constants/function/route_function.dart';
-import 'package:personal_financial_management/core/constants/list.dart';
-import 'package:personal_financial_management/features/spending/add_spending/choose_type.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/add_friend.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/input_money.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/input_spending.dart';
@@ -22,7 +18,6 @@ import 'package:personal_financial_management/features/spending/add_spending/wid
 import 'package:personal_financial_management/features/spending/add_spending/widget/remove_icon.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/spending.dart';
-import 'package:shimmer/shimmer.dart';
 
 class EditSpendingPage extends StatefulWidget {
   const EditSpendingPage({

@@ -25,7 +25,6 @@ class AnomalyTab extends StatelessWidget {
     final stats = result.statistics ?? {};
 
     return Container(
-      // ✅ NỀN CHUẨN CHO SÁNG / TỐI
       color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F6FA),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

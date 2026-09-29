@@ -6,8 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
-import '../../../core/constants/function/get_survey_data.dart';
-
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 

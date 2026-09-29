@@ -134,7 +134,7 @@ class _AnalyticPageState extends State<AnalyticPage>
                     color: Theme.of(context).primaryColor,
                     borderRadius: BorderRadius.circular(90),
                   ),
-                  child: const Icon(
+                  child: const FaIcon(
                     FontAwesomeIcons.magnifyingGlass,
                     size: 20,
                     color: Color.fromRGBO(180, 190, 190, 1),

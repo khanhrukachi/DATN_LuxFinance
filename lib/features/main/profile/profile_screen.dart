@@ -102,7 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildCard(
                       text: AppLocalizations.of(context).translate('language'),
-                      icon: Icons.translate_outlined,
+                      icon: FontAwesomeIcons.language,
                       color: Colors.amber,
                       isDarkMode: isDarkMode,
                       action: _showBottomSheet,
@@ -123,7 +123,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildCard(
                       text: AppLocalizations.of(context).translate('history'),
-                      icon: Icons.history_rounded,
+                      icon: FontAwesomeIcons.clockRotateLeft,
                       color: Colors.green,
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
@@ -134,7 +134,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildCard(
                       text: AppLocalizations.of(context).translate('ai_insights'),
-                      icon: Icons.auto_awesome,
+                      icon: FontAwesomeIcons.wandMagicSparkles,
                       color: Colors.purple,
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
@@ -145,7 +145,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildCard(
                       text: "${AppLocalizations.of(context).translate('export')} CSV",
-                      icon: Icons.archive_outlined,
+                      icon: FontAwesomeIcons.fileExport,
                       color: Colors.lightBlue,
                       isDarkMode: isDarkMode,
                       action: () async {
@@ -228,7 +228,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildCard({
     required String text,
-    required IconData icon,
+    required FaIconData icon, // sửa IconData -> FaIconData
     required Color color,
     required VoidCallback action,
     required bool isDarkMode,
@@ -242,7 +242,9 @@ class _ProfilePageState extends State<ProfilePage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.withOpacity(0.05),
+              color: isDarkMode
+                  ? Colors.black.withOpacity(0.3)
+                  : Colors.grey.withOpacity(0.05),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -253,7 +255,11 @@ class _ProfilePageState extends State<ProfilePage> {
             CircleAvatar(
               radius: 22,
               backgroundColor: color.withOpacity(0.2),
-              child: Icon(icon, color: color, size: 22),
+              child: FaIcon( // sửa Icon -> FaIcon
+                icon,
+                color: color,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -266,7 +272,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+
+            // Cái này là Material Icon nên giữ nguyên
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
           ],
         ),
       ),
@@ -275,7 +287,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildSwitchCard({
     required String text,
-    required IconData icon,
+    required FaIconData icon,
     required bool value,
     required Function(bool) onToggle,
     required bool isDarkMode,
@@ -287,7 +299,9 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.grey.withOpacity(0.05),
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.3)
+                : Colors.grey.withOpacity(0.05),
             blurRadius: 6,
             offset: const Offset(0, 3),
           ),
@@ -298,7 +312,11 @@ class _ProfilePageState extends State<ProfilePage> {
           CircleAvatar(
             radius: 22,
             backgroundColor: Colors.black12,
-            child: Icon(icon, color: Colors.black87, size: 22),
+            child: FaIcon(
+              icon,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

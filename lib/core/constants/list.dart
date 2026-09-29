@@ -20,7 +20,7 @@ List<Map<String, String>> listType = [
   {"image": "assets/icons/pet.png", "title": "pet"},
   {"image": "assets/icons/family.png", "title": "family_service"},
   {"image": "assets/icons/box.png", "title": "other_costs"},
-  {"title": "fun_play"},
+  {"title": "fun_plays"},
   {"image": "assets/icons/sports.png", "title": "sport"},
   {"image": "assets/icons/diamond.png", "title": "beautify"},
   {"image": "assets/icons/give-love.png", "title": "gifts_donations"},

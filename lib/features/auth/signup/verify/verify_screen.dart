@@ -112,7 +112,7 @@ class _VerifyPageState extends State<VerifyPage> {
                           createRoute(screen: const UpdateProfileScreen()),
                         );
                       },
-                      icon: const Icon(FontAwesomeIcons.house),
+                      icon: const FaIcon(FontAwesomeIcons.house),
                       label: Text(
                         AppLocalizations.of(context).translate("go_to_home"),
                         style: AppStyles.p,
@@ -135,7 +135,7 @@ class _VerifyPageState extends State<VerifyPage> {
                               sendVerificationEmail();
                             }
                           : null,
-                      icon: const Icon(FontAwesomeIcons.envelope),
+                      icon: const FaIcon(FontAwesomeIcons.envelope),
                       label: Text(
                           AppLocalizations.of(context)
                               .translate("resend_email"),
