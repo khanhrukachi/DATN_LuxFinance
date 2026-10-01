@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/models/ml_service.dart';
+import 'package:personal_financial_management/controls/ml_service.dart';
 
 class ClusterItemCard extends StatelessWidget {
   final SpendingCluster cluster;
@@ -16,7 +16,7 @@ class ClusterItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Colors.primaries[cluster.clusterId % Colors.primaries.length];
+    final color = Colors.primaries[cluster.clusterId.abs() % Colors.primaries.length];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -35,7 +35,7 @@ class ClusterItemCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${cluster.percentage.toStringAsFixed(1)}%',
+                    '${cluster.percentage.toStringAsFixed(1)}% giao dịch',
                     style: TextStyle(fontWeight: FontWeight.bold, color: color),
                   ),
                 ),

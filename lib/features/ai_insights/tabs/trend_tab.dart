@@ -4,7 +4,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/features/ai_insights/tabs/widgets/trend_chart.dart';
 import 'package:personal_financial_management/features/ai_insights/tabs/widgets/trend_prediction_row.dart';
-import 'package:personal_financial_management/models/ml_service.dart';
+import 'package:personal_financial_management/controls/ml_service.dart';
 
 class TrendTab extends StatefulWidget {
   final TrendPredictionResult result;
@@ -56,7 +56,6 @@ class _TrendTabState extends State<TrendTab> {
   final Map<String, GlobalKey> _dayKeys = <String, GlobalKey>{};
   bool _busy = false;
   bool _showHomeLoading = false;
-  bool _showAllCards = false;
   int? _selectedDays;
 
   bool get _loading => widget.isLoading || _busy;
@@ -270,17 +269,24 @@ class _TrendTabState extends State<TrendTab> {
   }
 
   Future<void> _selectDays(int days) async {
-    setState(() => _selectedDays = days);
-    if (widget.forecastLoader != null) {
-      await _run(() async {
-        final loaded = await widget.forecastLoader!(days);
-        if (mounted) setState(() => _activeResult = loaded);
-      }, showHomeLoading: true);
-      return;
-    }
-    if (widget.onHorizonChanged != null) {
-      await _run(() => widget.onHorizonChanged!(days), showHomeLoading: true);
-    }
+    if (_loading) return;
+    if (widget.forecastLoader == null && widget.onHorizonChanged == null) return;
+    final previous = _selectedDays;
+    await _run(() async {
+      try {
+        if (widget.forecastLoader != null) {
+          final loaded = await widget.forecastLoader!(days);
+          if (!loaded.success) throw StateError(loaded.errorMessage ?? 'Không tải được dự báo');
+          if (mounted) setState(() { _activeResult = loaded; _selectedDays = days; });
+        } else {
+          await widget.onHorizonChanged!(days);
+          if (mounted) setState(() => _selectedDays = days);
+        }
+      } catch (_) {
+        if (mounted) setState(() => _selectedDays = previous);
+        rethrow;
+      }
+    }, showHomeLoading: true);
   }
 
   Map<String, dynamic> _displaySummary() {
@@ -340,7 +346,7 @@ class _TrendTabState extends State<TrendTab> {
         ? _map(summary['forecastWindow']) : _map(summary['dailyForecastPeriod']);
     final days = _selectedDays ?? _number(window['days'])?.toInt() ?? _number(summary['dailyForecastCount'])?.toInt() ?? 7;
     final known = summary['forecastAvailable'] != false;
-    return _section('Kế hoạch các ngày sắp tới', [
+    return _section('Ước tính chi tiêu sắp tới', [
       _body(window['start'] == null ? _str(summary['predictionPeriod'], 'Khoảng dự báo chưa được cung cấp') : _period(window)),
       if (summary['forecastMode'] == 'month')
         _body('Đang xem riêng một tháng. Chuyển sang kế hoạch liên tục để xem cả ngày thuộc tháng sau.'),
@@ -354,7 +360,7 @@ class _TrendTabState extends State<TrendTab> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: _loading || days == option ? null : () => _selectDays(option),
+                onTap: _loading || days == option || (widget.forecastLoader == null && widget.onHorizonChanged == null) ? null : () => _selectDays(option),
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 48),
                   alignment: Alignment.center,
@@ -385,7 +391,7 @@ class _TrendTabState extends State<TrendTab> {
         _metric('Chênh lệch thu − chi', known ? summary['predictedBalance'] : null),
       ]),
       const SizedBox(height: 10),
-      _body('Thu theo ngày có thể là phân bổ từ tổng tháng. Chênh lệch thu − chi không phải số dư ví.'),
+      _body('Đây là ước tính, không phải số tiền bạn cần chi. Thu theo ngày có thể là phân bổ từ tổng tháng; chênh lệch thu − chi không phải số dư ví.'),
       if (advisor['asOf'] != null) _body('Dữ liệu tính tại: ${_date(advisor['asOf'])}'),
     ], icon: Icons.date_range_outlined);
   }
@@ -426,36 +432,9 @@ class _TrendTabState extends State<TrendTab> {
       ),
       if (trend['conclusionsSupported'] != true) ...[
         const SizedBox(height: 10),
-        _body('Lịch sử chưa được xác nhận đầy đủ; chưa kết luận chi tiêu đã tốt hơn hay xấu đi.'),
+        _body('Kết luận xu hướng chỉ mang tính tham khảo vì dữ liệu có thể chưa đầy đủ.'),
       ],
     ], icon: Icons.insights_outlined);
-  }
-
-  Widget _cards(Map<String, dynamic> advisor) {
-    final cards = _maps(advisor['actionCards']).where((c) => !['missing_balance', 'reduce_spending'].contains(c['type'])).toList();
-    final shown = _showAllCards ? cards : cards.take(4).toList();
-    return _section('Việc nên làm theo dữ liệu hiện tại', [
-      if (cards.isEmpty) _body('Chưa có đề xuất có đủ căn cứ. Cập nhật giao dịch, ngân sách và khoản đến hạn.'),
-      for (final card in shown) Container(
-        margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: _background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _body(_friendlyTitle(card['title']), bold: true, color: _text),
-          if (card['dueDate'] != null) _body('Ngày: ${_date(card['dueDate'])}'),
-          _body(_str(card['body'])),
-          if (_str(card['reason']).isNotEmpty) _body('Căn cứ: ${_str(card['reason'])}'),
-          Wrap(spacing: 8, runSpacing: 4, children: _maps(card['actions']).map(_actionButton).toList()),
-        ]),
-      ),
-      if (cards.length > 4) TextButton(
-        onPressed: () => setState(() => _showAllCards = !_showAllCards),
-        child: Text(_showAllCards ? 'Thu gọn' : 'Xem tất cả ${cards.length} đề xuất'),
-      ),
-    ], icon: Icons.lightbulb_outline);
   }
 
   List<Map<String, dynamic>> _dailyRows(Map<String, dynamic> summary, Map<String, dynamic> advisor) {
@@ -505,7 +484,7 @@ class _TrendTabState extends State<TrendTab> {
       ]),
       if (row['incomeIsAllocation'] == true || row['expenseIsAllocation'] == true) Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: _body('Có giá trị phân bổ từ tổng tháng; không phải lịch nhận/trả tiền đã xác nhận.'),
+        child: _body('Số tiền theo ngày được ước tính từ tổng tháng; thời điểm thu/chi thực tế có thể khác.'),
       ),
       if (_maps(plan['events']).isNotEmpty || (_number(plan['conservativeIntradayBalance']) ?? 0) < 0) ...[
         const Divider(height: 24),
@@ -665,7 +644,6 @@ class _TrendTabState extends State<TrendTab> {
         ]) else ...[
           _overview(summary, advisor),
           _trend(summary),
-          if (advisor.isNotEmpty) _cards(advisor),
           if (_activeResult.predictions.isNotEmpty && summary['forecastAvailable'] != false)
             _section('Biểu đồ thu – chi ước tính', [
               TrendChart(predictions: _activeResult.predictions.take(_selectedDays ?? _activeResult.predictions.length).toList(), isDarkMode: _darkMode),
@@ -673,7 +651,7 @@ class _TrendTabState extends State<TrendTab> {
           if (_maps(summary['monthlyBreakdown']).isNotEmpty) _monthly(summary),
           Padding(
             key: _timelineKey, padding: const EdgeInsets.only(top: 4, bottom: 12),
-            child: Text('Chi tiết và gợi ý từng ngày', textAlign: TextAlign.center,
+            child: Text('Xem chi tiết từng ngày', textAlign: TextAlign.center,
                 style: AppStyles.p.copyWith(color: _muted, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
           if (details.isNotEmpty)

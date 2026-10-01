@@ -12,7 +12,7 @@ import 'package:personal_financial_management/features/main/home/home_screen.dar
 import 'package:personal_financial_management/features/main/main_page.dart';
 import 'package:personal_financial_management/features/main/profile/edit_profile_screen.dart';
 import 'package:personal_financial_management/features/onboarding/onboarding_screen.dart';
-import 'package:personal_financial_management/models/notification_service.dart';
+import 'package:personal_financial_management/controls/notification_service.dart';
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 import 'package:personal_financial_management/setting/bloc/setting_state.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations_setup.dart';
@@ -30,6 +30,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await NotificationService().initialize();
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await NotificationService().initialize();

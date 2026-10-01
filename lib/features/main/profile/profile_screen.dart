@@ -14,6 +14,7 @@ import 'package:personal_financial_management/features/auth/change_password/chan
 import 'package:personal_financial_management/features/main/profile/export_csv.dart';
 import 'package:personal_financial_management/features/main/profile/language_selector.dart';
 import 'package:personal_financial_management/features/main/profile/view_profile_screen.dart';
+import 'package:personal_financial_management/controls/notification_service.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:intl/intl.dart';
@@ -343,6 +344,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildLogoutButton(bool isDarkMode) {
     return GestureDetector(
       onTap: () async {
+        await NotificationService().clearSession();
         await FirebaseAuth.instance.signOut();
         await GoogleSignIn().signOut();
         await FacebookAuth.instance.logOut();

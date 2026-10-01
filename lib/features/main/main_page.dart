@@ -158,8 +158,6 @@ class _MainPageState extends State<MainPage>
               child: screens[currentTab],
             ),
 
-            // Lớp nền mờ khi menu mở.
-            // Chỉ phủ nội dung, không che thanh điều hướng phía dưới.
             Positioned.fill(
               child: IgnorePointer(
                 ignoring: !_isMenuOpen,
@@ -314,7 +312,6 @@ class _MainPageState extends State<MainPage>
                 child: ExcludeSemantics(
                   excluding: !_isMenuOpen,
                   child: Padding(
-                    // Chừa chỗ cho badge và bóng đổ.
                     padding: const EdgeInsets.fromLTRB(8, 8, 0, 16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -374,7 +371,6 @@ class _MainPageState extends State<MainPage>
           ),
         ),
 
-        // Nút duy nhất khi menu đang đóng.
         Material(
           color: Colors.transparent,
           elevation: 6,

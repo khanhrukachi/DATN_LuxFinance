@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/models/ml_service.dart';
+import 'package:personal_financial_management/controls/ml_service.dart';
 
 class TrendPredictionSection extends StatelessWidget {
   final List<PredictedValue> predictions;

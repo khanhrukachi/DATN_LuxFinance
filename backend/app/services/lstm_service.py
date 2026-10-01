@@ -7,6 +7,16 @@ import unicodedata
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 import warnings
+import copy
+import threading
+from collections import OrderedDict
+from contextvars import ContextVar
+from .kmeans_service import KMeansService, _normalize_transactions, _category_key
+from .isolation_forest_service import IsolationForestService
+
+_LSTM_ENABLED = ContextVar("lux_lstm_enabled", default=True)
+_LSTM_LOCK = threading.RLock()
+_LSTM_CACHE = OrderedDict()
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Tuple, Optional
 
@@ -48,7 +58,7 @@ try:
     from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
     from tensorflow.keras.optimizers import Adam
     TF_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     TF_AVAILABLE = False
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -385,70 +395,98 @@ class LSTMService:
             y.append(scaled[i])
         return np.asarray(X), np.asarray(y)
 
-    def _fit_lstm_and_forecast(
-        self, values: np.ndarray, days: int
-    ) -> Tuple[List[float], Dict[str, Any]]:
-        if not TF_AVAILABLE or len(values) < self.min_lstm_days or days <= 0:
-            return [], {"model": "unavailable", "mae": None, "confidence": 0.0}
+    def _fit_lstm_and_forecast(self, values, days, history=None):
+        """Compare LSTM and the actual baseline on identical 7-day holdout windows.
+        Holdout metrics select a model; they are not independent test-set accuracy.
+        Training is serialized and cached by exact input to avoid repeated fits.
+        """
+        if not _LSTM_ENABLED.get():
+            return [], {'model':'disabled', 'mae':None, 'confidence':0.0}
+        if not TF_AVAILABLE:
+            return [], {'model':'tensorflow_unavailable', 'mae':None, 'confidence':0.0}
         values = np.asarray(values, dtype=np.float32)
-        scaler = RobustScaler(quantile_range=(10.0, 90.0))
-        validation_count = max(7, int((len(values) - self.sequence_length) * 0.2))
-        scaler.fit(values[:-validation_count].reshape(-1, 1))
-        scaled = scaler.transform(values.reshape(-1, 1)).astype(np.float32)
-        X, y = self._build_sequences(scaled)
-        if len(X) < 30:
-            return [], {"model": "insufficient_sequences", "mae": None, "confidence": 0.0}
-
-        val_size = max(7, int(len(X) * 0.2))
-        if len(X) - val_size < 20:
-            return [], {"model": "insufficient_train", "mae": None, "confidence": 0.0}
-        X_train, X_val = X[:-val_size], X[-val_size:]
-        y_train, y_val = y[:-val_size], y[-val_size:]
-
-        tf.keras.backend.clear_session()
-        tf.random.set_seed(42)
-        np.random.seed(42)
-        model = Sequential([
-            Input(shape=(self.sequence_length, 1)),
-            LSTM(48, return_sequences=True),
-            Dropout(0.15),
-            LSTM(24),
-            Dense(16, activation="relu"),
-            Dense(1),
-        ])
-        model.compile(optimizer=Adam(learning_rate=8e-4), loss=tf.keras.losses.Huber())
-        model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=60,
-            batch_size=min(32, max(8, len(X_train) // 4)),
-            shuffle=False, verbose=0,
-            callbacks=[
-                EarlyStopping(monitor="val_loss", patience=7, restore_best_weights=True, min_delta=1e-4),
-                ReduceLROnPlateau(monitor="val_loss", patience=3, factor=0.5, min_lr=1e-5),
-            ],
-        )
-
-        vp = model.predict(X_val, verbose=0)
-        val_pred = np.maximum(scaler.inverse_transform(vp).reshape(-1), 0.0)
-        val_true = scaler.inverse_transform(y_val.reshape(-1, 1)).reshape(-1)
-        mae = float(mean_absolute_error(val_true, val_pred))
-        denom = max(float(np.mean(np.abs(val_true))), 1.0)
-        confidence = float(np.clip(1.0 / (1.0 + mae / denom), 0.15, 0.85))
-
-        # Chỉ forecast ngắn hạn bằng recursive LSTM. Không dùng cho cả tháng xa.
-        seq = scaled[-self.sequence_length:].reshape(1, self.sequence_length, 1)
-        out = []
-        for _ in range(days):
-            p = float(model.predict(seq, verbose=0)[0, 0])
-            out.append(p)
-            seq = np.concatenate(
-                [seq[:, 1:, :], np.array([[[p]]], dtype=np.float32)], axis=1
-            )
-        preds = scaler.inverse_transform(np.asarray(out).reshape(-1, 1)).reshape(-1)
-        return [max(0.0, float(x)) for x in preds], {
-            "model": "lstm", "mae": round(mae, 2), "confidence": round(confidence, 3)
-        }
+        if len(values) < self.min_lstm_days or days <= 0 or history is None:
+            return [], {'model':'insufficient_history', 'mae':None, 'confidence':0.0}
+        if not np.isfinite(values).all() or np.count_nonzero(values) < 20:
+            return [], {'model':'insufficient_nonzero_days', 'mae':None, 'confidence':0.0}
+        epochs = max(1, min(60, int(getattr(settings, 'LSTM_EPOCHS', 20))))
+        key = hashlib.sha256(values.tobytes() + str((days, self.sequence_length, epochs,
+            history['date'].astype(str).tolist())).encode()).hexdigest()
+        with _LSTM_LOCK:
+            if key in _LSTM_CACHE:
+                _LSTM_CACHE.move_to_end(key)
+                return copy.deepcopy(_LSTM_CACHE[key])
+            cut = len(values) - 14
+            scale = RobustScaler(quantile_range=(10,90))
+            scale.fit(values[:cut].reshape(-1,1))
+            z = scale.transform(values.reshape(-1,1)).astype(np.float32)
+            X, y = self._build_sequences(z[:cut])
+            if len(X) < 20:
+                return [], {'model':'insufficient_sequences','mae':None,'confidence':0.0}
+            def make_model():
+                model = Sequential([Input(shape=(self.sequence_length,1)),
+                    LSTM(48,return_sequences=True), Dropout(.15), LSTM(24),
+                    Dense(16,activation='relu'), Dense(1)])
+                model.compile(optimizer=Adam(learning_rate=8e-4),loss=tf.keras.losses.Huber())
+                return model
+            def recursive(model, seq, count, scaler):
+                seq = np.asarray(seq,dtype=np.float32).reshape(1,self.sequence_length,1)
+                out=[]
+                for _ in range(count):
+                    value = float(model(seq,training=False).numpy()[0,0])
+                    if not np.isfinite(value):
+                        raise ValueError('LSTM produced a nonfinite prediction')
+                    out.append(value)
+                    seq = np.concatenate([seq[:,1:,:],np.array([[[value]]],dtype=np.float32)],axis=1)
+                return np.maximum(scaler.inverse_transform(np.array(out).reshape(-1,1)).ravel(),0)
+            try:
+                tf.keras.backend.clear_session()
+                tf.keras.utils.set_random_seed(42)
+                model=make_model()
+                # train_on_batch avoids allocating a tf.data private pool per request.
+                for _ in range(epochs):
+                    for j in range(0,len(X),32):
+                        model.train_on_batch(X[j:j+32],y[j:j+32])
+                errors, baseline_errors = [], []
+                for origin in (cut,cut+7):
+                    truth=values[origin:origin+7]
+                    pred=recursive(model,z[origin-self.sequence_length:origin],len(truth),scale)
+                    hist=history.iloc[:origin].copy()
+                    dates=history.iloc[origin:origin+7]['date'].tolist()
+                    p=self._expense_occurrence_probability(hist,dates)
+                    a,_=self._expense_amount_when_spending(hist,dates)
+                    base=np.asarray([0.0 if pi<.18 else pi*ai for pi,ai in zip(p,a)])
+                    errors.extend(np.abs(truth-pred).tolist())
+                    baseline_errors.extend(np.abs(truth-base).tolist())
+                mae=float(np.mean(errors)); bmae=float(np.mean(baseline_errors))
+                meta={'model':'lstm_evaluated','mae':round(mae,2),
+                      'baselineMae':round(bmae,2),'validationSamples':len(errors),
+                      'validationHorizon':7,'evaluationMeaning':'model_selection_holdout_not_final_test',
+                      'confidence':round(1/(1+mae/max(float(np.mean(values[-14:])),1)),3)}
+                if mae >= bmae:
+                    result=([], {**meta,'model':'baseline_selected'})
+                else:
+                    # Refit to all observed data only after selection; no future actuals.
+                    scale=RobustScaler(quantile_range=(10,90))
+                    z=scale.fit_transform(values.reshape(-1,1)).astype(np.float32)
+                    X,y=self._build_sequences(z)
+                    tf.keras.backend.clear_session()
+                    tf.keras.utils.set_random_seed(42)
+                    model=make_model()
+                    for _ in range(epochs):
+                        for j in range(0,len(X),32):
+                            model.train_on_batch(X[j:j+32],y[j:j+32])
+                    pred=recursive(model,z[-self.sequence_length:],days,scale)
+                    result=([float(x) for x in pred], {**meta,'model':'lstm'})
+                _LSTM_CACHE[key]=copy.deepcopy(result)
+                while len(_LSTM_CACHE)>8:
+                    _LSTM_CACHE.popitem(last=False)
+                return result
+            except (ValueError, RuntimeError, FloatingPointError) as exc:
+                return [], {'model':'lstm_runtime_fallback','mae':None,'confidence':0.0,
+                            'reason':type(exc).__name__}
+            finally:
+                tf.keras.backend.clear_session()
 
     def _expense_backtest(self, hist: pd.DataFrame) -> Dict[str, Any]:
         if len(hist) < 35:
@@ -655,13 +693,13 @@ class LSTMService:
             lstm_preds, lm = [], {"model": "stale_history", "mae": None}
         else:
             lstm_preds, lm = self._fit_lstm_and_forecast(
-                hist["expense"].to_numpy(dtype=float), len(target_dates)
+                hist["expense"].to_numpy(dtype=float), len(target_dates), history=hist
             )
 
         lstm_weight = 0.0
-        if lstm_preds and lm.get("mae") is not None and bt.get("mae") is not None:
+        if lstm_preds and lm.get("mae") is not None and lm.get("baselineMae") is not None:
             lmae = float(lm["mae"])
-            bmae = float(bt["mae"])
+            bmae = float(lm["baselineMae"])
 
             # Chỉ cho LSTM trọng số đáng kể khi thắng baseline rõ ràng.
             if lmae <= bmae * 0.80:
@@ -733,6 +771,9 @@ class LSTMService:
             "wmape": bt.get("wmape"),
             "confidence": round(confidence, 3),
             "lstmWeight": round(lstm_weight, 2),
+            "lstmEvaluation": lm,
+            "modelActuallyUsed": "baseline_plus_lstm" if lstm_weight > 0 else "behavior_baseline",
+            "maeMeaning": "baseline_backtest_not_ensemble_accuracy",
             "baselineWeight": round(1.0 - lstm_weight, 2),
             "forecastLow": round(max(0.0, total - total_margin)),
             "forecastHigh": round(total + total_margin),
@@ -1999,6 +2040,8 @@ class LSTMService:
                          [action("view_budget", "Xem ngân sách", {"budgetId": b["id"]}),
                           action("edit_budget", "Điều chỉnh", {"budgetId": b["id"]})])
         for candidate in candidates:
+            if c.get("enable_recurring_confirmation") is not True:
+                continue
             if candidate["recurrenceId"] and candidate["recurrenceId"] in recurring_ids:
                 continue
             add_card("confirm_recurring", candidate["id"], "Có thể là khoản định kỳ",
@@ -2033,7 +2076,7 @@ class LSTMService:
             notification_plan = sorted(notification_plan, key=lambda x: x["scheduledAt"])[:3]
         if balance is None:
             warnings_out.append("Thiếu available_balance: không tính số dư hoặc mức chi an toàn.")
-        warnings_out.append("Khoản thu dự báo thống kê và khoản định kỳ chưa xác nhận không làm tăng mức chi an toàn.")
+        warnings_out.append("Khoản thu dự báo chỉ là ước tính, không được cộng vào số dư thực tế.")
         return {
             "version": "v12_personal_advisor", "userId": user_id, "timezone": timezone,
             "asOf": now.isoformat(), "horizonDays": horizon,
@@ -2437,49 +2480,99 @@ class LSTMService:
 
     def _balanced_trend(self, clean: List[Any], today: pd.Timestamp,
                         complete_history: bool, advisor: Dict[str, Any]) -> Dict[str, Any]:
-        """Compare completed 7-day windows, not partial week vs full week.
-        No 'improvement' conclusion when missing data can masquerade as lower spend.
+        """Describe recorded transactions in two completed local 7-day windows.
+        No inference that missing days mean zero real-world spending.
+        history_complete is metadata, not a gate on observed comparisons.
         """
-        end = today-timedelta(days=1)
-        start = end-timedelta(days=6)
-        prior_start, prior_end = start-timedelta(days=7), start-timedelta(days=1)
-        recent = [x for x in clean if start <= x.date_time <= end]
-        previous = [x for x in clean if prior_start <= x.date_time <= prior_end]
-        enough = complete_history and bool(clean) and clean[0].date_time <= prior_start
+        today = pd.Timestamp(today).normalize()
+        start = today - timedelta(days=7)
+        prior_start = today - timedelta(days=14)
+        recent, previous = [], []
+        for item in clean:
+            date = pd.Timestamp(item.date_time)
+            if date.tzinfo is not None:
+                date = date.tz_convert(advisor.get("timezone", "Asia/Ho_Chi_Minh"))
+                date = date.tz_localize(None)
+            if start <= date < today:
+                recent.append(item)
+            elif prior_start <= date < start:
+                previous.append(item)
+
         def totals(rows):
-            inc = sum(abs(t.money) for t in rows if t.is_income)
-            exp = sum(abs(t.money) for t in rows if t.is_expense)
-            return {"income": round(inc), "expense": round(exp), "netCashFlow": round(inc-exp)}
+            income = sum(abs(t.money) for t in rows if t.is_income)
+            expense = sum(abs(t.money) for t in rows if t.is_expense)
+            return {"income": round(income), "expense": round(expense),
+                    "netCashFlow": round(income-expense),
+                    "transactionCount": len(rows),
+                    "expenseTransactionCount": sum(bool(t.is_expense) for t in rows),
+                    "activeDays": len({pd.Timestamp(t.date_time).date() for t in rows})}
+
         a, b = totals(recent), totals(previous)
-        change = ((a["expense"]-b["expense"])/b["expense"]*100) if b["expense"] else None
-        positives, attention = [], []
-        if enough and change is not None and change <= -5:
-            positives.append({"text": f"Tổng chi 7 ngày đã kết thúc giảm {abs(change):.1f}% so với 7 ngày trước.",
-                              "basis": "observed_expense_change", "doesNotImply": "Mọi khoản giảm đều tốt; kiểm tra hóa đơn bị dời lịch."})
-        if enough and a["netCashFlow"] > 0:
-            positives.append({"text": f"Thu trừ chi trong 7 ngày đạt {a['netCashFlow']:,.0f}đ.",
-                              "basis": "observed_net_cash_flow", "doesNotImply": "Đây là khoản tiết kiệm hoặc số dư ví."})
-        if enough and change is not None and change >= 20:
-            attention.append({"type": "spending_change", "text": f"Chi tăng {change:.1f}%; xem khoản lớn và hóa đơn định kỳ trước khi kết luận chi quá mức."})
-        if advisor.get("firstShortfallDate"):
-            attention.append({"type": "cash_shortfall", "text": f"Kế hoạch hiện tại có nguy cơ thiếu tiền vào {advisor['firstShortfallDate']}."})
-        if not enough:
-            status, headline = "insufficient_evidence", "Cần lịch sử đầy đủ để đánh giá xu hướng đáng tin cậy."
-        elif any(x["type"] == "cash_shortfall" for x in attention):
-            status, headline = "needs_action", "Có khoản cần sắp xếp để tránh thiếu tiền; xem lịch đến hạn."
-        elif positives and attention:
-            status, headline = "mixed", "Dòng tiền có điểm tích cực và một số khoản cần kiểm tra."
-        elif positives:
-            status, headline = "positive_signals", "Đã có tín hiệu tích cực trong dữ liệu gần đây."
+        comparable = bool(recent) and bool(previous)
+        change = ((a["expense"]-b["expense"])/b["expense"]*100
+                  if comparable and b["expense"] > 0 else None)
+        reasons, positives, attention = [], [], []
+        if not recent:
+            reasons.append("Không có giao dịch được ghi nhận trong 7 ngày gần nhất đã kết thúc.")
+        if not previous:
+            reasons.append("Không có giao dịch được ghi nhận trong 7 ngày trước đó.")
+        if comparable and b["expense"] == 0:
+            reasons.append("Kỳ trước không có khoản chi được ghi nhận nên không tính tỷ lệ thay đổi.")
+        if comparable:
+            if change is None:
+                status = "no_expense_baseline"
+                headline = (f"Chi ghi nhận kỳ gần đây là {a['expense']:,.0f}đ; "
+                            "kỳ trước không ghi nhận khoản chi để tính tỷ lệ tăng/giảm.")
+            elif change < 0:
+                status = "recorded_decrease"
+                headline = f"Chi tiêu ghi nhận giảm {abs(change):.1f}% so với 7 ngày trước."
+            elif change > 0:
+                status = "recorded_increase"
+                headline = f"Chi tiêu ghi nhận tăng {change:.1f}% so với 7 ngày trước."
+            else:
+                status = "recorded_stable"
+                headline = "Tổng chi tiêu ghi nhận bằng với 7 ngày trước."
+            if change is not None and change <= -5:
+                positives.append({
+                    "text": f"Tổng chi ghi nhận giảm {b['expense']-a['expense']:,.0f}đ.",
+                    "basis": "observed_expense_change",
+                    "doesNotImply": "Chưa thể kết luận đã tiết kiệm hơn; khoản chi có thể được ghi nhận hoặc thanh toán khác kỳ."
+                })
+            if a["netCashFlow"] > 0:
+                positives.append({
+                    "text": f"Thu trừ chi ghi nhận trong kỳ là {a['netCashFlow']:,.0f}đ.",
+                    "basis": "observed_net_cash_flow",
+                    "doesNotImply": "Chênh lệch này không phải số dư ví hoặc tiền tiết kiệm."
+                })
+            if change is not None and change >= 20:
+                attention.append({
+                    "type": "spending_change",
+                    "text": f"Chi ghi nhận tăng {change:.1f}%; xem các khoản lớn và thời điểm thanh toán trước khi điều chỉnh chi tiêu."
+                })
         else:
-            status, headline = "monitor", "Tiếp tục theo dõi theo kế hoạch; chưa có cơ sở kết luận xấu đi."
-        return {"status": status, "headline": headline, "positiveSignals": positives, "attentionPoints": attention,
-                "comparisonType": "last_7_completed_days_vs_previous_7_completed_days",
-                "currentPeriod": {"start": str(start.date()), "end": str(end.date()), **a},
-                "previousPeriod": {"start": str(prior_start.date()), "end": str(prior_end.date()), **b},
-                "expenseChangePercent": round(change,1) if change is not None else None,
-                "historyConfirmedComplete": complete_history, "conclusionsSupported": enough,
-                "note": "Loại hôm nay vì ngày chưa kết thúc. Không diễn giải lịch nhận lương theo tuần thành tăng/giảm thu nhập dài hạn."}
+            status = "insufficient_comparison"
+            headline = "Chưa có giao dịch ở cả hai kỳ để so sánh xu hướng."
+        if advisor.get("firstShortfallDate"):
+            attention.append({
+                "type": "cash_shortfall",
+                "text": f"Theo các giả định dự báo hiện tại, có nguy cơ thiếu tiền vào {advisor['firstShortfallDate']}."
+            })
+        return {
+            "status": status, "headline": headline,
+            "positiveSignals": positives, "attentionPoints": attention,
+            "comparisonType": "last_7_completed_days_vs_previous_7_completed_days",
+            "currentPeriod": {"start": str(start.date()),
+                              "end": str((today-timedelta(days=1)).date()), **a},
+            "previousPeriod": {"start": str(prior_start.date()),
+                               "end": str((start-timedelta(days=1)).date()), **b},
+            "expenseChangePercent": round(change, 1) if change is not None else None,
+            "historyConfirmedComplete": complete_history,
+            "conclusionsSupported": comparable,
+            "comparisonAvailable": comparable,
+            "comparisonReasons": reasons,
+            "analysisScope": "recorded_transactions_only",
+            "note": "So sánh các giao dịch đã ghi nhận; không coi ngày chưa có giao dịch là ngày không chi tiêu. Không tính hôm nay vì ngày chưa kết thúc.",
+        }
 
     def _category_recommendations(self, clean: List[Any], dates: List[str],
                                   context: Dict[str, Any], advisor: Dict[str, Any],
@@ -2499,6 +2592,10 @@ class LSTMService:
         policy_map = {normalize(k): v for k,v in policies.items()}
         aliases = {
             "coffee": ("Cà phê, đồ uống", "coffee"), "ca phe": ("Cà phê, đồ uống", "coffee"),
+            "eating": ("Ăn uống", "food"), "move": ("Đi lại", "transport"),
+            "fun play": ("Giải trí", "entertainment"), "rent house": ("Tiền nhà", "essential"),
+            "physical examination": ("Y tế", "essential"),
+            "electricity bill": ("Tiền điện", "essential"),
             "food": ("Ăn uống", "food"), "an uong": ("Ăn uống", "food"),
             "eating out": ("Ăn ngoài", "food"), "an ngoai": ("Ăn ngoài", "food"),
             "shopping": ("Mua sắm", "shopping"), "mua sam": ("Mua sắm", "shopping"),
@@ -2656,7 +2753,7 @@ class LSTMService:
                            "note":"Không tạo gợi ý mới khi chưa có căn cứ hoặc nội dung đã được nhắc trong kế hoạch."})
         return output
 
-    def predict_trend(self, user_id: str, transactions: List[Any],
+    def _predict_with_advice(self, user_id: str, transactions: List[Any],
                       prediction_days: Optional[int] = None, year: Optional[int] = None,
                       month: Optional[int] = None, *,
                       advisor_context: Optional[Dict[str, Any]] = None,
@@ -2668,6 +2765,18 @@ class LSTMService:
         """
         try:
             c=dict(advisor_context or {})
+            if not isinstance(c.get('budgets',[]),list) or not all(isinstance(b,dict) for b in c.get('budgets',[])):
+                raise ValueError('budgets phải là danh sách object')
+            budgets=[]
+            for original in c.get('budgets',[]):
+                b=dict(original)
+                bid=b.get('type',b.get('category_id',''))
+                label=b.get('category',b.get('typeName',b.get('type_name',str(bid))))
+                b.setdefault('category',label)
+                b.setdefault('id',self._stable_id('budget',b.get('year'),b.get('month'),bid,label))
+                budgets.append(b)
+            c['budgets']=budgets
+            c['_recommendation_budgets']=copy.deepcopy(budgets)
             if not isinstance(c.get("category_labels", {}), dict):
                 raise ValueError("category_labels phải là object.")
             # Firestore budget items often omit spent: derive only when the caller
@@ -2762,19 +2871,169 @@ class LSTMService:
             # Change old UI text too: do not leave an unqualified pessimistic legacy headline.
             summary.setdefault("trend",{})["recommendation"]=balanced["headline"]
             summary["trend"]["expenseTrend"]=(
-                f"Chi trong 7 ngày đã kết thúc: {balanced['currentPeriod']['expense']:,.0f}đ; "
+                f"Chi ghi nhận trong 7 ngày đã kết thúc: {balanced['currentPeriod']['expense']:,.0f}đ; "
                 f"7 ngày trước: {balanced['previousPeriod']['expense']:,.0f}đ. "
-                + ("" if balanced["conclusionsSupported"] else "Chưa xác nhận lịch sử đầy đủ để kết luận xu hướng."))
+                + ("" if balanced["conclusionsSupported"] else "Chưa có giao dịch ở cả hai kỳ để so sánh."))
             summary["trend"]["incomeTrend"]="Thu nhập cần xem theo kỳ nhận tiền; không kết luận tăng/giảm chỉ từ lịch trả lương giữa hai tuần."
             financial=summary.get("financialAnalysis")
             if financial is not None:
                 financial["interpretation"]=balanced["headline"]
                 if not balanced["conclusionsSupported"] and not advisor.get("firstShortfallDate"):
-                    financial["risk"]={"level":"unknown","reason":"Lịch sử chưa được xác nhận đầy đủ; chưa đủ cơ sở kết luận rủi ro thấp hay cao."}
+                    financial["risk"]={"level":"unknown","reason":"Dữ liệu có thể chưa đầy đủ; chưa đủ cơ sở kết luận rủi ro thấp hay cao."}
+            self._integrate_smart_recommendations(user_id,transactions,c,response,today,year,month)
             return response
         except (ValueError,TypeError,KeyError,OverflowError) as exc:
             return TrendPredictionResponse(success=False,user_id=user_id,predictions=[],summary={},
                                            message=f"Dữ liệu đầu vào không hợp lệ: {exc}")
+
+
+    def predict_trend(self, user_id: str, transactions: List[Any],
+                      prediction_days: Optional[int] = None, year: Optional[int] = None,
+                      month: Optional[int] = None, *,
+                      advisor_context: Optional[Dict[str, Any]] = None,
+                      forecast_mode: str = 'rolling') -> TrendPredictionResponse:
+        context = dict(advisor_context or {})
+        enabled = context.get('use_lstm', True)
+        if not isinstance(enabled,bool):
+            return TrendPredictionResponse(success=False,user_id=user_id,predictions=[],summary={},
+                                           message='use_lstm phải là boolean')
+        token = _LSTM_ENABLED.set(enabled)
+        try:
+            return self._predict_with_advice(user_id,transactions,prediction_days,year,month,
+                                            advisor_context=context,forecast_mode=forecast_mode)
+        finally:
+            _LSTM_ENABLED.reset(token)
+
+    def _integrate_smart_recommendations(self,user_id,transactions,context,response,today,year,month):
+        """Fuse observed clusters/anomalies, supplied budgets and actual forecast output.
+        New fields are additive. Legacy trend.recommendation also gets readable advice.
+        No database writes, no automatic budget updates or push notifications.
+        """
+        summary=response.summary
+        yy,mm=(int(year),int(month)) if year is not None and month is not None else (today.year,today.month)
+        normalized,diagnostics=_normalize_transactions(transactions,today)
+        month_txs=[t for t in normalized if (t.date_time.year,t.date_time.month)==(yy,mm) and t.money<0]
+        cluster=KMeansService().cluster_spending(user_id,normalized,year=yy,month=mm,reference_date=today)
+        anomaly=IsolationForestService().detect_anomalies(user_id,normalized,year=yy,month=mm,reference_date=today)
+        complete=context.get('history_complete') is True
+        feedback=context.get('recommendation_feedback',{})
+        if not isinstance(feedback,dict):
+            raise ValueError('recommendation_feedback phải là object id -> trạng thái')
+        dismissed=set(map(str,context.get('dismissed_card_ids',[])))
+        candidates=[]
+        def add(kind,key,title,reason,suggestion,priority,sources,evidence,category=None):
+            rid=self._stable_id(user_id,'smart_v15',f'{yy}-{mm}',kind,key)
+            status=feedback.get(rid)
+            if rid in dismissed or status in ('not_relevant','done','planned'):
+                return
+            candidates.append({'id':rid,'type':kind,'title':title,'reason':reason,
+                'suggestion':suggestion,'priority':priority,'sources':sources,'evidence':evidence,
+                'category':category,'analysisMonth':f'{mm:02d}/{yy}',
+                'feedback':status,'requiresUserConfirmation':True})
+        by_id={t.id:t for t in month_txs}
+        for a in anomaly.anomalies[:5]:
+            tx=by_id.get(a.transaction_id)
+            if tx is not None and tx.planned:
+                continue
+            add('review_anomaly',a.transaction_id,'Kiểm tra khoản chi khác thường',a.anomaly_reason,
+                f'Đối chiếu khoản {abs(a.money):,.0f}đ ở {a.type_name}: kiểm tra số tiền và giao dịch trùng; '
+                'nếu đã có kế hoạch, hãy đối chiếu với kế hoạch của bạn trước khi điều chỉnh.',
+                1 if a.severity=='high' else 3,['isolation_forest','business_rules'],
+                {'transactionId':a.transaction_id,'amount':abs(a.money),'severity':a.severity,
+                 'score':a.anomaly_score,'scoreMeaning':'relative_not_probability'},a.type_name)
+        budget_rows=[]
+        seen_budgets=set()
+        for b in context.get('_recommendation_budgets',context.get('budgets',[])):
+            if b.get('isActive',True) is False or (int(b.get('year',today.year)),int(b.get('month',today.month)))!=(yy,mm):
+                continue
+            cid=str(b.get('type',b.get('category_id','')))
+            label=str(b.get('category',b.get('typeName',b.get('type_name',cid))))
+            key=_category_key(label)
+            identity=cid or key
+            if identity in seen_budgets:
+                raise ValueError('Trùng ngân sách tháng/danh mục; hãy gửi một ngân sách đang hoạt động')
+            seen_budgets.add(identity)
+            limit=self._number(b.get('limit',b.get('limitMoney')),'budget.limit')
+            matching=[t for t in month_txs if (cid and str(t.type)==cid) or (not cid and _category_key(t.type_name)==key)]
+            observed=sum(abs(t.money) for t in matching)
+            known=b.get('spent') is not None or complete
+            spent=self._number(b['spent'],'budget.spent') if b.get('spent') is not None else observed
+            remaining=max(limit-spent,0)
+            # Projection is transparent arithmetic, not a per-category LSTM forecast.
+            current=(yy,mm)==(today.year,today.month)
+            endday=calendar.monthrange(yy,mm)[1]
+            projection=spent/today.day*endday if known and current and today.day>=7 else None
+            ev={'budgetId':str(b.get('id','')),'limit':limit,'spent':spent,'remaining':remaining,
+                'actualComplete':known,'projection':round(projection) if projection is not None else None,
+                'projectionMethod':'elapsed_day_rate_not_lstm','month':f'{mm:02d}/{yy}'}
+            budget_rows.append(ev)
+            essential=key in {'rent_house','education','physical_examination','insurance','electricity_bill','water_money','move'}
+            action=('Giữ các khoản thiết yếu; rà soát phát sinh và điều chỉnh hạn mức nếu nhu cầu thực tế thay đổi.' if essential else
+                    'Xem lại khoản chưa cần thiết trong danh mục này; cân nhắc hoãn trước khi chi thêm.')
+            if spent>limit:
+                add('budget_exceeded',identity,f'{label}: đã vượt ngân sách',
+                    f'Đã ghi nhận {spent:,.0f}đ trên hạn mức {limit:,.0f}đ; vượt {spent-limit:,.0f}đ.',
+                    action,2,['budget','recorded_transactions'],ev,label)
+            elif projection is not None and projection>limit*1.1 and today.day<endday:
+                perday=remaining/(endday-today.day)
+                add('budget_pace',identity,f'{label}: cần theo dõi nhịp chi',
+                    f'Nếu giữ mức chi trung bình hiện tại, tổng tháng khoảng {projection:,.0f}đ; '
+                    f'hạn mức {limit:,.0f}đ. Đây là ngoại suy theo ngày, không phải dự báo LSTM theo danh mục.',
+                    action+f' Ngân sách còn lại tương đương {perday:,.0f}đ/ngày; đây là mức tham khảo, không phải số tiền phải chi.',
+                    3,['budget','recorded_transactions'],ev,label)
+        # Cluster-dependent suggestions genuinely use learned memberships.
+        for c in cluster.clusters[:2]:
+            stats=c.characteristics
+            names=', '.join(list(stats.get('topCategories',{}))[:2])
+            ids=sorted(c.transaction_ids)
+            add('behavior_review',self._stable_id(*ids),f'Rà soát nhóm {names}',
+                f'K-Means nhóm {len(ids)} giao dịch tương đồng, tổng {stats["totalAmount"]:,.0f}đ.',
+                ('Ưu tiên giữ khoản thiết yếu; xem lại khoản phát sinh chưa dự kiến.' if stats['essentialRatio']>=60 else
+                 'Đối chiếu nhóm giao dịch này với kế hoạch tháng; lập danh sách nhu cầu trước lần mua tiếp theo.'),
+                5,['kmeans'],{'clusterId':c.cluster_id,'transactionIds':ids,
+                    'totalAmount':stats['totalAmount'],'transactionCount':len(ids),
+                    'silhouette':cluster.user_profile.get('kMeans',{}).get('silhouetteScore')},names)
+        window=summary.get('forecastWindow',{})
+        if summary.get('forecastAvailable') and window:
+            total=summary.get('totalPredictedExpense',0)
+            add('forecast_plan',window.get('start'),'Chuẩn bị cho chi tiêu sắp tới',
+                f'Tổng chi ước tính trong {window.get("days",0)} ngày ({window.get("start")} đến {window.get("end")}): {total:,.0f}đ.',
+                'Đối chiếu ước tính với khoản đến hạn và ngân sách trước khi mua thêm. '
+                + ('Dự báo chưa được kiểm chứng trên một tập kiểm tra độc lập.' if complete else
+                   'Dữ liệu có thể chưa đầy đủ; dùng con số này để tham khảo, không xem là hạn mức an toàn.'),
+                4,['forecast_engine'],{'window':window,'predictedExpense':total,
+                    'model':summary.get('model'),'historyComplete':complete})
+        # Deduplicate identical user-facing messages and limit notification overload.
+        unique=[]; seen=set()
+        for row in sorted(candidates,key=lambda r:(r['priority'],r['id'])):
+            if row['id'] not in seen:
+                seen.add(row['id']); unique.append(row)
+        selected=unique[:6]
+        summary['smartRecommendations']=selected
+        summary['recommendations']=[r['suggestion'] for r in selected]
+        summary['recommendationDiagnostics']={
+            'version':'v15_integrated','kmeansReady':cluster.success,
+            'anomalyReady':anomaly.success,'anomalyModelReady':anomaly.statistics.get('modelReady',False),
+            'tensorflowAvailable':TF_AVAILABLE,'lstmEnabled':_LSTM_ENABLED.get(),
+            'budgetCount':len(budget_rows),'historyComplete':complete,
+            'inputDiagnostics':diagnostics,'scope':f'{mm:02d}/{yy}',
+            'feedbackPersistence':'client_must_store_and_resend',
+            'generatedCount':len(unique),'displayedCount':len(selected)}
+        summary['budgetRecommendationsEvidence']=budget_rows
+        if not complete:
+            summary.setdefault('warnings',[]).append('Ngày không có giao dịch được ghi nhận có thể là ngày chưa nhập dữ liệu; dự báo vì vậy chỉ mang tính tham khảo.')
+        advisor=summary.get('personalAdvisor',{})
+        advisor.setdefault('actionCards',[])
+        for r in selected:
+            advisor['actionCards'].append({'id':r['id'],'type':r['type'],'title':r['title'],
+                'body':r['suggestion'],'reason':r['reason'],'priority':r['priority'],'dueDate':None,
+                'actions':[],'evidence':r['evidence'],'sources':r['sources']})
+        advisor['actionCards']=sorted(advisor['actionCards'],key=lambda r:(r['priority'],r['id']))
+        if selected:
+            # Existing Flutter clients commonly display this field already.
+            summary.setdefault('trend',{})['recommendation']=' '.join(
+                r['title']+': '+r['suggestion'] for r in selected[:2])
+        summary['insightVersion']='v15_integrated_recommendations'
 
 
 lstm_service = LSTMService()

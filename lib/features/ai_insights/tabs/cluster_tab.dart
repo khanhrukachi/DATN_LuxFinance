@@ -4,7 +4,7 @@ import 'package:personal_financial_management/features/ai_insights/tabs/widgets/
 import 'package:personal_financial_management/features/ai_insights/tabs/widgets/cluster_pie_chart.dart';
 import 'package:personal_financial_management/features/ai_insights/tabs/widgets/cluster_recommendation_item.dart';
 import 'package:personal_financial_management/features/ai_insights/tabs/widgets/cluster_summary_card.dart';
-import 'package:personal_financial_management/models/ml_service.dart';
+import 'package:personal_financial_management/controls/ml_service.dart';
 
 class ClusterTab extends StatelessWidget {
   final ClusteringResult result;
@@ -16,7 +16,7 @@ class ClusterTab extends StatelessWidget {
     required this.isDarkMode,
   });
 
-  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: "₫");
+  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: "₫", decimalDigits: 0);
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +37,9 @@ class ClusterTab extends StatelessWidget {
     final clusters = result.clusters;
     final profile = result.userProfile;
     final recommendations = result.recommendations;
+    final rawInfo = profile['kMeans'];
+    final info = rawInfo is Map ? rawInfo : <String, dynamic>{};
+    final scope = info['scope']?.toString();
 
     return Container(
       // ✅ NỀN RIÊNG – KHÔNG DÍNH TAB KHÁC
@@ -46,6 +49,24 @@ class ClusterTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Thói quen chi tiêu', style: TextStyle(fontSize: 22,
+                fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+            const SizedBox(height: 6),
+            Text(scope != null && scope != 'provided_history'
+                ? 'Dữ liệu tháng $scope'
+                : 'Phân tích trên lịch sử giao dịch được gửi lên',
+                style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54)),
+            const SizedBox(height: 8),
+            Text('Các nhóm thể hiện giao dịch có đặc điểm tương đồng, không tự xác định khoản chi lãng phí.',
+                style: TextStyle(height: 1.4, color: isDarkMode ? Colors.white70 : Colors.black54)),
+            const SizedBox(height: 16),
+            if (recommendations.isNotEmpty) ...[
+              Text('Điều bạn có thể cân nhắc', style: TextStyle(fontSize: 16,
+                  fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black87)),
+              const SizedBox(height: 8),
+              ...recommendations.map((r) => ClusterRecommendationItem(text: r, isDarkMode: isDarkMode)),
+              const SizedBox(height: 16),
+            ],
             ClusterSummaryCard(
               profile: profile,
               numberFormat: numberFormat,
@@ -60,7 +81,7 @@ class ClusterTab extends StatelessWidget {
             const SizedBox(height: 16),
 
             Text(
-              'Các nhóm hành vi',
+              'Các nhóm giao dịch tương đồng',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -80,24 +101,6 @@ class ClusterTab extends StatelessWidget {
               ),
             ),
 
-            if (recommendations.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Khuyến nghị',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...recommendations.map(
-                    (r) => ClusterRecommendationItem(
-                  text: r,
-                  isDarkMode: isDarkMode,
-                ),
-              ),
-            ],
           ],
         ),
       ),

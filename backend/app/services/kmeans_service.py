@@ -6,10 +6,97 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from collections import Counter
 from datetime import datetime
+from types import SimpleNamespace
+import unicodedata
+import math
 
 from app.schemas.spending import SpendingItem
 from app.schemas.response import ClusteringResponse, SpendingCluster
 from app.config import settings
+
+
+def _field(obj, *names, default=None):
+    for name in names:
+        value = obj.get(name) if isinstance(obj, dict) else getattr(obj, name, None)
+        if value is not None:
+            return value
+    return default
+
+def _normalize_transactions(transactions, reference_date=None):
+    """Preserve clock time, Vietnam timezone, signed money and explicit transfer flags.
+    No category-ID mapping is guessed: the application owns that mapping.
+    Returns normalized objects plus diagnostics; does not mutate caller records.
+    """
+    cutoff = pd.Timestamp(reference_date) if reference_date is not None else pd.Timestamp.now(tz='Asia/Ho_Chi_Minh')
+    if cutoff.tzinfo is not None:
+        cutoff = cutoff.tz_convert('Asia/Ho_Chi_Minh').tz_localize(None)
+    cutoff = cutoff.normalize() + pd.Timedelta(days=1)
+    result, seen = [], set()
+    diagnostics = {'invalid': 0, 'duplicates': 0, 'future': 0, 'transfers': 0}
+    for index, tx in enumerate(transactions or []):
+        try:
+            raw_money = _field(tx, 'money', 'amount')
+            if isinstance(raw_money, bool):
+                raise ValueError('Invalid money')
+            money = float(raw_money)
+            if not math.isfinite(money) or money == 0:
+                raise ValueError('Invalid money')
+            dt = pd.Timestamp(_field(tx, 'date_time', 'dateTime', 'date'))
+            if pd.isna(dt):
+                raise ValueError('Invalid date')
+            if dt.tzinfo is not None:
+                dt = dt.tz_convert('Asia/Ho_Chi_Minh').tz_localize(None)
+            if dt >= cutoff:
+                diagnostics['future'] += 1
+                continue
+            if _field(tx,'is_transfer','isTransfer',default=False) is True:
+                diagnostics['transfers'] += 1
+                continue
+            exp, inc = _field(tx,'is_expense','isExpense'), _field(tx,'is_income','isIncome')
+            if exp is True and inc is True:
+                raise ValueError('Conflicting flags')
+            if exp is True:
+                money = -abs(money)
+            elif inc is True:
+                money = abs(money)
+            tid = str(_field(tx,'id',default='') or '')
+            if tid and tid in seen:
+                diagnostics['duplicates'] += 1
+                continue
+            if tid:
+                seen.add(tid)
+            raw_type = _field(tx,'type',default=-1)
+            try:
+                type_id = int(raw_type)
+            except (TypeError, ValueError):
+                type_id = -1
+            result.append(SimpleNamespace(id=tid or f'generated-{index}', money=money,
+                type=type_id, type_name=str(_field(tx,'type_name','typeName','category_name','category',default='other') or 'other'),
+                date_time=dt.to_pydatetime(), note=str(_field(tx,'note',default='') or ''),
+                is_expense=money<0, is_income=money>0,
+                planned=_field(tx,'planned','isPlanned',default=False) is True))
+        except (TypeError, ValueError, OverflowError):
+            diagnostics['invalid'] += 1
+    return sorted(result, key=lambda t:t.date_time), diagnostics
+
+def _category_key(name):
+    def norm(v):
+        return ''.join(c for c in unicodedata.normalize('NFD',str(v).lower().replace('đ','d'))
+                       if unicodedata.category(c)!='Mn').replace('&',' ').replace('_',' ').strip()
+    key = norm(name)
+    aliases = {'an uong':'eating','di chuyen':'move','di lai':'move','thue nha':'rent_house',
+        'tien nha':'rent_house','tien dien':'electricity_bill','dien':'electricity_bill',
+        'mua sam':'shopping','giai tri':'fun_play','vui choi':'fun_play',
+        'hoc phi':'education','hoc tap':'education','y te':'physical_examination',
+        'kham benh':'physical_examination','tiet kiem':'saving','luong':'salary',
+        'food':'eating','transport':'move','entertainment':'fun_play','rent':'rent_house'}
+    if key in aliases:
+        return aliases[key]
+    for canonical, label in KMeansService.CATEGORY_TRANSLATIONS.items():
+        if isinstance(canonical,str) and key in (norm(canonical),norm(label)):
+            return canonical
+    return str(name).strip() or 'other'
+
 
 class KMeansService:
 
@@ -136,19 +223,9 @@ class KMeansService:
     def __init__(self):
         self.scaler = StandardScaler()
 
-    def _resolve_category_name(self, type_id: int, type_name: Optional[str]) -> str:
-        raw_name = str(type_name).strip() if type_name else ""
-        
-        if raw_name in self.CATEGORY_TRANSLATIONS: 
-            return self.CATEGORY_TRANSLATIONS[raw_name]
-        
-        if type_id in self.CATEGORY_TRANSLATIONS: 
-            return self.CATEGORY_TRANSLATIONS[type_id]
-        
-        if raw_name: 
-            return raw_name.replace("_", " ").title()
-        
-        return "Danh mục Khác"
+    def _resolve_category_name(self, type_id, type_name):
+        key = _category_key(type_name or 'other')
+        return str(self.CATEGORY_TRANSLATIONS.get(key, type_name or 'Khác'))
 
     def _extract_features(self, transactions: List[SpendingItem]) -> pd.DataFrame:
         data = []
@@ -158,7 +235,7 @@ class KMeansService:
             
             display_name = self._resolve_category_name(t.type, t.type_name)
             
-            original_key = t.type_name if t.type_name else self.ID_TO_KEY_MAPPING.get(t.type, "other")
+            original_key = _category_key(t.type_name or "other")
 
             dt = t.date_time
             day_of_month = dt.day
@@ -189,7 +266,7 @@ class KMeansService:
         def check_group(row, group_key):
             group_list = self.CATEGORY_GROUPS.get(group_key, [])
             cond1 = row['original_key'] in group_list
-            cond2 = row['type'] in group_list
+            cond2 = False  # Numeric IDs differ across app versions; never guess their meaning.
             return 1 if (cond1 or cond2) else 0
 
         df['is_essential'] = df.apply(lambda x: check_group(x, 'essential'), axis=1)
@@ -268,39 +345,48 @@ class KMeansService:
         return SpendingCluster(
             cluster_id=cluster_index,
             cluster_name=base_profile['name'],
-            description=rich_description, 
+            description=(f"Nhóm gồm {len(merged_df)} giao dịch; các danh mục thường gặp: {keywords_str}. "
+                         "Cụm mô tả đặc điểm giao dịch, không tự xác định chi tiêu lãng phí."), 
             characteristics=characteristics,
             transaction_ids=merged_df['id'].tolist(),
             percentage=round(len(merged_df) / len(full_df) * 100, 1)
         )
 
-    def _select_optimal_k(self, X: np.ndarray, requested_k: Optional[int] = None) -> tuple[int, float]:
-        """Select K with Silhouette Score. Returns (best_k, best_score)."""
-        n_samples = len(X)
-        if n_samples < 3:
+    def _select_optimal_k(self, X, requested_k=None):
+        n, unique = len(X), len(np.unique(X, axis=0))
+        if n < 3 or unique < 2:
             return 1, 0.0
-
+        maximum = min(6, n - 1, unique, max(2, n // 8))
         if requested_k is not None:
-            k = max(2, min(int(requested_k), n_samples - 1))
+            if isinstance(requested_k, bool) or int(requested_k) != float(requested_k) or int(requested_k) < 1:
+                raise ValueError('n_clusters phải là số nguyên dương')
+            choices = [min(int(requested_k), n - 1, unique)]
+        else:
+            choices = range(2, maximum + 1)
+        best_k, best_score = 1, -1.0
+        for k in choices:
+            if k == 1:
+                return 1, 0.0
             labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
-            if len(np.unique(labels)) < 2:
-                return k, 0.0
-            return k, float(silhouette_score(X, labels))
-
-        # Avoid creating tiny, meaningless clusters for small personal datasets.
-        max_k = min(6, n_samples - 1, max(2, n_samples // 8))
-        best_k, best_score = 2, -1.0
-        for k in range(2, max_k + 1):
-            labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
-            if len(np.unique(labels)) < 2:
+            if not 1 < len(np.unique(labels)) < n:
                 continue
-            score = float(silhouette_score(X, labels))
+            score = float(silhouette_score(X, labels, sample_size=min(n, 2000), random_state=42))
             if score > best_score:
                 best_k, best_score = k, score
-        return best_k, max(best_score, 0.0)
+        return best_k, best_score if best_k > 1 else 0.0
 
-    def cluster_spending(self, user_id: str, transactions: List[SpendingItem], n_clusters: int = None) -> ClusteringResponse:
-        df = self._extract_features(transactions)
+    def cluster_spending(self, user_id: str, transactions: List[SpendingItem], n_clusters: int = None,
+                         year: Optional[int] = None, month: Optional[int] = None,
+                         reference_date=None) -> ClusteringResponse:
+        normalized, diagnostics = _normalize_transactions(transactions, reference_date)
+        if (year is None) != (month is None):
+            raise ValueError('Phải truyền đồng thời year và month')
+        if year is not None:
+            if isinstance(year, bool) or isinstance(month, bool) or int(year)!=float(year) or int(month)!=float(month):
+                raise ValueError('year/month phải là số nguyên')
+            datetime(int(year), int(month), 1)
+            normalized = [t for t in normalized if (t.date_time.year,t.date_time.month)==(int(year),int(month))]
+        df = self._extract_features(normalized)
 
         # K-Means on very small samples is unstable. Keep a conservative minimum.
         if df.empty or len(df) < 10:
@@ -324,7 +410,7 @@ class KMeansService:
         ]
 
         X_features = df[feature_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0).values
-        X = self.scaler.fit_transform(X_features)
+        X = StandardScaler().fit_transform(X_features)
 
         best_k, silhouette = self._select_optimal_k(X, n_clusters)
         kmeans = KMeans(n_clusters=best_k, random_state=42, n_init=10)
@@ -353,7 +439,11 @@ class KMeansService:
             'silhouetteScore': float(round(silhouette, 4)),
             'sampleSize': int(len(df)),
             'featureCount': int(len(feature_columns)),
-            'analysisMode': 'personalized_per_user'
+            'analysisMode': 'personalized_per_user',
+            'scope': f'{int(month):02d}/{int(year)}' if year is not None else 'provided_history',
+            'inputDiagnostics': diagnostics,
+            'silhouetteMeaning': 'cluster_separation_not_accuracy',
+            'scoreAvailable': best_k > 1
         }
 
         return ClusteringResponse(
@@ -420,6 +510,7 @@ class KMeansService:
             "averageTransaction": float(round(df['amount'].mean(), 0)),
             "transactionCount": int(len(df)),
             "financialHealthScore": self._calculate_financial_health_score(df),
+            "financialHealthScoreMeaning": "legacy_heuristic_not_financial_health_assessment",
             "topCategories": {str(k): float(v) for k, v in df.groupby('type_name')['amount'].sum().nlargest(5).to_dict().items()},
             "dominantBehavior": {
                 "name": dominant.cluster_name if dominant else "Chưa xác định",
@@ -428,101 +519,23 @@ class KMeansService:
             "spendingStyle": self._determine_spending_style(df)
         }
 
-    def _generate_recommendations(self, df: pd.DataFrame, clusters: List[SpendingCluster]) -> List[str]:
+    def _generate_recommendations(self, df, clusters):
+        total = float(df['amount'].sum())
+        if total <= 0:
+            return ['Chưa có dữ liệu chi tiêu hợp lệ để gợi ý.']
         recs = []
-        total_spent = df['amount'].sum()
-        
-        if total_spent <= 0: 
-            return ["Dữ liệu trống hoặc không hợp lệ. Hãy nhập giao dịch để nhận tư vấn."]
-
-        ess_df = df[df['is_essential'] == 1]
-        ent_df = df[df['is_entertainment'] == 1]
-        inv_df = df[df['is_investment'] == 1]
-
-        ess_val = ess_df['amount'].sum()
-        ent_val = ent_df['amount'].sum()
-        inv_val = inv_df['amount'].sum()
-
-        ess_pct = (ess_val / total_spent) * 100
-        ent_pct = (ent_val / total_spent) * 100
-        inv_pct = (inv_val / total_spent) * 100
-
-        display_pct = round(ess_pct, 1)
-
-        if ess_pct > 75:
-            recs.append(
-                f"🛑 **Báo động đỏ:** Chi phí thiết yếu đang vượt quá xa mức an toàn 50%.\n"
-                f"- Hành động ngay: Cần rà soát lớn về tiền thuê nhà hoặc các khoản vay cố định.\n"
-                f"- Cắt giảm: Tạm dừng toàn bộ các dịch vụ định kỳ chưa cần thiết."
-            )
-        elif ess_pct > 60:
-            recs.append(
-                f"🏠 **Cảnh báo chi phí cố định ({display_pct}%):** Bạn đã vượt mức khuyến nghị 50%.\n"
-                f"- Lời khuyên: Hãy thử cắt giảm các gói đăng ký dịch vụ (Netflix, Spotify...) hoặc tiền điện nước."
-            )
-        elif ess_pct > 50:
-            recs.append(
-                f"⚠️ **Lưu ý nhỏ:** Chi phí thiết yếu ({display_pct}%) đang hơi cao so với mức chuẩn 50%. "
-                f"Hãy để ý chi tiêu nhé."
-            )
-
-        if ent_pct > 50:
-             recs.append(f"💸 **Cân đối lại hưởng thụ:** Hơn một nửa thu nhập ({int(ent_pct)}%) đang dùng cho vui chơi/mua sắm. Hãy cẩn thận, niềm vui ngắn hạn có thể ảnh hưởng đến an toàn tài chính dài hạn.")
-        elif ent_pct > 35:
-            recs.append(f"⚠️ **Kiểm soát chi tiêu:** Khoản chi cho sở thích đang ở mức {int(ent_pct)}% (Lý tưởng < 30%). Hãy áp dụng quy tắc chờ 24h trước khi chốt đơn các món đồ không quá cần thiết.")
-        elif ent_pct < 5 and total_spent > 5000000:
-            recs.append(f"🧘 **Chăm sóc bản thân:** Bạn chi rất ít cho bản thân ({int(ent_pct)}%). Một khoản nhỏ để giải trí là khoản đầu tư xứng đáng để tái tạo sức lao động.")
-
-        if inv_pct == 0:
-            recs.append("🛑 **Thiếu quỹ dự phòng:** Bạn chưa có khoản nào dành cho tiết kiệm/đầu tư. Hãy bắt đầu trích ít nhất 5-10% thu nhập ngay khi nhận lương.")
-        elif inv_pct < 15:
-            recs.append(f"📉 **Tăng tốc tích lũy:** Mức tiết kiệm {int(inv_pct)}% là khởi đầu tốt, nhưng hãy cố gắng đẩy lên 20% để đạt tự do tài chính sớm hơn.")
-
-        start_month_amt = df[df['day_of_month'] <= 5]['amount'].sum()
-        if (start_month_amt / total_spent) > 0.45:
-            recs.append("🗓️ **Hiệu ứng đầu tháng:** Gần 50% tiền của bạn ra đi ngay tuần đầu tiên. Hãy chia nhỏ ngân sách theo tuần để tránh 'cháy túi' vào cuối tháng.")
-
-        weekend_amt = df[df['is_weekend'] == 1]['amount'].sum()
-        if (weekend_amt / total_spent) > 0.55:
-            recs.append("🎉 **Chi tiêu cuối tuần:** Hơn 50% ngân sách được dùng vào T7-CN. Hãy thử đặt hạn mức cụ thể cho mỗi cuối tuần (ví dụ: tối đa 1-2 triệu).")
-
-        night_rows = df[df['hour'].isin([22, 23, 0, 1, 2, 3, 4])]
-        night_amt = night_rows['amount'].sum()
-        if night_amt > 0 and (night_amt / total_spent) > 0.15:
-            recs.append(f"🦉 **Mua sắm về đêm:** Bạn hay chi tiêu lúc đêm khuya ({int(night_amt/total_spent*100)}% tổng chi). Đây thường là chi tiêu cảm xúc, hãy hạn chế mở app mua sắm sau 10h tối.")
-
-        food_amt = df[df['type_name'].astype(str).str.contains('Ăn|Uống|Food|Drink|Cafe', case=False, na=False)]['amount'].sum()
-        if food_amt > 0 and (food_amt / total_spent) > 0.40:
-             recs.append(f"🍜 **Ăn uống quá đà:** Chi phí ăn uống chiếm tới {int(food_amt/total_spent*100)}%. Nấu ăn tại nhà hoặc giảm tần suất ăn ngoài sang chảnh sẽ giúp bạn tiết kiệm đáng kể.")
-
-        debt_amt = df[df['type_name'].astype(str).str.contains('Trả nợ|Lãi|Vay', case=False, na=False)]['amount'].sum()
-        if debt_amt > 0 and (debt_amt / total_spent) > 0.25:
-             recs.append(f"💳 **Gánh nặng nợ nần:** 1/4 dòng tiền của bạn đang dùng để trả nợ. Hãy ưu tiên xử lý dứt điểm các khoản lãi suất cao.")
-
-        micro_cluster = next((c for c in clusters if "Nhỏ Lẻ" in c.cluster_name), None)
-        if micro_cluster and micro_cluster.percentage > 30:
-            micro_total = float(micro_cluster.characteristics['totalAmount'])
-            observed_days = max((pd.to_datetime(df['date']).max() - pd.to_datetime(df['date']).min()).days + 1, 1)
-            monthly_micro_avg = micro_total / observed_days * 30.4375
-            yearly_loss = monthly_micro_avg * 12
-            yearly_str = "{:,.0f}".format(yearly_loss).replace(",", ".")
-            recs.append(f"☕ **Hiệu ứng Latte Factor:** Các khoản chi vặt chiếm {micro_cluster.percentage}% số giao dịch. Nếu xu hướng này kéo dài cả năm, bạn có thể mất khoảng **{yearly_str} VNĐ** cho những thứ không thực sự cần thiết.")
-
-        std_dev = df['amount'].std()
-        mean_val = df['amount'].mean()
-        if len(df) > 5 and std_dev > mean_val * 3:
-            recs.append("📊 **Chi tiêu thất thường:** Có sự chênh lệch rất lớn giữa các khoản chi. Hãy cố gắng chia nhỏ các khoản chi lớn để dòng tiền ổn định hơn.")
-
-        top_cat = df.groupby('type_name')['amount'].sum().nlargest(1)
-        if not top_cat.empty:
-            cat_name = top_cat.index[0]
-            cat_val = top_cat.values[0]
-            if (cat_val / total_spent) > 0.45:
-                recs.append(f"⚠️ **Mất cân đối danh mục:** Riêng mục '{cat_name}' đã ngốn tới {int(cat_val/total_spent*100)}% tổng tiền. Đây là nơi đầu tiên bạn cần tối ưu.")
-
-        if len(recs) == 0:
-            recs.append("🌟 **Quản lý tài chính xuất sắc:** Hồ sơ của bạn cho thấy sự cân bằng tốt giữa các nhóm chi tiêu. Hãy tiếp tục duy trì kỷ luật này!")
-
-        return recs 
+        for cluster in sorted(clusters, key=lambda c:c.characteristics['totalAmount'], reverse=True)[:3]:
+            stats = cluster.characteristics
+            names = ', '.join(list(stats['topCategories'])[:2])
+            share = float(stats['totalAmount']) / total * 100
+            recs.append(f"Nhóm {names}: {stats['transactionCount']} giao dịch, "
+                        f"tổng {stats['totalAmount']:,.0f}đ ({share:.1f}% tổng chi đã ghi nhận). "
+                        + ('Ưu tiên giữ các khoản thiết yếu; kiểm tra khoản phát sinh hoặc ghi sai trước khi điều chỉnh.'
+                           if stats['essentialRatio'] >= 60 else
+                           'Đối chiếu nhóm này với ngân sách; cân nhắc hoãn khoản chưa cần thiết nếu ngân sách thiếu.'))
+        if len(df) < 30:
+            recs.append('Số giao dịch còn ít; các nhóm có thể thay đổi khi cập nhật thêm dữ liệu.')
+        recs.append('Tỷ trọng trên được tính theo tổng chi, không phải thu nhập. Chưa thể kết luận mức tiết kiệm từ dữ liệu chi riêng lẻ.')
+        return recs
 
 kmeans_service = KMeansService()

@@ -10,6 +10,7 @@ from sklearn.preprocessing import RobustScaler
 from app.schemas.spending import SpendingItem
 from app.schemas.response import AnomalyDetectionResponse, AnomalyTransaction
 from app.config import settings
+from .kmeans_service import _normalize_transactions, _category_key
 
 
 class IsolationForestService:
@@ -33,7 +34,7 @@ class IsolationForestService:
     """
 
     HISTORY_MONTHS = 6
-    MIN_TARGET_TRANSACTIONS = 5
+    MIN_TARGET_TRANSACTIONS = 1
     MIN_HISTORY_TRANSACTIONS = 25
     MIN_MODEL_TRANSACTIONS = 12
     RANDOM_STATE = 42
@@ -96,7 +97,7 @@ class IsolationForestService:
     def _get_vietnamese_type_name(self, original_name: Optional[str]) -> str:
         if not original_name:
             return "Khác"
-        key_raw = str(original_name).lower().strip()
+        key_raw = _category_key(original_name).lower().strip()
         if key_raw in self.CATEGORY_MAP:
             return self.CATEGORY_MAP[key_raw]
         key_normalized = key_raw.replace("-", "_").replace(" ", "_")
@@ -132,7 +133,12 @@ class IsolationForestService:
         return pd.DataFrame(rows).sort_values("date_time").reset_index(drop=True)
 
     def _resolve_target_month(self, df: pd.DataFrame, year: Optional[int], month: Optional[int]) -> Tuple[int, int]:
+        if (year is None) != (month is None):
+            raise ValueError('Phải truyền đồng thời year và month')
         if year is not None and month is not None:
+            if isinstance(year,bool) or isinstance(month,bool) or int(year)!=float(year) or int(month)!=float(month):
+                raise ValueError('year/month phải là số nguyên')
+            datetime(int(year),int(month),1)
             if month < 1 or month > 12:
                 raise ValueError("month phải nằm trong khoảng 1..12")
             return int(year), int(month)
@@ -391,8 +397,10 @@ class IsolationForestService:
         sensitivity: float = None,
         year: int = None,
         month: int = None,
+        reference_date=None,
     ) -> AnomalyDetectionResponse:
-        all_df = self._to_dataframe(transactions)
+        normalized, diagnostics = _normalize_transactions(transactions, reference_date)
+        all_df = self._to_dataframe(normalized)
         if all_df.empty:
             return self._empty_response(user_id, 0, "Không có giao dịch chi tiêu hợp lệ.")
 
@@ -538,6 +546,15 @@ class IsolationForestService:
             contamination=contamination,
             model_ready=model_ready,
         )
+        statistics['inputDiagnostics'] = diagnostics
+        statistics['scoreMeaning'] = 'relative_anomaly_score_not_probability'
+        statistics['recommendations'] = [
+            {'transactionId': a.transaction_id, 'type': 'review_transaction',
+             'title': 'Kiểm tra khoản chi khác thường',
+             'reason': a.anomaly_reason,
+             'suggestion': 'Đối chiếu số tiền, danh mục và giao dịch trùng. Nếu khoản chi đã có kế hoạch, ghi nhận điều đó; không tự động xóa hoặc cắt giảm.',
+             'severity': a.severity, 'source': 'isolation_forest_and_rules'}
+            for a in final_anomalies[:5]]
         alerts = self._generate_monthly_alerts(final_anomalies, statistics, target_df)
 
         mode_text = "baseline lịch sử" if use_historical_baseline else "baseline nội tháng (do lịch sử chưa đủ)"
@@ -647,11 +664,11 @@ class IsolationForestService:
         if top_cat != "Không có":
             alerts.append(f"📌 Danh mục cần chú ý nhất trong tháng: {top_cat}.")
 
-        # So sánh nửa đầu/nửa cuối tháng, không giả làm forecast.
+        # Distribution only, not an equal-period growth rate.
         first_half = float(target_df[target_df["day_of_month"] <= 15]["amount"].sum())
         second_half = float(target_df[target_df["day_of_month"] > 15]["amount"].sum())
         if first_half > 0 and second_half > first_half * 1.5:
-            alerts.append("📈 Chi tiêu nửa cuối tháng tăng mạnh so với nửa đầu tháng.")
+            alerts.append("📈 Tổng chi đã ghi nhận tập trung ở nửa cuối tháng; hai giai đoạn có thể chưa đủ cùng số ngày.")
         elif second_half > 0 and first_half > second_half * 1.5:
             alerts.append("📅 Chi tiêu tập trung nhiều vào nửa đầu tháng.")
 
@@ -663,7 +680,8 @@ class IsolationForestService:
         if not anomalies:
             alerts.insert(0, f"✅ Tháng {month_label} chưa phát hiện giao dịch chi tiêu bất thường đáng kể.")
 
-        return alerts[:5]
+        alerts.append("Khoản chi khác thường không đồng nghĩa với sai phạm hoặc lãng phí; hãy xác nhận bối cảnh trước khi điều chỉnh.")
+        return alerts[:6]
 
 
 isolation_forest_service = IsolationForestService()

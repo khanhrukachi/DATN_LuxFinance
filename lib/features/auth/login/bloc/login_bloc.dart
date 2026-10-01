@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:personal_financial_management/controls/notification_service.dart';
 
 import 'login_event.dart';
 import 'login_state.dart';
@@ -29,6 +31,9 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     if (check) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool("login", true);
+
+      await _updateNotificationToken();
+
       emit(LoginSuccessState(social: Social.email));
     } else {
       emit(LoginErrorState(status: _status));
@@ -52,6 +57,8 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       await prefs.setBool("login", false);
 
       final bool existed = await initInfoUser(user);
+
+      await _updateNotificationToken();
 
       emit(LoginSuccessState(
           social: existed ? Social.google : Social.newUser));
@@ -118,6 +125,33 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         'name': user.displayName ?? '',
       });
       return true;
+    }
+  }
+
+
+  Future<void> _updateNotificationToken() async {
+    final service = NotificationService();
+
+    try {
+      await service.initialize();
+
+      await service.scheduleDailyReminder(
+        hour: 20,
+        minute: 0,
+      );
+
+      final reminders = await service.getPendingReminders();
+
+      debugPrint('Số lịch nhắc: ${reminders.length}');
+      for (final reminder in reminders) {
+        debugPrint(
+          'Lịch nhắc: id=${reminder.id}, title=${reminder.title}',
+        );
+      }
+
+      await service.refreshToken();
+    } catch (e) {
+      debugPrint('Không thiết lập được thông báo: $e');
     }
   }
 }

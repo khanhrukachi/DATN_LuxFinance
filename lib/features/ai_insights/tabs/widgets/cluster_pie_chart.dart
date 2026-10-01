@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:personal_financial_management/models/ml_service.dart';
+import 'package:personal_financial_management/controls/ml_service.dart';
 
 class ClusterPieChart extends StatelessWidget {
   final List<SpendingCluster> clusters;
@@ -27,7 +27,19 @@ class ClusterPieChart extends StatelessWidget {
           children: [
             _buildTitle(),
             const SizedBox(height: 12),
+            Text('Phần trăm tính theo số giao dịch, không phải số tiền.',
+                style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black54)),
+            const SizedBox(height: 8),
             clusters.isEmpty ? _buildEmptyState() : _buildChart(),
+            if (clusters.isNotEmpty) Wrap(spacing: 12, runSpacing: 10, children: [
+              for (final cluster in clusters) Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.circle, size: 10,
+                    color: Colors.primaries[cluster.clusterId.abs() % Colors.primaries.length]),
+                const SizedBox(width: 5),
+                Flexible(child: Text(cluster.clusterName,
+                    style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.white70 : Colors.black87))),
+              ]),
+            ]),
           ],
         ),
       ),
@@ -43,28 +55,19 @@ class ClusterPieChart extends StatelessWidget {
           color: isDarkMode ? Colors.white : Colors.black,
         ),
         const SizedBox(width: 8),
-        Text(
-          'Phân bố cụm chi tiêu',
+        Expanded(child: Text(
+          'Tỷ lệ số giao dịch theo nhóm',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
-        ),
+        )),
       ],
     );
   }
 
   Widget _buildChart() {
-    final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-    ];
-
     return SizedBox(
       height: 220,
       child: PieChart(
@@ -72,13 +75,12 @@ class ClusterPieChart extends StatelessWidget {
           centerSpaceRadius: 42,
           sectionsSpace: 2,
           sections: clusters.asMap().entries.map((entry) {
-            final index = entry.key;
             final cluster = entry.value;
 
             return PieChartSectionData(
               value: cluster.percentage,
               title: '${cluster.percentage.toStringAsFixed(1)}%',
-              color: colors[index % colors.length],
+              color: Colors.primaries[cluster.clusterId.abs() % Colors.primaries.length],
               radius: 60,
               titleStyle: const TextStyle(
                 fontSize: 12,
