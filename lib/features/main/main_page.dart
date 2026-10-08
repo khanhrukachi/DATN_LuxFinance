@@ -5,6 +5,8 @@ import 'package:personal_financial_management/core/constants/function/on_will_po
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 
 import 'package:personal_financial_management/features/ai_insights/ai_insights_screen.dart';
+import 'package:personal_financial_management/features/financial_chat/chat_catalog.dart';
+import 'package:personal_financial_management/features/financial_chat/financial_chat_screen.dart';
 import 'package:personal_financial_management/features/notification/notification_page.dart';
 
 import 'package:personal_financial_management/features/main/analytic/analytic_screen.dart';
@@ -18,6 +20,8 @@ import 'package:personal_financial_management/features/spending/chat_box/chat_bo
 import 'package:personal_financial_management/features/spending/chat_box/widget/chat_firebase_adapter.dart';
 
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
+
+import '../../core/constants/list.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -193,7 +197,14 @@ class _MainPageState extends State<MainPage>
           elevation: 6,
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
-          shape: const CircleBorder(),
+          shape: CircleBorder(
+            side: BorderSide(
+              color: isDark
+                  ? const Color(0xFFCFD8DC)
+                  : theme.colorScheme.primary.withOpacity(0.45),
+              width: 1.5,
+            ),
+          ),
           tooltip: currentTab == 1
               ? _t('Thêm ngân sách', 'Add budget')
               : _t('Thêm giao dịch', 'Add transaction'),
@@ -203,7 +214,7 @@ class _MainPageState extends State<MainPage>
         floatingActionButtonLocation:
         FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: BottomAppBar(
-          color: isDark ? const Color(0xFF121212) : Colors.white,
+          color: isDark ? const Color(0xFF3E3E3E) : Colors.white,
           elevation: 8,
           shape: const CircularNotchedRectangle(),
           notchMargin: 12,
@@ -332,14 +343,21 @@ class _MainPageState extends State<MainPage>
                         ),
                         const SizedBox(height: 12),
                         _menuAction(
-                          label: _t('Phân tích AI', 'AI insights'),
-                          icon: Icons.insights_rounded,
+                          label: _t('Hỏi đáp tài chính', 'Financial chat'),
+                          icon: Icons.chat_bubble_outline_rounded,
                           colors: const [
                             Color(0xFF8E2DE2),
                             Color(0xFF4A00E0),
                           ],
                           onTap: () {
-                            _openPage(const AiInsightsScreen());
+                            final catalog = buildChatCatalog(
+                              listType,
+                                  (key) => AppLocalizations.of(context)!.translate(key),
+                            );
+
+                            _openPage(
+                              FinancialChatScreen(categoryCatalog: catalog),
+                            );
                           },
                         ),
                         const SizedBox(height: 12),
@@ -443,7 +461,6 @@ class _MainPageState extends State<MainPage>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Tên chức năng nằm bên trái và có thể nhấn.
         Material(
           color: isDark ? const Color(0xFF252D3A) : Colors.white,
           elevation: 2,
@@ -479,7 +496,6 @@ class _MainPageState extends State<MainPage>
         ),
         const SizedBox(width: 12),
 
-        // Icon chức năng.
         Stack(
           clipBehavior: Clip.none,
           children: [

@@ -1,94 +1,43 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
-
-
-class PredictedValue(BaseModel):
+from typing import Any
+from pydantic import BaseModel, ConfigDict, Field
+class Result(BaseModel):
+    model_config = ConfigDict(extra='allow', populate_by_name=True)
+class PredictedValue(Result):
     date: str
-    predicted_income: float = Field(..., alias="predictedIncome")
-    predicted_expense: float = Field(..., alias="predictedExpense")
-    confidence: float = Field(..., ge=0, le=1)
-    description: Optional[str] = None
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True
-    }
-
-
-class TrendPredictionResponse(BaseModel):
-    success: bool = True
-    user_id: str = Field(..., alias="userId")
-    predictions: List[PredictedValue]
-    summary: Dict[str, Any]
-    message: str = "Prediction completed successfully"
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True
-    }
-
-
-class SpendingCluster(BaseModel):
-    cluster_id: int = Field(..., alias="clusterId")
-    cluster_name: str = Field(..., alias="clusterName")
-    description: str
-    characteristics: Dict[str, Any]
-    transaction_ids: List[str] = Field(..., alias="transactionIds")
-    percentage: float
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True,
-        "json_schema_serialization_defaults_required": True
-    }
-
-
-class ClusteringResponse(BaseModel):
-    success: bool = True
-    user_id: str = Field(..., alias="userId")
-    clusters: List[SpendingCluster]
-    user_profile: Dict[str, Any] = Field(..., alias="userProfile")
-    recommendations: List[str]
-    message: str = "Clustering completed successfully"
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True
-    }
-
-
-class AnomalyTransaction(BaseModel):
-    transaction_id: str = Field(..., alias="transactionId")
+    predicted_income: float = 0
+    predicted_expense: float = 0
+class TrendPredictionResponse(Result):
+    success: bool
+    user_id: str
+    predictions: list[PredictedValue] = Field(default_factory=list)
+    summary: dict[str, Any] = Field(default_factory=dict)
+    message: str = ''
+class SpendingCluster(Result):
+    cluster_id: int
+    cluster_name: str
+    characteristics: dict[str, Any] = Field(default_factory=dict)
+class ClusteringResponse(Result):
+    success: bool
+    user_id: str
+    clusters: list[SpendingCluster] = Field(default_factory=list)
+    user_profile: dict[str, Any] = Field(default_factory=dict)
+    recommendations: list[Any] = Field(default_factory=list)
+    message: str = ''
+class AnomalyTransaction(Result):
+    transaction_id: str
     money: int
-    type_name: str = Field(..., alias="typeName")
-    date_time: str = Field(..., alias="dateTime")
-    anomaly_score: float = Field(..., alias="anomalyScore")
-    anomaly_reason: str = Field(..., alias="anomalyReason")
+    type_name: str
+    date_time: str
+    anomaly_score: float
+    anomaly_reason: str
     severity: str
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True
-    }
-
-
-class AnomalyDetectionResponse(BaseModel):
-    success: bool = True
-    user_id: str = Field(..., alias="userId")
-    total_transactions: int = Field(..., alias="totalTransactions")
-    anomalies_detected: int = Field(..., alias="anomaliesDetected")
-    anomalies: List[AnomalyTransaction]
-    statistics: Dict[str, Any]
-    alerts: List[str]
-    message: str = "Anomaly detection completed successfully"
-
-    model_config = {
-        "populate_by_name": True,
-        "by_alias": True
-    }
-
-
-class HealthResponse(BaseModel):
-    status: str = "healthy"
+class AnomalyDetectionResponse(Result):
+    success: bool
+    user_id: str
+    anomalies: list[AnomalyTransaction] = Field(default_factory=list)
+    statistics: dict[str, Any] = Field(default_factory=dict)
+    alerts: list[str] = Field(default_factory=list)
+class HealthResponse(Result):
+    status: str
     version: str
-    services: Dict[str, str]
+    services: dict[str,str]

@@ -1,20 +1,14 @@
-from pydantic_settings import BaseSettings
-from typing import List
-
-
+from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
-    API_V1_PREFIX: str = "/api/v1"
-    PROJECT_NAME: str = "LuxFinance ML Backend"
-    VERSION: str = "1.0.0"
-    DEBUG: bool = True
-    CORS_ORIGINS: List[str] = ["*"]
-    LSTM_SEQUENCE_LENGTH: int = 5
-    LSTM_PREDICTION_DAYS: int = 7
+    PROJECT_NAME: str = 'LuxFinance Backend'
+    VERSION: str = '1.1.0'
+    API_V1_PREFIX: str = '/api/v1'
+    DEBUG: bool = False
+    CORS_ORIGINS: list[str] = []
+    LSTM_SEQUENCE_LENGTH: int = 28
+    LSTM_MIN_TRAIN_DAYS: int = 90
+    LSTM_MAX_HISTORY_DAYS: int = 365
     KMEANS_N_CLUSTERS: int = 4
     ISOLATION_FOREST_CONTAMINATION: float = 0.1
-
-    class Config:
-        env_file = ".env"
-
-
+    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 settings = Settings()

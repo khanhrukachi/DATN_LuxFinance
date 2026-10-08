@@ -1,5 +1,5 @@
 """Drop-in prediction router. Existing URLs and request schema stay intact."""
-from fastapi import APIRouter, HTTPException, Request, Body
+from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from app.schemas.spending import PredictionRequest
 from app.schemas.response import TrendPredictionResponse
@@ -15,7 +15,8 @@ def _context(body):
     # Explicitly forwarded despite older schemas ignoring unknown fields.
     for key in ('budgets','category_labels','category_policies','history_complete',
                 'reference_date','use_lstm','recommendation_feedback','dismissed_card_ids',
-                'available_balance','events','timezone'):
+                'available_balance','events','timezone','category_catalog','categoryCatalog',
+                'assets','liabilities','import_items'):
         if key in body and key not in result:
             result[key] = body[key]
     return result
@@ -36,9 +37,23 @@ async def predict_trend(request: PredictionRequest, raw_request: Request):
         raise HTTPException(status_code=400, detail=str(exc))
 
 @router.post('/trend/quick')
-async def quick_predict(user_id: str, transactions: list = Body(...), days: int = 7):
+async def quick_predict(user_id: str, raw_request: Request, days: int = 7):
     # Original quick contract is retained: user_id/days query, list JSON body.
     if not 1 <= days <= 30:
         raise HTTPException(status_code=400, detail='days phải nằm trong 1..30')
+    body = await raw_request.json()
+    if isinstance(body, list):
+        transactions, context = body, {}
+    elif isinstance(body, dict):
+        transactions = body.get('transactions', [])
+        context = body.get('advisor_context', body.get('advisorContext', {}))
+        if not isinstance(context, dict):
+            raise HTTPException(status_code=400, detail='advisor_context phải là object')
+        if 'category_catalog' in body:
+            context.setdefault('category_catalog', body['category_catalog'])
+        elif 'categoryCatalog' in body:
+            context.setdefault('category_catalog', body['categoryCatalog'])
+    else:
+        raise HTTPException(status_code=400, detail='Body phải là danh sách hoặc object có transactions')
     return await run_in_threadpool(lstm_service.predict_trend,
-        user_id=user_id, transactions=transactions, prediction_days=days)
+        user_id=user_id, transactions=transactions, prediction_days=days, advisor_context=context)

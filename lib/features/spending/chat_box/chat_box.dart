@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 import 'widget/chat_intent.dart';
@@ -50,32 +51,21 @@ class _ChatBoxState extends State<ChatBox> {
       Theme.of(context).brightness == Brightness.dark;
 
   Color get _pageColor =>
-      _dark ? const Color(0xFF0F141C) : const Color(0xFFF5F7FB);
+      _dark ? const Color(0xFF0E1C22) : const Color(0xFFF3F9FA);
 
   Color get _cardColor =>
-      _dark ? const Color(0xFF1B2430) : Colors.white;
+      _dark ? const Color(0xFF172A30) : Colors.white;
 
   Color get _textColor =>
-      _dark ? Colors.white : const Color(0xFF172033);
+      _dark ? Colors.white : const Color(0xFF16343C);
 
   Color get _mutedColor =>
       _dark ? Colors.white60 : const Color(0xFF687386);
 
-  String _t(String vi, String en) {
-    return Localizations.localeOf(context).languageCode == 'vi'
-        ? vi
-        : en;
-  }
+  String _t(String key) => AppLocalizations.of(context).translate(key);
 
   String get _greeting {
-    return _t(
-      'Xin chào! Tôi có thể giúp gì cho bạn hôm nay? '
-          'Bạn hãy mô tả khoản thu hoặc chi kèm số tiền. '
-          'Tôi sẽ hỗ trợ điền thông tin để bạn kiểm tra trước khi lưu.',
-      'Hello! How can I help you today? '
-          'Describe your income or expense and include the amount. '
-          'I’ll help fill in the details for you to review before saving.',
-    );
+    return _t('transaction_chat_01');
   }
 
   @override
@@ -155,10 +145,7 @@ class _ChatBoxState extends State<ChatBox> {
       if (result.draft != null) {
         _messages.add(
           ChatMessage(
-            text: _t(
-              'Bạn kiểm tra thông tin giao dịch trước khi lưu nhé:',
-              'Please review the transaction before saving:',
-            ),
+            text: _t('transaction_chat_02'),
             fromUser: false,
             draft: result.draft,
           ),
@@ -168,10 +155,7 @@ class _ChatBoxState extends State<ChatBox> {
           ChatMessage(
             text: result.question ??
                 result.error ??
-                _t(
-                  'Mình chưa hiểu rõ. Bạn mô tả lại khoản thu hoặc chi nhé.',
-                  'Please describe the income or expense again.',
-                ),
+                _t('transaction_chat_03'),
             fromUser: false,
           ),
         );
@@ -201,7 +185,7 @@ class _ChatBoxState extends State<ChatBox> {
 
     setState(() {
       _messages[index] = ChatMessage(
-        text: _t('Đã hủy giao dịch.', 'Transaction cancelled.'),
+        text: _t('transaction_chat_04'),
         fromUser: false,
       );
     });
@@ -270,10 +254,7 @@ class _ChatBoxState extends State<ChatBox> {
 
         setState(() {
           _messages[index] = ChatMessage(
-            text: _t(
-              'Đã lưu giao dịch $money.',
-              'Transaction saved: $money.',
-            ),
+            text: _t('transaction_chat_05').replaceAll('{amount}', money),
             fromUser: false,
           );
         });
@@ -285,12 +266,7 @@ class _ChatBoxState extends State<ChatBox> {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           content: Text(
-            _t(
-              'Chưa thể xác nhận lưu thành công. '
-                  'Bạn hãy kiểm tra lịch sử giao dịch trước khi thử lại.',
-              'Could not confirm the save. '
-                  'Please check your transaction history before retrying.',
-            ),
+            _t('transaction_chat_06'),
           ),
         ),
       );
@@ -318,7 +294,7 @@ class _ChatBoxState extends State<ChatBox> {
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _focusInput,
-        child: Column(
+        child: SafeArea(top: false, child: Column(
           children: [
             _buildSuggestions(),
             Expanded(
@@ -326,7 +302,7 @@ class _ChatBoxState extends State<ChatBox> {
             ),
             _buildComposer(),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -348,7 +324,7 @@ class _ChatBoxState extends State<ChatBox> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _t('Trợ lý tài chính', 'Finance assistant'),
+                  _t('transaction_chat_07'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -359,10 +335,7 @@ class _ChatBoxState extends State<ChatBox> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _t(
-                    'Hỗ trợ ghi chép thu chi',
-                    'Income and expense assistant',
-                  ),
+                  _t('transaction_chat_08'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -377,9 +350,9 @@ class _ChatBoxState extends State<ChatBox> {
       ),
       actions: [
         IconButton(
-          tooltip: _t('Làm mới đoạn chat', 'Clear chat'),
+          tooltip: _t('transaction_chat_09'),
           onPressed: _saving ? null : _clearChat,
-          icon: const Icon(Icons.refresh_rounded),
+          icon: const Icon(Icons.delete_outline_rounded),
         ),
       ],
     );
@@ -390,36 +363,33 @@ class _ChatBoxState extends State<ChatBox> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF00BFA6),
-            Color(0xFF1976D2),
+            Color(0xFF00D2FF),
+            Color(0xFF2DD8C6),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00BFA6).withOpacity(0.22),
+            color: const Color(0xFF00D2FF).withOpacity(0.22),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Icon(
-        Icons.smart_toy_rounded,
-        color: Colors.white,
+        Icons.insights_rounded,
+        color: const Color(0xFF073D43),
         size: size * 0.53,
       ),
     );
   }
 
   Widget _buildSuggestions() {
-    final suggestions =
-    Localizations.localeOf(context).languageCode == 'vi'
-        ? ['Ăn sáng 50k', 'Đi taxi 35k', 'Lương 12 triệu']
-        : ['Breakfast 50k', 'Taxi 35k', 'Salary 12 million'];
+    final suggestions = ['transaction_chat_food', 'transaction_chat_taxi', 'transaction_chat_salary'].map(_t).toList();
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -484,19 +454,39 @@ class _ChatBoxState extends State<ChatBox> {
   }
 
   Widget _buildMessage(ChatMessage message) {
+    if (_messages.isNotEmpty && identical(message, _messages.first) && !message.fromUser && message.draft == null) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 24, top: 8),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(colors: _dark
+                ? [const Color(0xFF163A46), const Color(0xFF16463F)]
+                : [const Color(0xFFE1F7FF), const Color(0xFFDCF9F1)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: const Color(0xFF2DD8C6).withOpacity(.18))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _botAvatar(size: 54),
+          const SizedBox(height: 20),
+          Text(_t('transaction_chat_07'), style: TextStyle(color: _textColor, fontSize: 22, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Text(_greeting, textAlign: TextAlign.justify, style: TextStyle(color: _mutedColor, height: 1.6)),
+        ]),
+      );
+    }
     final fromUser = message.fromUser;
     final isSavingThisMessage =
     identical(_savingMessage, message);
 
     final bubbleColor =
-    fromUser ? const Color(0xFF147DCE) : _cardColor;
+    fromUser ? const Color(0xFF2DD8C6) : _cardColor;
 
     return Align(
       alignment:
       fromUser ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.88,
+          maxWidth: MediaQuery.of(context).size.width * 0.86,
         ),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 14),
@@ -504,13 +494,6 @@ class _ChatBoxState extends State<ChatBox> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!fromUser) ...[
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: _botAvatar(size: 28),
-                ),
-                const SizedBox(width: 8),
-              ],
               Flexible(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -518,13 +501,16 @@ class _ChatBoxState extends State<ChatBox> {
                       ? CrossAxisAlignment.end
                       : CrossAxisAlignment.start,
                   children: [
+                    Padding(padding: const EdgeInsets.only(bottom: 6, left: 4), child: Text(_t(fromUser ? 'transaction_chat_you' : 'transaction_chat_assistant'), style: TextStyle(fontSize: 11, color: _mutedColor))),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 15,
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: bubbleColor,
+                        color: fromUser ? null : bubbleColor,
+                        gradient: fromUser ? const LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)]) : null,
+                        border: fromUser ? null : Border.all(color: _textColor.withOpacity(.08)),
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(20),
                           topRight: const Radius.circular(20),
@@ -550,7 +536,7 @@ class _ChatBoxState extends State<ChatBox> {
                         textAlign: TextAlign.justify,
                         style: TextStyle(
                           color: fromUser
-                              ? Colors.white
+                              ? const Color(0xFF073D43)
                               : _textColor,
                           height: 1.4,
                           fontSize: 14,
@@ -598,10 +584,7 @@ class _ChatBoxState extends State<ChatBox> {
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
       child: Semantics(
         liveRegion: true,
-        label: _t(
-          'Đang lưu giao dịch',
-          'Saving transaction',
-        ),
+        label: _t('transaction_chat_10'),
         child: ExcludeSemantics(
           child: Row(
             children: [
@@ -616,10 +599,7 @@ class _ChatBoxState extends State<ChatBox> {
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  _t(
-                    'Đang lưu giao dịch',
-                    'Saving transaction',
-                  ),
+                  _t('transaction_chat_11'),
                   style: TextStyle(
                     color: _textColor,
                     fontSize: 13,
@@ -651,7 +631,8 @@ class _ChatBoxState extends State<ChatBox> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
         decoration: BoxDecoration(
-          color: _pageColor,
+          color: _cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(
             top: BorderSide(
               color: _dark ? Colors.white10 : Colors.black12,
@@ -676,11 +657,8 @@ class _ChatBoxState extends State<ChatBox> {
                 ),
                 decoration: InputDecoration(
                   hintText: _saving
-                      ? _t('Đang lưu...', 'Saving...')
-                      : _t(
-                    'Nhập khoản thu hoặc chi...',
-                    'Type an income or expense...',
-                  ),
+                      ? _t('transaction_chat_12')
+                      : _t('transaction_chat_13'),
                   hintStyle: TextStyle(
                     color: _mutedColor,
                     fontSize: 13,
@@ -690,26 +668,26 @@ class _ChatBoxState extends State<ChatBox> {
                     color: _mutedColor,
                   ),
                   filled: true,
-                  fillColor: _cardColor,
+                  fillColor: _pageColor,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 13,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide(
                       color:
                       _dark ? Colors.white10 : Colors.black12,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: const BorderSide(
-                      color: Color(0xFF00A890),
+                      color: Color(0xFF2DD8C6),
                       width: 1.4,
                     ),
                   ),
@@ -720,21 +698,21 @@ class _ChatBoxState extends State<ChatBox> {
             Container(
               width: 48,
               height: 48,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
                   colors: [
-                    Color(0xFF00BFA6),
-                    Color(0xFF1976D2),
+                    Color(0xFF00D2FF),
+                    Color(0xFF2DD8C6),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               child: IconButton(
-                tooltip: _t('Gửi', 'Send'),
+                tooltip: _t('transaction_chat_14'),
                 onPressed: _saving ? null : _send,
-                color: Colors.white,
+                color: const Color(0xFF073D43),
                 disabledColor: Colors.white54,
                 icon: const Icon(Icons.arrow_upward_rounded),
               ),

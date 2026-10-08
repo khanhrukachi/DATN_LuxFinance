@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_card.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_type_selector.dart';
 import 'package:personal_financial_management/models/budget.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
@@ -42,17 +43,66 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
 
     setState(() => isLoading = true);
     try {
-      await SpendingFirebase.updateBudget(
-        budget: widget.budget,
-        newLimit: limit,
+      final existingBudgets = await SpendingFirebase.getBudgetsOfMonth(
+        widget.budget.month,
+        widget.budget.year,
       );
+      for (final existing in existingBudgets) {
+        if (existing.type == widget.budget.type) continue;
+        if (budgetTypesOverlap(existing.type, selectedType)) {
+          _showOverlapSnack();
+          return;
+        }
+      }
+
+      if (selectedType == widget.budget.type) {
+        await SpendingFirebase.updateBudget(
+          budget: widget.budget,
+          newLimit: limit,
+        );
+      } else {
+        // Write the new category first so a failed write leaves the old budget intact.
+        await SpendingFirebase.addOrUpdateBudget(Budget(
+          type: selectedType,
+          month: widget.budget.month,
+          year: widget.budget.year,
+          limitMoney: limit,
+        ));
+        await SpendingFirebase.deleteBudget(
+          type: widget.budget.type,
+          month: widget.budget.month,
+          year: widget.budget.year,
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
       _showSnack(AppLocalizations.of(context).translate('budget_not_exist'));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
+  }
+
+  void _openTypeSelector() async {
+    final index = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BudgetTypeSelector(selectedType: selectedType),
+    );
+    if (index != null) setState(() => selectedType = index);
+  }
+
+  void _showOverlapSnack() {
+    final isEnglish = Localizations.localeOf(context)
+        .languageCode.toLowerCase().startsWith('en');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isEnglish
+            ? 'This budget overlaps an existing parent or subcategory budget. Choose another category.'
+            : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con khác. Hãy chọn danh mục khác.'),
+      ),
+    );
   }
 
   Future<void> _deleteBudget() async {
@@ -195,7 +245,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
                   child: BudgetCard(
                     selectedType: selectedType,
                     limitController: limitController,
-                    onTypeTap: () {},
+                    onTypeTap: _openTypeSelector,
                   ),
                 ),
                 const SizedBox(height: 30),

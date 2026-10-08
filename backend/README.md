@@ -1,166 +1,46 @@
-# LuxFinance ML Backend
+# Backend hỏi đáp LuxFinance
 
-Backend API cho ứng dụng quản lý tài chính cá nhân với các tính năng Machine Learning.
-
-## Tính năng
-
- Service  Thuật toán  Chức năng 
-
- Dự báo xu hướng:  LSTM -> Dự đoán thu nhập/chi tiêu trong tương lai 
- Phân cụm hành vi:  K-Means -> Phân tích và nhóm thói quen chi tiêu 
- Phát hiện bất thường:  Isolation Forest -> Cảnh báo giao dịch bất thường 
-
-## Cài đặt
-
-### 1. Tạo môi trường ảo
+Chạy trong thư mục backend với Python 3.10–3.12:
 
 ```bash
-cd backend
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-
-### 2. Cài đặt dependencies
-
-```bash
+python -m venv .venv
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# Git Bash: source .venv/Scripts/activate
+# Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Chạy server
+Sao chép `.env.example` thành `.env`, điền đúng Firebase project đang dùng trong Flutter và đường dẫn tuyệt đối đến service-account JSON. Khóa này chỉ đặt trên máy chủ. Firebase Admin dùng Application Default Credentials để kiểm tra token và trạng thái thu hồi.
 
 ```bash
-# Development mode (auto-reload)
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Production mode
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m unittest discover -s tests -v
 ```
 
-### 4. Truy cập API
+Swagger: http://localhost:8000/docs. Health: http://localhost:8000/health.
 
-- API Docs (Swagger): http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Health Check: http://localhost:8000/health
+`POST /api/v1/chat/ask`: header `Authorization: Bearer <Firebase ID token>`; body:
 
-## API Endpoints
-
-### 1. Dự báo xu hướng (LSTM)
-
-```
-POST /api/v1/predict/trend
-```
-
-Request:
 ```json
 {
-  "userId": "user123",
-  "transactions": [
-    {
-      "id": "tx1",
-      "money": -50000,
-      "type": 0,
-      "typeName": "Ăn uống",
-      "dateTime": "2024-01-15T12:00:00"
-    }
-  ],
-  "predictionDays": 7
+  "question": "Tháng này tôi chi bao nhiêu cho ăn uống?",
+  "user_id": "uid-dang-dang-nhap",
+  "transactions": [{"id":"a", "money":-50000, "dateTime":"2026-10-02T10:00:00+07:00", "categoryId":"eating"}],
+  "category_catalog": [{"id":"eating","index":1,"display_name":"Ăn uống","parent":"expense_living"}],
+  "advisor_context": {"budgets":[], "history_complete":false}
 }
 ```
 
-Response:
-```json
-{
-  "success": true,
-  "userId": "user123",
-  "predictions": [
-    {
-      "date": "2024-01-16",
-      "predictedIncome": 0,
-      "predictedExpense": 45000,
-      "confidence": 0.75
-    }
-  ],
-  "summary": {
-    "predictionPeriod": "7 ngày",
-    "totalPredictedIncome": 500000,
-    "totalPredictedExpense": 350000,
-    "trend": {...}
-  }
-}
-```
+Response có `answer`, `intent`, `evidence`, `warnings`, đôi khi có `needsInput`. Câu ngoài phạm vi trả `intent=out_of_scope`, không phát sinh phân tích ML. Câu rỗng/quá dài trả 422, không đăng nhập trả 401, uid không khớp trả 403.
 
-### 2. Phân cụm hành vi (K-Means)
+Chat là bộ nhận diện ý định và các thuật toán tài chính hiện có, chưa phải LLM hiểu mọi câu. Mỗi câu hỏi độc lập; câu tiếp nối như “còn tháng trước?” cần ghi lại nội dung đầy đủ. Dữ liệu gửi lên được dùng để phân tích, không lưu hay sửa giao dịch. Token xác thực người gửi; backend này chưa tự đọc Firestore để xác minh từng giao dịch. Firestore rules trên ứng dụng phải bảo vệ chỉ mục và quyền đọc giao dịch.
 
-```
-POST /api/v1/cluster/behavior
-```
+Giữ các router phân tích cũ để tương thích. Chỉ `/chat/ask` có lớp xác thực Firebase trong gói này; cần bổ sung phân quyền cho các endpoint cũ trước khi công khai chúng. Health chỉ báo service được nạp, không khẳng định mô hình đã huấn luyện cho từng tài khoản.
 
-Request:
-```json
-{
-  "userId": "user123",
-  "transactions": [...],
-  "nClusters": 4
-}
-```
+Ngân sách chat hỗ trợ tháng hiện tại, bất thường theo tháng, dự báo 1–30 ngày tới. Khi thiếu TensorFlow hoặc dữ liệu, dự báo dùng baseline có cảnh báo. K-Means/Isolation Forest phải có đủ dữ liệu mới kết luận theo mô hình.
 
-Response:
-```json
-{
-  "success": true,
-  "clusters": [
-    {
-      "clusterId": 0,
-      "clusterName": "Chi tiêu thường xuyên",
-      "description": "Nhiều giao dịch nhỏ, chi tiêu hàng ngày",
-      "characteristics": {...},
-      "transactionIds": ["tx1", "tx2"],
-      "percentage": 45.5
-    }
-  ],
-  "userProfile": {...},
-  "recommendations": [...]
-}
-```
+`financial_qa_training_data.json` được thay bằng tập câu mẫu gọn, dùng ID cha/con chuẩn; bỏ câu đệm, biến thể lặp và câu khả năng thanh toán tự sinh cho mọi danh mục. File này không phải mô hình đã train. Tái tạo:
 
-### 3. Phát hiện bất thường (Isolation Forest)
-
-```
-POST /api/v1/detect/anomaly
-```
-
-Request:
-```json
-{
-  "userId": "user123",
-  "transactions": [...],
-  "sensitivity": 0.1
-}
-```
-
-Response:
-```json
-{
-  "success": true,
-  "totalTransactions": 100,
-  "anomaliesDetected": 5,
-  "anomalies": [
-    {
-      "transactionId": "tx50",
-      "money": -5000000,
-      "typeName": "Mua sắm",
-      "dateTime": "2024-01-10 15:30",
-      "anomalyScore": 0.85,
-      "anomalyReason": "Số tiền cao bất thường cho danh mục Mua sắm",
-      "severity": "high"
-    }
-  ],
-  "statistics": {...},
-  "alerts": [...]
-}
+```bash
+python -m app.services.generate_financial_qa_dataset
 ```

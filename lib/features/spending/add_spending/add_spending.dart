@@ -39,6 +39,9 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
   XFile? image;
   bool more = false;
   String? typeName;
+  String? categoryId;
+  String? parentId;
+  String? parentName;
   int coefficient = 1;
   List<String> friends = [];
   List<Color> colors = [];
@@ -111,7 +114,8 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                   Image.asset(
                     type == null
                         ? "assets/icons/question_mark.png"
-                        : listType[type!]["image"]!,
+                        : (listType[type!]["image"] ??
+                        "assets/icons/question_mark.png"),
                     width: 35,
                   ),
                   Expanded(
@@ -122,10 +126,13 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                         Navigator.of(context).push(
                           createRoute(
                             screen: ChooseType(
-                              action: (index, coefficient, name) {
+                              action: (index, coefficient, name, selectedItem) {
                                 setState(() {
                                   type = index;
                                   typeName = name;
+                                  categoryId = selectedItem['id'];
+                                  parentId = selectedItem['parent'];
+                                  parentName = selectedItem['parentName'];
                                   this.coefficient = coefficient;
                                 });
                               },
@@ -140,10 +147,10 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                           Text(
                             type == null
                                 ? AppLocalizations.of(context).translate('type')
-                                : (type == 41
-                                    ? typeName!
-                                    : AppLocalizations.of(context)
-                                        .translate(listType[type!]["title"]!)),
+                                : (categoryId == "custom"
+                                ? typeName!
+                                : AppLocalizations.of(context)
+                                .translate(listType[type!]["title"]!)),
                             style: AppStyles.p,
                           ),
                           const Spacer(),
@@ -173,7 +180,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                 color: const Color.fromRGBO(241, 186, 5, 1),
                 icon: Icons.access_time_rounded,
                 text:
-                    "${selectedTime.hour.toString().padLeft(2, "0")}:${selectedTime.minute.toString().padLeft(2, "0")}",
+                "${selectedTime.hour.toString().padLeft(2, "0")}:${selectedTime.minute.toString().padLeft(2, "0")}",
                 action: () async {
                   var time = await selectTime(
                       context: context, initialTime: selectedTime);
@@ -218,7 +225,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.done,
                     hintText:
-                        AppLocalizations.of(context).translate('location'),
+                    AppLocalizations.of(context).translate('location'),
                   ),
                   line(),
                   const SizedBox(height: 5),
@@ -255,31 +262,31 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
       ),
       child: image == null
           ? pickImageWidget(image: (file) {
-              if (file != null) {
-                setState(() => image = file);
-              }
-            })
+        if (file != null) {
+          setState(() => image = file);
+        }
+      })
           : Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: Image.file(
-                    File(image!.path),
-                    width: double.infinity,
-                    fit: BoxFit.fitWidth,
-                  ),
-                ),
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: removeIcon(
-                    background: Colors.red.withOpacity(0.8),
-                    color: Colors.white,
-                    action: () => setState(() => image = null),
-                  ),
-                )
-              ],
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(15),
+            child: Image.file(
+              File(image!.path),
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
             ),
+          ),
+          Positioned(
+            top: 5,
+            right: 5,
+            child: removeIcon(
+              background: Colors.red.withOpacity(0.8),
+              color: Colors.white,
+              action: () => setState(() => image = null),
+            ),
+          )
+        ],
+      ),
     );
   }
 
@@ -300,16 +307,20 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
       int money = int.parse(moneyString);
 
       String typeName = '';
+      final selected = listType[type!];
       if (type! >= 0 && type! < listType.length) {
-        typeName = listType[type!]['title'] ?? '';
+        typeName = selected['title'] ?? '';
       }
 
       Spending spending = Spending(
-        money: type == 41
+        money: categoryId == "custom"
             ? coefficient * money
-            : ([29, 30, 34, 36, 37, 40].contains(type!) ? 1 : -1) * money,
+            : coefficient * money,
         type: type!,
         typeName: typeName.trim(),
+        categoryId: categoryId ?? selected['id'],
+        parentId: parentId ?? selected['parent'],
+        parentName: parentName,
         dateTime: DateTime(
           selectedDate.year,
           selectedDate.month,

@@ -1,52 +1,21 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from datetime import datetime
-
-
+from typing import Any
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 class SpendingItem(BaseModel):
-    id: str
+    model_config = ConfigDict(populate_by_name=True, extra='allow')
+    id: str = ''
     money: int
-    type: int
-    type_name: str = Field(..., alias="typeName")
-    note: Optional[str] = None
-    date_time: datetime = Field(..., alias="dateTime")
-    image: Optional[str] = None
-    location: Optional[str] = None
-
-    class Config:
-        populate_by_name = True
-
-
-class SpendingData(BaseModel):
-    user_id: str = Field(..., alias="userId")
-    transactions: List[SpendingItem]
-
-    class Config:
-        populate_by_name = True
-
-
-class PredictionRequest(BaseModel):
-    user_id: str = Field(..., alias="userId")
-    transactions: List[SpendingItem]
-    prediction_days: int = Field(default=7, alias="predictionDays", ge=1, le=30)
-
-    class Config:
-        populate_by_name = True
-
-
-class ClusteringRequest(BaseModel):
-    user_id: str = Field(..., alias="userId")
-    transactions: List[SpendingItem]
-    n_clusters: Optional[int] = Field(default=None, alias="nClusters", ge=2, le=10)
-
-    class Config:
-        populate_by_name = True
-
-
-class AnomalyRequest(BaseModel):
-    user_id: str = Field(..., alias="userId")
-    transactions: List[SpendingItem]
-    sensitivity: float = Field(default=0.1, ge=0.01, le=0.5)
-
-    class Config:
-        populate_by_name = True
+    type: int = -1
+    type_name: str = Field(default='', validation_alias=AliasChoices('type_name','typeName'))
+    date_time: datetime = Field(validation_alias=AliasChoices('date_time','dateTime','date'))
+    note: str = ''
+class BaseRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra='allow')
+    user_id: str = Field(validation_alias=AliasChoices('user_id','userId'))
+    transactions: list[dict[str, Any]] = Field(default_factory=list, max_length=10000)
+class PredictionRequest(BaseRequest):
+    prediction_days: int = Field(default=7, ge=1, le=30, validation_alias=AliasChoices('prediction_days','predictionDays'))
+class ClusteringRequest(BaseRequest):
+    n_clusters: int | None = Field(default=None, ge=1, le=6)
+class AnomalyRequest(BaseRequest):
+    sensitivity: float = Field(default=0.1, gt=0, lt=0.5)

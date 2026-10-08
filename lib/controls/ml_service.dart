@@ -8,10 +8,10 @@ class MLService {
   // - Emulator Android: http://10.0.2.2:8000/api/v1
   // - Thiết bị thật cùng mạng: http://YOUR_PC_IP:8000/api/v1
   // - Web/Desktop: http://localhost:8000/api/v1
-  static const String _baseUrl = "http://192.168.1.202:8000/api/v1";
+  static const String _baseUrl = "http://10.0.2.2:8000/api/v1";
 
   // URL for health check (without /api/v1)
-  static const String _healthUrl = "http://192.168.1.202:8000";
+  static const String _healthUrl = "http://10.0.2.2:8000";
 
   /// Convert Spending to API format
   static Map<String, dynamic> _spendingToJson(Spending s) {

@@ -11,6 +11,7 @@ from app.schemas.spending import SpendingItem
 from app.schemas.response import AnomalyDetectionResponse, AnomalyTransaction
 from app.config import settings
 from .kmeans_service import _normalize_transactions, _category_key
+from .category_taxonomy import summarize_category_hierarchy
 
 
 class IsolationForestService:
@@ -76,8 +77,10 @@ class IsolationForestService:
     FEATURE_COLUMNS = [
         "log_amount",
         "category_robust_z",
+        "group_robust_z",
         "user_robust_z",
         "amount_vs_category_median",
+        "amount_vs_group_median",
         "amount_vs_user_median",
         "hour_sin",
         "hour_cos",
@@ -120,6 +123,12 @@ class IsolationForestService:
                 "amount": abs(float(t.money)),
                 "type": t.type,
                 "type_name": self._get_vietnamese_type_name(t.type_name),
+                "category_id": str(getattr(t, "category_id", "") or _category_key(t.type_name)),
+                "parent_category_id": str(getattr(t, "parent_category_id", "") or ""),
+                "category_group_id": str(getattr(t, "category_group_id", "unclassified") or "unclassified"),
+                "category_group_name": str(getattr(t, "category_group_name", "Chưa phân loại") or "Chưa phân loại"),
+                "financial_role": str(getattr(t, "financial_role", "unclassified") or "unclassified"),
+                "category_class": str(getattr(t, "category_class", "unclassified") or "unclassified"),
                 "date_time": dt,
                 "year": int(dt.year),
                 "month": int(dt.month),
@@ -174,17 +183,24 @@ class IsolationForestService:
     def _build_reference_stats(self, reference_df: pd.DataFrame) -> Dict[str, Any]:
         user_median, user_scale = self._robust_center_scale(reference_df["amount"])
         category_stats: Dict[str, Dict[str, float]] = {}
-        for category, group in reference_df.groupby("type_name"):
+        for category, group in reference_df.groupby("category_id"):
             med, scale = self._robust_center_scale(group["amount"])
             category_stats[str(category)] = {
                 "median": med,
                 "scale": scale,
                 "count": int(len(group)),
             }
+        group_stats: Dict[str, Dict[str, float]] = {}
+        for category_group, group in reference_df.groupby("category_group_id"):
+            med, scale = self._robust_center_scale(group["amount"])
+            group_stats[str(category_group)] = {
+                "median": med, "scale": scale, "count": int(len(group)),
+            }
         return {
             "user_median": user_median,
             "user_scale": user_scale,
             "category_stats": category_stats,
+            "group_stats": group_stats,
         }
 
     def _engineer_features(self, df: pd.DataFrame, reference_stats: Dict[str, Any]) -> pd.DataFrame:
@@ -195,26 +211,54 @@ class IsolationForestService:
         user_median = max(float(reference_stats["user_median"]), 1.0)
         user_scale = max(float(reference_stats["user_scale"]), 1.0)
         cat_stats = reference_stats["category_stats"]
+        group_stats = reference_stats.get("group_stats", {})
 
         out["log_amount"] = np.log1p(out["amount"])
         out["user_robust_z"] = (out["amount"] - user_median) / user_scale
         out["amount_vs_user_median"] = out["amount"] / user_median
 
         cat_medians, cat_scales = [], []
+        category_counts = []
         for _, row in out.iterrows():
-            stat = cat_stats.get(str(row["type_name"]))
-            # Category mới trong tháng: fallback sang baseline toàn user.
+            stat = cat_stats.get(str(row["category_id"]))
+            group_stat = group_stats.get(str(row["category_group_id"]))
+            # Sparse leaf categories borrow a parent-group baseline before using
+            # the user's global baseline. This is safer than treating each leaf
+            # as unrelated when its history is short.
             if stat and stat["count"] >= 2:
                 cat_medians.append(max(float(stat["median"]), 1.0))
                 cat_scales.append(max(float(stat["scale"]), 1.0))
+                category_counts.append(int(stat["count"]))
+            elif group_stat and group_stat["count"] >= 3:
+                cat_medians.append(max(float(group_stat["median"]), 1.0))
+                cat_scales.append(max(float(group_stat["scale"]), 1.0))
+                category_counts.append(int(group_stat["count"]))
             else:
                 cat_medians.append(user_median)
                 cat_scales.append(user_scale)
+                category_counts.append(0)
 
         out["category_median"] = cat_medians
         out["category_scale"] = cat_scales
+        out["category_baseline_count"] = category_counts
         out["category_robust_z"] = (out["amount"] - out["category_median"]) / out["category_scale"]
         out["amount_vs_category_median"] = out["amount"] / out["category_median"].clip(lower=1.0)
+
+        group_medians, group_scales = [], []
+        for _, row in out.iterrows():
+            stat = group_stats.get(str(row["category_group_id"]))
+            if stat and stat["count"] >= 2:
+                group_medians.append(max(float(stat["median"]), 1.0))
+                group_scales.append(max(float(stat["scale"]), 1.0))
+            else:
+                group_medians.append(user_median)
+                group_scales.append(user_scale)
+        out["group_median"] = group_medians
+        out["group_scale"] = group_scales
+        out["group_baseline_count"] = [int(group_stats.get(str(row["category_group_id"]), {}).get("count", 0))
+                                        for _, row in out.iterrows()]
+        out["group_robust_z"] = (out["amount"] - out["group_median"]) / out["group_scale"]
+        out["amount_vs_group_median"] = out["amount"] / out["group_median"].clip(lower=1.0)
 
         # Circular encoding: 23h gần 0h, Chủ nhật gần Thứ hai.
         out["hour_sin"] = np.sin(2 * np.pi * out["hour"] / 24.0)
@@ -246,7 +290,7 @@ class IsolationForestService:
             return []
         work = target_df.sort_values("date_time").copy()
         anomalies: List[Dict[str, Any]] = []
-        for _, group in work.groupby(["type_name", "amount"], dropna=False):
+        for _, group in work.groupby(["category_id", "amount"], dropna=False):
             group = group.sort_values("date_time")
             previous_time = None
             for _, row in group.iterrows():
@@ -278,24 +322,28 @@ class IsolationForestService:
         Điều này sửa nhược điểm của contamination/ranking-based detection.
         """
         cat_ratio = max(float(row.get("amount_vs_category_median", 0.0)), 0.0)
+        group_ratio = max(float(row.get("amount_vs_group_median", 0.0)), 0.0)
         user_ratio = max(float(row.get("amount_vs_user_median", 0.0)), 0.0)
         cat_z = abs(float(row.get("category_robust_z", 0.0)))
+        group_z = abs(float(row.get("group_robust_z", 0.0)))
         user_z = abs(float(row.get("user_robust_z", 0.0)))
+        category_evidence_ratio = max(cat_ratio, group_ratio)
+        category_evidence_z = max(cat_z, group_z)
 
         strong = (
-            (cat_ratio >= self.CATEGORY_RATIO_HIGH and cat_z >= self.CATEGORY_Z_MEDIUM)
-            or cat_z >= self.CATEGORY_Z_HIGH
+            (category_evidence_ratio >= self.CATEGORY_RATIO_HIGH and category_evidence_z >= self.CATEGORY_Z_MEDIUM)
+            or category_evidence_z >= self.CATEGORY_Z_HIGH
             or (user_ratio >= self.USER_RATIO_HIGH and user_z >= self.USER_Z_HIGH)
         )
         medium = (
-            (cat_ratio >= self.CATEGORY_RATIO_MEDIUM and cat_z >= self.CATEGORY_Z_MEDIUM)
-            or cat_z >= 3.0
+            (category_evidence_ratio >= self.CATEGORY_RATIO_MEDIUM and category_evidence_z >= self.CATEGORY_Z_MEDIUM)
+            or category_evidence_z >= 3.0
             or (user_ratio >= 3.0 and user_z >= 3.0)
         )
 
         # Rule score is intentionally interpretable, not a probability.
-        cat_component = min(cat_ratio / max(self.CATEGORY_RATIO_HIGH, 1.0), 1.5)
-        z_component = min(max(cat_z, user_z) / max(self.CATEGORY_Z_HIGH, 1.0), 1.5)
+        cat_component = min(category_evidence_ratio / max(self.CATEGORY_RATIO_HIGH, 1.0), 1.5)
+        z_component = min(max(category_evidence_z, user_z) / max(self.CATEGORY_Z_HIGH, 1.0), 1.5)
         ratio_component = min(user_ratio / max(self.USER_RATIO_HIGH, 1.0), 1.5)
         evidence = max(cat_component, z_component, ratio_component)
 
@@ -315,8 +363,10 @@ class IsolationForestService:
             "score": float(score),
             "severity": severity,
             "categoryRatio": cat_ratio,
+            "groupRatio": group_ratio,
             "userRatio": user_ratio,
             "categoryRobustZ": cat_z,
+            "groupRobustZ": group_z,
             "userRobustZ": user_z,
         }
 
@@ -333,12 +383,18 @@ class IsolationForestService:
         reasons = []
         cat = str(row["type_name"])
         cat_z = abs(float(row["category_robust_z"]))
+        group_z = abs(float(row.get("group_robust_z", 0.0)))
         user_z = abs(float(row["user_robust_z"]))
         cat_ratio = float(row["amount_vs_category_median"])
+        group_ratio = float(row.get("amount_vs_group_median", 0.0))
 
         user_ratio = float(row["amount_vs_user_median"])
 
-        if cat_ratio >= self.CATEGORY_RATIO_HIGH and cat_z >= self.CATEGORY_Z_MEDIUM:
+        if group_z > cat_z and group_ratio >= self.CATEGORY_RATIO_MEDIUM and group_z >= self.CATEGORY_Z_MEDIUM:
+            reasons.append(
+                f"Số tiền cao khoảng {group_ratio:.1f} lần mức thường thấy của nhóm '{row['category_group_name']}'"
+            )
+        elif cat_ratio >= self.CATEGORY_RATIO_HIGH and cat_z >= self.CATEGORY_Z_MEDIUM:
             reasons.append(
                 f"Số tiền cao khoảng {cat_ratio:.1f} lần mức điển hình của '{cat}'"
             )
@@ -398,8 +454,9 @@ class IsolationForestService:
         year: int = None,
         month: int = None,
         reference_date=None,
+        category_catalog=None,
     ) -> AnomalyDetectionResponse:
-        normalized, diagnostics = _normalize_transactions(transactions, reference_date)
+        normalized, diagnostics = _normalize_transactions(transactions, reference_date, category_catalog)
         all_df = self._to_dataframe(normalized)
         if all_df.empty:
             return self._empty_response(user_id, 0, "Không có giao dịch chi tiêu hợp lệ.")
@@ -546,10 +603,17 @@ class IsolationForestService:
             contamination=contamination,
             model_ready=model_ready,
         )
+        month_transactions = [t for t in normalized
+                              if t.date_time.year == target_year and t.date_time.month == target_month]
+        statistics['categoryAnalysis'] = summarize_category_hierarchy(month_transactions)
+        statistics['categoryHierarchyVersion'] = 'category_hierarchy_v1'
         statistics['inputDiagnostics'] = diagnostics
         statistics['scoreMeaning'] = 'relative_anomaly_score_not_probability'
         statistics['recommendations'] = [
             {'transactionId': a.transaction_id, 'type': 'review_transaction',
+             'categoryId': str(target_df.loc[target_df['id'] == a.transaction_id, 'category_id'].iloc[0]),
+             'categoryGroupId': str(target_df.loc[target_df['id'] == a.transaction_id, 'category_group_id'].iloc[0]),
+             'categoryGroup': str(target_df.loc[target_df['id'] == a.transaction_id, 'category_group_name'].iloc[0]),
              'title': 'Kiểm tra khoản chi khác thường',
              'reason': a.anomaly_reason,
              'suggestion': 'Đối chiếu số tiền, danh mục và giao dịch trùng. Nếu khoản chi đã có kế hoạch, ghi nhận điều đó; không tự động xóa hoặc cắt giảm.',

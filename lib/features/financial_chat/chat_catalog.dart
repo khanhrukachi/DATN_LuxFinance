@@ -1,0 +1,50 @@
+/// Preserve the original listType positions, including section headers.
+List<Map<String, dynamic>> buildChatCatalog(
+    List<Map<String, String>> listType, String Function(String) translate) {
+  return [for (var i = 0; i < listType.length; i++) {
+    'id': listType[i]['title'] ?? '',
+    'index': i,
+    'display_name': translate(listType[i]['title'] ?? ''),
+    'parent': listType[i]['parentCategoryId'] ?? listType[i]['parent'] ??
+        _parents[listType[i]['title']],
+    'isParent': const {'expense_living', 'expense_fixed', 'expense_unexpected',
+        'income', 'investment_saving', 'loan_borrow'}.contains(listType[i]['title']),
+  }];
+}
+const _parents = <String, String>{
+  'eating': 'expense_living',
+  'move': 'expense_living',
+  'market': 'expense_living',
+  'telephone_fee': 'expense_living',
+  'rent_house': 'expense_fixed',
+  'water_money': 'expense_fixed',
+  'electricity_bill': 'expense_fixed',
+  'internet_money': 'expense_fixed',
+  'tv_money': 'expense_fixed',
+  'vehicle_maintenance': 'expense_unexpected',
+  'physical_examination': 'expense_unexpected',
+  'repair_and_decorate_the_house': 'expense_unexpected',
+  'housewares': 'expense_unexpected',
+  'personal_belongings': 'expense_unexpected',
+  'pet': 'expense_unexpected',
+  'other_costs': 'expense_unexpected',
+  'sport': 'expense_unexpected',
+  'fun_play': 'expense_unexpected',
+  'beautify': 'expense_unexpected',
+  'online_services': 'expense_unexpected',
+  'gifts_donations': 'expense_unexpected',
+  'gas_money': 'expense_unexpected',
+  'invest': 'investment_saving',
+  'education': 'investment_saving',
+  'insurance': 'investment_saving',
+  'saving': 'investment_saving',
+  'borrow': 'loan_borrow',
+  'loan': 'loan_borrow',
+  'pay': 'loan_borrow',
+  'pay_interest': 'loan_borrow',
+  'debt_collection': 'loan_borrow',
+  'salary': 'income',
+  'revenue': 'income',
+  'other_income': 'income',
+  'money_transferred_to': 'income',
+};

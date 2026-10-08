@@ -6,6 +6,9 @@ class Spending {
   int money;
   int type;
   String? typeName;
+  String? categoryId;
+  String? parentId;
+  String? parentName;
 
   String? note;
   DateTime dateTime;
@@ -29,6 +32,9 @@ class Spending {
     this.note,
     this.image,
     this.typeName,
+    this.categoryId,
+    this.parentId,
+    this.parentName,
     this.location,
     List<String>? friends,
   }) : friends = friends ?? [] {
@@ -47,6 +53,9 @@ class Spending {
     "money": money,
     "type": type,
     "typeName": typeName,
+    "categoryId": categoryId,
+    "parentId": parentId,
+    "parentName": parentName,
     "note": note,
     "date": Timestamp.fromDate(dateTime),
     "image": image,
@@ -64,6 +73,9 @@ class Spending {
       money: (data['money'] ?? 0).toInt(),
       type: data['type'] ?? 0,
       typeName: data['typeName'],
+      categoryId: data['categoryId'],
+      parentId: data['parentId'],
+      parentName: data['parentName'],
       dateTime: date,
       note: data['note'],
       image: data['image'],
@@ -79,6 +91,9 @@ class Spending {
     "amount": money.abs(),
     "label": isExpense ? "expense" : "income",
     "category": typeName ?? "",
+    "category_id": categoryId ?? "",
+    "parent_id": parentId ?? "",
+    "parent": parentName ?? "",
     "type_code": type,
     "day": day,
     "month": month,
@@ -95,6 +110,9 @@ class Spending {
     String? note,
     String? image,
     String? typeName,
+    String? categoryId,
+    String? parentId,
+    String? parentName,
     String? location,
     List<String>? friends,
   }) {
@@ -106,6 +124,9 @@ class Spending {
       note: note ?? this.note,
       image: image ?? this.image,
       typeName: typeName ?? this.typeName,
+      categoryId: categoryId ?? this.categoryId,
+      parentId: parentId ?? this.parentId,
+      parentName: parentName ?? this.parentName,
       location: location ?? this.location,
       friends: friends ?? this.friends,
     );

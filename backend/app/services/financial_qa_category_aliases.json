@@ -1,0 +1,168 @@
+{
+  "categories": [
+    {
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "borrow",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "category_id": "debt_collection",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    }
+  ]
+}

@@ -8,8 +8,9 @@ from contextlib import asynccontextmanager
 import traceback
 
 from app.config import settings
-from app.routers import prediction_router, clustering_router, anomaly_router
+from app.routers import prediction_router, clustering_router, anomaly_router, insights_router
 from app.schemas.response import HealthResponse
+from app.routers.chat import router as chat_router
 
 
 @asynccontextmanager
@@ -46,13 +47,15 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(error_detail)
     return JSONResponse(
         status_code=500,
-        content={"detail": error_detail}
+        content={"detail": "Máy chủ chưa xử lý được yêu cầu."}
     )
 
 
 app.include_router(prediction_router, prefix=settings.API_V1_PREFIX)
 app.include_router(clustering_router, prefix=settings.API_V1_PREFIX)
 app.include_router(anomaly_router, prefix=settings.API_V1_PREFIX)
+app.include_router(insights_router, prefix=settings.API_V1_PREFIX)
+app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/", tags=["Root"])
@@ -67,7 +70,10 @@ async def root():
             "health": "/health",
             "prediction": f"{settings.API_V1_PREFIX}/predict/trend",
             "clustering": f"{settings.API_V1_PREFIX}/cluster/behavior",
-            "anomaly": f"{settings.API_V1_PREFIX}/detect/anomaly"
+            "anomaly": f"{settings.API_V1_PREFIX}/detect/anomaly",
+            "report": f"{settings.API_V1_PREFIX}/insights/report",
+            "ask": f"{settings.API_V1_PREFIX}/insights/ask",
+            "recommendations": f"{settings.API_V1_PREFIX}/insights/recommendations"
         }
     }
 
@@ -78,9 +84,9 @@ async def health_check():
         status="healthy",
         version=settings.VERSION,
         services={
-            "lstm": "ready",
-            "kmeans": "ready",
-            "isolation_forest": "ready"
+            "lstm": "available",
+            "kmeans": "available",
+            "isolation_forest": "available"
         }
     )
 
@@ -102,6 +108,21 @@ async def api_info():
             {
                 "name": "Isolation Forest Anomaly Detection",
                 "endpoint": "/api/v1/detect/anomaly",
+                "method": "POST"
+            },
+            {
+                "name": "Financial Reports",
+                "endpoint": "/api/v1/insights/report",
+                "method": "POST"
+            },
+            {
+                "name": "Cash-flow Q&A",
+                "endpoint": "/api/v1/insights/ask",
+                "method": "POST"
+            },
+            {
+                "name": "Financial Recommendations",
+                "endpoint": "/api/v1/insights/recommendations",
                 "method": "POST"
             }
         ]

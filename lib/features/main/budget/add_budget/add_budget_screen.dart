@@ -58,6 +58,20 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       final existingBudgets =
       await SpendingFirebase.getBudgetsOfMonth(month, year);
 
+      Budget? conflictingBudget;
+      for (final budget in existingBudgets) {
+        if (budget.type != selectedType &&
+            budgetTypesOverlap(budget.type, selectedType!)) {
+          conflictingBudget = budget;
+          break;
+        }
+      }
+
+      if (conflictingBudget != null) {
+        _showOverlapSnack();
+        return;
+      }
+
       Budget? existedBudget;
       for (final b in existingBudgets) {
         if (b.type == selectedType) {
@@ -103,6 +117,18 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(AppLocalizations.of(context).translate(key)),
+      ),
+    );
+  }
+
+  void _showOverlapSnack() {
+    final isEnglish = Localizations.localeOf(context)
+        .languageCode.toLowerCase().startsWith('en');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isEnglish
+            ? 'This budget overlaps an existing parent or subcategory budget. Edit the existing budget or choose another category.'
+            : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con đã có. Hãy sửa ngân sách hiện tại hoặc chọn danh mục khác.'),
       ),
     );
   }

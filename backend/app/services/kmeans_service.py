@@ -13,6 +13,7 @@ import math
 from app.schemas.spending import SpendingItem
 from app.schemas.response import ClusteringResponse, SpendingCluster
 from app.config import settings
+from .category_taxonomy import build_catalog, resolve_category_metadata, summarize_category_hierarchy
 
 
 def _field(obj, *names, default=None):
@@ -22,11 +23,12 @@ def _field(obj, *names, default=None):
             return value
     return default
 
-def _normalize_transactions(transactions, reference_date=None):
+def _normalize_transactions(transactions, reference_date=None, category_catalog=None):
     """Preserve clock time, Vietnam timezone, signed money and explicit transfer flags.
     No category-ID mapping is guessed: the application owns that mapping.
     Returns normalized objects plus diagnostics; does not mutate caller records.
     """
+    category_catalog = build_catalog(category_catalog)
     cutoff = pd.Timestamp(reference_date) if reference_date is not None else pd.Timestamp.now(tz='Asia/Ho_Chi_Minh')
     if cutoff.tzinfo is not None:
         cutoff = cutoff.tz_convert('Asia/Ho_Chi_Minh').tz_localize(None)
@@ -70,9 +72,29 @@ def _normalize_transactions(transactions, reference_date=None):
                 type_id = int(raw_type)
             except (TypeError, ValueError):
                 type_id = -1
+            category = resolve_category_metadata(tx, category_catalog)
             result.append(SimpleNamespace(id=tid or f'generated-{index}', money=money,
-                type=type_id, type_name=str(_field(tx,'type_name','typeName','category_name','category',default='other') or 'other'),
+                type=type_id, type_name=str(category['category_name'] or 'other'),
+                category_id=category['category_id'],
+                parent_category_id=category['parent_category_id'],
+                category_group_id=category['category_group_id'],
+                category_group_name=category['category_group_name'],
+                category_path_ids=category['category_path_ids'],
+                category_path=category['category_path'],
+                category_level=category['category_level'],
+                is_parent_category=category['is_parent_category'],
+                financial_role=category['financial_role'],
+                category_class=category['category_class'],
+                is_essential=category['is_essential'],
+                is_consumption_expense=category['is_consumption_expense'],
                 date_time=dt.to_pydatetime(), note=str(_field(tx,'note',default='') or ''),
+                merchant=str(_field(tx,'merchant','payee',default='') or ''),
+                source=str(_field(tx,'source',default='') or ''),
+                user_confirmed=_field(tx,'user_confirmed','userConfirmed',default=None),
+                classification_confidence=_field(tx,'classification_confidence','classificationConfidence','confidence',default=None),
+                payment_method=str(_field(tx,'payment_method','paymentMethod',default='') or ''),
+                chat_intent=str(_field(tx,'chat_intent','chatIntent',default='') or ''),
+                recurrence_id=str(_field(tx,'recurrence_id','recurrenceId',default='') or ''),
                 is_expense=money<0, is_income=money>0,
                 planned=_field(tx,'planned','isPlanned',default=False) is True))
         except (TypeError, ValueError, OverflowError):
@@ -213,6 +235,11 @@ class KMeansService:
             "description_base": "Dòng tiền dành cho tương lai: Tiết kiệm, đầu tư, trả nợ hoặc học tập. Đây là dấu hiệu của sức khỏe tài chính tốt.",
             "advice": "Tuyệt vời! Hãy cố gắng tự động hóa việc này ngay khi nhận lương để duy trì kỷ luật tài chính."
         },
+        "debt_management": {
+            "name": "🧾 Quản lý vay và trả nợ",
+            "description_base": "Nhóm giao dịch liên quan đến vay, cho vay, thu hồi nợ, trả gốc hoặc trả lãi.",
+            "advice": "Theo dõi riêng dư nợ, lịch trả gốc và lãi; không xem khoản vay mới là thu nhập thường xuyên.",
+        },
         "mixed_irregular": {
             "name": "🧩 Chi Phí Phát Sinh Khác",
             "description_base": "Các giao dịch hỗn hợp hoặc chưa rõ mục đích. Thường là các tình huống bất ngờ hoặc chi phí không tên.",
@@ -235,7 +262,9 @@ class KMeansService:
             
             display_name = self._resolve_category_name(t.type, t.type_name)
             
-            original_key = _category_key(t.type_name or "other")
+            original_key = _category_key(getattr(t, 'category_id', '') or t.type_name or "other")
+            category_class = str(getattr(t, 'category_class', 'unclassified'))
+            financial_role = str(getattr(t, 'financial_role', 'unclassified'))
 
             dt = t.date_time
             day_of_month = dt.day
@@ -249,6 +278,19 @@ class KMeansService:
                 'type': t.type,
                 'type_name': display_name, 
                 'original_key': original_key,
+                'category_id': str(getattr(t, 'category_id', '') or original_key),
+                'parent_category_id': str(getattr(t, 'parent_category_id', '') or ''),
+                'category_group_id': str(getattr(t, 'category_group_id', 'unclassified')),
+                'category_group_name': str(getattr(t, 'category_group_name', 'Chưa phân loại')),
+                'category_class': category_class,
+                'financial_role': financial_role,
+                'is_essential': int(bool(getattr(t, 'is_essential', False))),
+                'is_living': int(category_class == 'living_expense'),
+                'is_fixed': int(category_class in ('fixed_expense', 'fixed_cost')),
+                'is_unexpected': int(category_class == 'unexpected_expense'),
+                'is_investment': int(financial_role == 'investment_contribution' or category_class == 'investment'),
+                'is_saving': int(financial_role == 'savings_transfer' or category_class == 'saving'),
+                'is_debt': int(category_class in ('debt', 'debt_repayment', 'debt_cost', 'borrowing', 'lending', 'debt_collection')),
                 'date': dt.date(), 
                 'hour': dt.hour,
                 'day_of_month': day_of_month,
@@ -263,15 +305,20 @@ class KMeansService:
         
         df['is_weekend'] = df['weekday'].isin([5, 6]).astype(int)
         
-        def check_group(row, group_key):
-            group_list = self.CATEGORY_GROUPS.get(group_key, [])
-            cond1 = row['original_key'] in group_list
-            cond2 = False  # Numeric IDs differ across app versions; never guess their meaning.
-            return 1 if (cond1 or cond2) else 0
-
-        df['is_essential'] = df.apply(lambda x: check_group(x, 'essential'), axis=1)
-        df['is_entertainment'] = df.apply(lambda x: check_group(x, 'entertainment'), axis=1)
-        df['is_investment'] = df.apply(lambda x: check_group(x, 'investment'), axis=1)
+        # The stable parent/role fields are the source of truth. Legacy category
+        # name matching is only used when a transaction has no hierarchy metadata.
+        has_hierarchy = df['category_group_id'] != 'unclassified'
+        legacy_essential = (
+            df['original_key'].isin(self.CATEGORY_GROUPS.get('essential', [])) & ~has_hierarchy
+        ).astype(int)
+        df['is_essential'] = np.maximum(df['is_essential'], legacy_essential)
+        df['is_entertainment'] = (
+            df['original_key'].isin(self.CATEGORY_GROUPS.get('entertainment', [])) & ~has_hierarchy
+        ).astype(int)
+        df['is_investment'] = np.maximum(
+            df['is_investment'],
+            (df['original_key'].eq('invest') & ~has_hierarchy).astype(int),
+        )
         
         df['log_amount'] = np.log1p(df['amount'])
 
@@ -301,9 +348,13 @@ class KMeansService:
         overall_avg = full_df['amount'].mean()
         
         essential_ratio = segment_df['is_essential'].mean()
-        investment_ratio = segment_df['is_investment'].mean()
+        investment_ratio = np.maximum(segment_df['is_investment'], segment_df['is_saving']).mean()
+        debt_ratio = segment_df['is_debt'].mean()
         entertainment_ratio = segment_df['is_entertainment'].mean()
         
+        if debt_ratio > 0.5:
+            return "debt_management"
+
         if avg_amount > overall_avg * 3.0: 
             return "high_value_outliers"
         
@@ -333,7 +384,25 @@ class KMeansService:
             "totalAmount": float(round(merged_df['amount'].sum(), 0)),
             "transactionCount": int(len(merged_df)),
             "essentialRatio": float(round(merged_df['is_essential'].mean() * 100, 1)),
-            "topCategories": top_cats_dict
+            "livingRatio": float(round(merged_df['is_living'].mean() * 100, 1)),
+            "fixedRatio": float(round(merged_df['is_fixed'].mean() * 100, 1)),
+            "unexpectedRatio": float(round(merged_df['is_unexpected'].mean() * 100, 1)),
+            "investmentRatio": float(round(merged_df['is_investment'].mean() * 100, 1)),
+            "savingRatio": float(round(merged_df['is_saving'].mean() * 100, 1)),
+            "debtRatio": float(round(merged_df['is_debt'].mean() * 100, 1)),
+            "topCategories": top_cats_dict,
+            "categoryGroups": {
+                str(group_id): {
+                    "name": str(group['category_group_name'].iloc[0]),
+                    "transactionCount": int(len(group)),
+                    "cashOutflow": float(round(group['amount'].sum(), 0)),
+                }
+                for group_id, group in merged_df.groupby('category_group_id')
+            },
+            "financialRoles": {
+                str(role): int(count)
+                for role, count in merged_df['financial_role'].value_counts().items()
+            },
         }
         
         rich_description = (
@@ -377,8 +446,8 @@ class KMeansService:
 
     def cluster_spending(self, user_id: str, transactions: List[SpendingItem], n_clusters: int = None,
                          year: Optional[int] = None, month: Optional[int] = None,
-                         reference_date=None) -> ClusteringResponse:
-        normalized, diagnostics = _normalize_transactions(transactions, reference_date)
+                         reference_date=None, category_catalog=None) -> ClusteringResponse:
+        normalized, diagnostics = _normalize_transactions(transactions, reference_date, category_catalog)
         if (year is None) != (month is None):
             raise ValueError('Phải truyền đồng thời year và month')
         if year is not None:
@@ -391,7 +460,10 @@ class KMeansService:
         # K-Means on very small samples is unstable. Keep a conservative minimum.
         if df.empty or len(df) < 10:
             return ClusteringResponse(
-                success=False, user_id=user_id, clusters=[], user_profile={},
+                success=False, user_id=user_id, clusters=[],
+                user_profile={"categoryAnalysis": summarize_category_hierarchy(normalized),
+                              "kMeans": {"modelReady": False, "minimumTransactions": 10,
+                                         "sampleSize": int(len(df))}},
                 recommendations=[
                     "Bạn cần ít nhất 10 giao dịch chi tiêu để hệ thống bắt đầu phân tích hành vi. "
                     "Từ 30 giao dịch trở lên, kết quả thường có ý nghĩa hơn."
@@ -407,6 +479,7 @@ class KMeansService:
             'amount_vs_user_avg', 'amount_vs_category_avg',
             'category_frequency', 'daily_frequency',
             'is_essential', 'is_entertainment', 'is_investment',
+            'is_living', 'is_fixed', 'is_unexpected', 'is_saving', 'is_debt',
         ]
 
         X_features = df[feature_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0).values
@@ -433,6 +506,7 @@ class KMeansService:
         )
 
         user_profile = self._build_user_profile(df, final_clusters)
+        user_profile['categoryAnalysis'] = summarize_category_hierarchy(normalized)
         # Add ML diagnostics without changing the response schema.
         user_profile['kMeans'] = {
             'optimalK': int(best_k),
@@ -460,12 +534,17 @@ class KMeansService:
         avg_amt = df['amount'].mean()
         
         invest_ratio = df['is_investment'].mean()
+        saving_ratio = df['is_saving'].mean()
+        debt_ratio = df['is_debt'].mean()
         essential_ratio = df['is_essential'].mean()
         ent_ratio = df['is_entertainment'].mean()
         weekend_ratio = df['is_weekend'].mean()
         
-        if invest_ratio > 0.35:
-            return "🐺 Sói Già Phố Wall (Nhà đầu tư)"
+        if debt_ratio > 0.35:
+            return "🧾 Cần theo dõi nghĩa vụ nợ"
+
+        if max(invest_ratio, saving_ratio) > 0.35:
+            return "🌱 Người ưu tiên tích lũy/đầu tư"
         
         if essential_ratio > 0.70:
             return "🛡️ Người Quản Gia Thận Trọng"
@@ -524,15 +603,42 @@ class KMeansService:
         if total <= 0:
             return ['Chưa có dữ liệu chi tiêu hợp lệ để gợi ý.']
         recs = []
+        group_totals = (df.groupby(['category_group_id', 'category_group_name'], dropna=False)['amount']
+                        .agg(['sum', 'count']).sort_values('sum', ascending=False))
+        for (group_id, group_name), row in group_totals.iterrows():
+            if group_id == 'unclassified':
+                continue
+            share = float(row['sum']) / total * 100
+            if group_id == 'expense_unexpected' and share >= 20:
+                advice = 'Tách khoản đột xuất cần thiết khỏi khoản có thể trì hoãn; chỉ lập quỹ dự phòng theo khả năng thực tế.'
+            elif group_id == 'expense_fixed':
+                advice = 'Rà soát hóa đơn định kỳ và hạn thanh toán; chỉ đổi gói khi dữ liệu cho thấy có lựa chọn phù hợp.'
+            elif group_id == 'investment_saving':
+                advice = 'Đây là dòng tiền dành cho tiết kiệm/đầu tư; không xem khoản này là tiêu dùng lãng phí.'
+            elif group_id == 'loan_borrow':
+                advice = 'Phân biệt tiền vay, cho vay, thu hồi nợ và trả nợ; không gộp tiền vay vào thu nhập thường xuyên.'
+            elif group_id == 'expense_living':
+                advice = 'Theo dõi từng danh mục con để tìm khoản có thể tối ưu mà không cắt nhu cầu thiết yếu.'
+            else:
+                advice = 'Xem lại các danh mục con và đối chiếu với kế hoạch đã ghi nhận.'
+            recs.append(f'{group_name}: {int(row["count"])} giao dịch, {row["sum"]:,.0f}đ '
+                        f'({share:.1f}% dòng tiền chi ra). {advice}')
         for cluster in sorted(clusters, key=lambda c:c.characteristics['totalAmount'], reverse=True)[:3]:
             stats = cluster.characteristics
             names = ', '.join(list(stats['topCategories'])[:2])
             share = float(stats['totalAmount']) / total * 100
+            group_ids = set(stats.get('categoryGroups', {}))
+            if group_ids == {'investment_saving'}:
+                advice = 'Đối chiếu với mục tiêu tiết kiệm/đầu tư đã chọn; không mặc định đây là khoản tiêu dùng cần cắt.'
+            elif group_ids == {'loan_borrow'}:
+                advice = 'Theo dõi riêng tiền vay, cho vay, trả gốc và trả lãi; không gộp thành chi phí sinh hoạt.'
+            elif stats['essentialRatio'] >= 60:
+                advice = 'Ưu tiên giữ các khoản thiết yếu; kiểm tra khoản phát sinh hoặc ghi sai trước khi điều chỉnh.'
+            else:
+                advice = 'Đối chiếu nhóm này với ngân sách và kế hoạch; chỉ hoãn khoản chưa cần thiết khi phù hợp.'
             recs.append(f"Nhóm {names}: {stats['transactionCount']} giao dịch, "
                         f"tổng {stats['totalAmount']:,.0f}đ ({share:.1f}% tổng chi đã ghi nhận). "
-                        + ('Ưu tiên giữ các khoản thiết yếu; kiểm tra khoản phát sinh hoặc ghi sai trước khi điều chỉnh.'
-                           if stats['essentialRatio'] >= 60 else
-                           'Đối chiếu nhóm này với ngân sách; cân nhắc hoãn khoản chưa cần thiết nếu ngân sách thiếu.'))
+                        + advice)
         if len(df) < 30:
             recs.append('Số giao dịch còn ít; các nhóm có thể thay đổi khi cập nhật thêm dữ liệu.')
         recs.append('Tỷ trọng trên được tính theo tổng chi, không phải thu nhập. Chưa thể kết luận mức tiết kiệm từ dữ liệu chi riêng lẻ.')

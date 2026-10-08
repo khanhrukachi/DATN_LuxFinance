@@ -1,0 +1,1011 @@
+{
+  "schemaVersion": "financial_chat_examples_v1",
+  "datasetType": "parser_test_examples_not_trained_model",
+  "questionCount": 170,
+  "examples": [
+    {
+      "question": "Tháng này tổng dòng tiền của beautify là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho beautify?",
+      "intent": "category_spending",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi beautify tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách beautify tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh beautify tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của borrow là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "borrow",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh borrow tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "borrow",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của debt_collection là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "debt_collection",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh debt_collection tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "debt_collection",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của eating là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho eating?",
+      "intent": "category_spending",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Chi eating tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Ngân sách eating tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh eating tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của education là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh education tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của electricity_bill là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho electricity_bill?",
+      "intent": "category_spending",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Chi electricity_bill tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Ngân sách electricity_bill tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh electricity_bill tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của expense_fixed là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho expense_fixed?",
+      "intent": "category_spending",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "Chi expense_fixed tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "Ngân sách expense_fixed tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_fixed tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của expense_living là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho expense_living?",
+      "intent": "category_spending",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "Chi expense_living tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "Ngân sách expense_living tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_living tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của expense_unexpected là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho expense_unexpected?",
+      "intent": "category_spending",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "Chi expense_unexpected tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "Ngân sách expense_unexpected tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_unexpected tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của fun_play là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho fun_play?",
+      "intent": "category_spending",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi fun_play tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách fun_play tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh fun_play tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của gas_money là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho gas_money?",
+      "intent": "category_spending",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi gas_money tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách gas_money tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gas_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của gifts_donations là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho gifts_donations?",
+      "intent": "category_spending",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi gifts_donations tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách gifts_donations tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gifts_donations tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của housewares là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho housewares?",
+      "intent": "category_spending",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi housewares tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách housewares tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh housewares tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của income là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh income tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh thu nhập income tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của insurance là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh insurance tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của internet_money là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho internet_money?",
+      "intent": "category_spending",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Chi internet_money tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Ngân sách internet_money tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh internet_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của invest là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh invest tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của investment_saving là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh investment_saving tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của loan là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh loan tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của loan_borrow là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh loan_borrow tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của market là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho market?",
+      "intent": "category_spending",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Chi market tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Ngân sách market tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh market tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của money_transferred_to là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh money_transferred_to tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập money_transferred_to tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của move là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho move?",
+      "intent": "category_spending",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Chi move tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Ngân sách move tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh move tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của online_services là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho online_services?",
+      "intent": "category_spending",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi online_services tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách online_services tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh online_services tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của other_costs là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho other_costs?",
+      "intent": "category_spending",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi other_costs tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách other_costs tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh other_costs tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của other_income là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh other_income tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập other_income tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của pay là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của pay_interest là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay_interest tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của personal_belongings là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho personal_belongings?",
+      "intent": "category_spending",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi personal_belongings tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách personal_belongings tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh personal_belongings tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của pet là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho pet?",
+      "intent": "category_spending",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi pet tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách pet tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh pet tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của physical_examination là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho physical_examination?",
+      "intent": "category_spending",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi physical_examination tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách physical_examination tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh physical_examination tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của rent_house là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho rent_house?",
+      "intent": "category_spending",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Chi rent_house tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Ngân sách rent_house tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh rent_house tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của repair_and_decorate_the_house là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho repair_and_decorate_the_house?",
+      "intent": "category_spending",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi repair_and_decorate_the_house tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách repair_and_decorate_the_house tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh repair_and_decorate_the_house tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của revenue là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh revenue tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập revenue tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của salary là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh salary tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập salary tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của saving là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh saving tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của sport là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho sport?",
+      "intent": "category_spending",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi sport tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách sport tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh sport tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của telephone_fee là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho telephone_fee?",
+      "intent": "category_spending",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Chi telephone_fee tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Ngân sách telephone_fee tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh telephone_fee tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của tv_money là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho tv_money?",
+      "intent": "category_spending",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Chi tv_money tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Ngân sách tv_money tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh tv_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của vehicle_maintenance là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho vehicle_maintenance?",
+      "intent": "category_spending",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Chi vehicle_maintenance tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Ngân sách vehicle_maintenance tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh vehicle_maintenance tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của water_money là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tôi đã chi bao nhiêu cho water_money?",
+      "intent": "category_spending",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Chi water_money tháng này so với tháng trước thế nào?",
+      "intent": "period_comparison",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Ngân sách water_money tháng này còn bao nhiêu?",
+      "intent": "budget_status",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh water_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng thu chi là bao nhiêu?",
+      "intent": "period_summary"
+    },
+    {
+      "question": "So sánh thu nhập tháng này và tháng trước",
+      "intent": "income_period_comparison"
+    },
+    {
+      "question": "So sánh chi tiêu từng danh mục cha tháng này và tháng trước",
+      "intent": "period_comparison"
+    },
+    {
+      "question": "So sánh chi tiêu từng danh mục tháng này với tháng trước cùng số ngày",
+      "intent": "period_comparison"
+    },
+    {
+      "question": "Danh mục nào chi nhiều nhất tháng này?",
+      "intent": "top_spending_categories"
+    },
+    {
+      "question": "Dự báo chi tiêu 7 ngày tới",
+      "intent": "spending_forecast"
+    },
+    {
+      "question": "Tháng này có giao dịch bất thường không?",
+      "intent": "anomaly_analysis"
+    },
+    {
+      "question": "Phân tích thói quen chi tiêu tháng này",
+      "intent": "behavior_analysis"
+    }
+  ]
+}

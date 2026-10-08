@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/models/budget.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
+import 'package:personal_financial_management/core/constants/list.dart';
 
 class SpendingFirebase {
   // =====================================================
@@ -55,11 +56,20 @@ class SpendingFirebase {
   // ================= ADD SPENDING ======================
   // =====================================================
 
-  static Future<void> addSpending(Spending spending) async {
+  static Future<void> addSpending(
+      Spending spending, {
+        String? categoryId,
+        String? parentId,
+        String? parentName,
+      }) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    final spendingRef = FirebaseFirestore.instance.collection("spending").doc();
-    final dataRef = FirebaseFirestore.instance.collection("data").doc(uid);
+    final spendingRef =
+    FirebaseFirestore.instance.collection("spending").doc();
+    final dataRef =
+    FirebaseFirestore.instance.collection("data").doc(uid);
+    final spendingData = Map<String, dynamic>.from(spending.toMap());
+
 
     if (spending.image != null) {
       spending.image = await uploadImage(
@@ -72,6 +82,9 @@ class SpendingFirebase {
     await spendingRef.set({
       ...spending.toMap(),
       "userId": uid,
+      "categoryId": categoryId ?? spendingData["categoryId"],
+      "parentId": parentId ?? spendingData["parentId"],
+      "parentName": parentName ?? spendingData["parentName"],
     });
 
     final key = DateFormat("MM_yyyy").format(spending.dateTime);
@@ -90,7 +103,9 @@ class SpendingFirebase {
 
     await _updateCurrentMoney(spending.money);
     await _checkBudgetNotificationsSafely(
-      uid: uid, month: spending.dateTime.month, year: spending.dateTime.year,
+      uid: uid,
+      month: spending.dateTime.month,
+      year: spending.dateTime.year,
     );
   }
 
@@ -105,12 +120,12 @@ class SpendingFirebase {
       bool deleteImage,
       ) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
     final spendingRef =
     FirebaseFirestore.instance.collection("spending").doc(spending.id);
     final dataRef = FirebaseFirestore.instance.collection("data").doc(uid);
-
     final oldSnap = await spendingRef.get();
+    final oldData = oldSnap.data() ?? <String, dynamic>{};
+
     int oldMoney = 0;
     if (oldSnap.exists && oldSnap.data() != null) {
       final raw = oldSnap.data()!['money'];
@@ -135,6 +150,12 @@ class SpendingFirebase {
     await spendingRef.update({
       ...spending.toMap(),
       "userId": uid,
+      if (oldData.containsKey("categoryId"))
+        "categoryId": oldData["categoryId"],
+      if (oldData.containsKey("parentId"))
+        "parentId": oldData["parentId"],
+      if (oldData.containsKey("parentName"))
+        "parentName": oldData["parentName"],
     });
 
     final oldKey = DateFormat("MM_yyyy").format(oldDay);
@@ -273,8 +294,17 @@ class SpendingFirebase {
         .where("userId", isEqualTo: uid)
         .where("money", isLessThan: 0);
 
-    if (type != null) {
-      query = query.where("type", isEqualTo: type);
+    final Set<int>? coveredTypes = type == null
+        ? null
+        : _budgetCategoryScope(type);
+
+    if (coveredTypes != null) {
+      if (coveredTypes.isEmpty) return 0;
+      if (coveredTypes.length == 1) {
+        query = query.where("type", isEqualTo: coveredTypes.first);
+      } else if (coveredTypes.length <= 30) {
+        query = query.where("type", whereIn: coveredTypes.toList());
+      }
     }
 
     final snap = await query.get();
@@ -282,11 +312,60 @@ class SpendingFirebase {
     int total = 0;
     for (var doc in snap.docs) {
       final spending = Spending.fromFirebase(doc);
+      if (coveredTypes != null && !coveredTypes.contains(spending.type)) continue;
       if (spending.month == month && spending.year == year) {
         total += spending.money.abs();
       }
     }
     return total;
+  }
+
+  /// A parent budget covers direct spending on that parent and every nested
+  /// expense category below it. Type 0 continues to represent all spending.
+  static Set<int> _budgetCategoryScope(int selectedType) {
+    if (selectedType < 0 || selectedType >= listType.length) return <int>{};
+
+    final expenseRootId = listType[0]['id']?.toString() ?? 'expense';
+    bool belongsToExpense(int index) {
+      if (index == 0) return true;
+      final visited = <String>{};
+      var current = Map<String, dynamic>.from(listType[index] as Map);
+      while (true) {
+        final parentId = current['parent']?.toString() ?? '';
+        if (parentId == expenseRootId) return true;
+        if (parentId.isEmpty || !visited.add(parentId)) return false;
+        final parentIndex = listType.indexWhere(
+              (item) => item['id']?.toString() == parentId,
+        );
+        if (parentIndex < 0) return false;
+        current = Map<String, dynamic>.from(listType[parentIndex] as Map);
+      }
+    }
+
+    if (selectedType == 0) {
+      return <int>{
+        for (var i = 0; i < listType.length; i++)
+          if (belongsToExpense(i)) i,
+      };
+    }
+
+    final scope = <int>{selectedType};
+    var changed = true;
+    while (changed) {
+      changed = false;
+      for (var i = 1; i < listType.length; i++) {
+        if (scope.contains(i) || !belongsToExpense(i)) continue;
+        final parentId = listType[i]['parent']?.toString() ?? '';
+        final parentIndex = listType.indexWhere(
+              (item) => item['id']?.toString() == parentId,
+        );
+        if (scope.contains(parentIndex)) {
+          scope.add(i);
+          changed = true;
+        }
+      }
+    }
+    return scope;
   }
 
   static Future<bool> isOverBudget(Budget budget) async {
@@ -419,7 +498,12 @@ class SpendingFirebase {
           final limit = (data['limitMoney'] as num?)?.toInt() ?? 0;
           if (type == null || limit <= 0) continue;
           // Keep the existing convention in isOverBudget: type 0 = overall.
-          final spent = type == 0 ? total : (byType[type] ?? 0);
+          final spent = type == 0
+              ? total
+              : _budgetCategoryScope(type).fold<int>(
+            0,
+                (sum, categoryType) => sum + (byType[categoryType] ?? 0),
+          );
           if (spent * 100 < limit * 80) continue;
           final level = spent > limit ? 'exceeded'
               : spent == limit ? 'reached' : 'near';

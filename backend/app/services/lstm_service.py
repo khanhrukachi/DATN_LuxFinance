@@ -13,6 +13,7 @@ from collections import OrderedDict
 from contextvars import ContextVar
 from .kmeans_service import KMeansService, _normalize_transactions, _category_key
 from .isolation_forest_service import IsolationForestService
+from .category_taxonomy import build_catalog, resolve_category_metadata, summarize_category_hierarchy, category_scope_ids
 
 _LSTM_ENABLED = ContextVar("lux_lstm_enabled", default=True)
 _LSTM_LOCK = threading.RLock()
@@ -106,6 +107,8 @@ class LSTMService:
                 money = float(getattr(t, "money", 0) or 0)
                 if money == 0:
                     continue
+                if getattr(t, "forecast_excluded", False):
+                    continue
                 dt = self._parse_datetime(getattr(t, "date_time", None))
                 if dt is None:
                     continue
@@ -127,15 +130,20 @@ class LSTMService:
                     "date": dt,
                     "income": income_value,
                     "expense": expense_value,
+                    "fixed_monthly_income": (
+                        income_value if getattr(t, "is_fixed_income", False)
+                        or getattr(t, "financial_role", None) == "fixed_monthly_income"
+                        else 0.0
+                    ),
                 })
             except (TypeError, ValueError, OverflowError):
                 continue
 
         if not rows:
-            return pd.DataFrame(columns=["date", "income", "expense", "observed"])
+            return pd.DataFrame(columns=["date", "income", "expense", "fixed_monthly_income", "observed"])
 
         df = pd.DataFrame(rows)
-        daily = df.groupby("date", as_index=False)[["income", "expense"]].sum()
+        daily = df.groupby("date", as_index=False)[["income", "expense", "fixed_monthly_income"]].sum()
         full_idx = pd.date_range(daily["date"].min(), daily["date"].max(), freq="D")
         daily = (
             daily.set_index("date")
@@ -313,6 +321,59 @@ class LSTMService:
         })
         return adjusted, meta
 
+    def _fixed_salary_event_forecast(
+        self, history: pd.DataFrame, target_year: int, target_month: int
+    ) -> Optional[Dict[str, Any]]:
+        """Infer one monthly salary event from repeated fixed-income records.
+
+        A payday is emitted only after at least two different months show a
+        27–32 day cadence. The result is a statistical estimate, never a
+        confirmed cash event.
+        """
+        if history.empty or "fixed_monthly_income" not in history.columns:
+            return None
+        salary_rows = history[history["fixed_monthly_income"] > 0].copy()
+        if salary_rows.empty:
+            return None
+        salary_rows["period"] = salary_rows["date"].dt.to_period("M")
+        # The category represents one salary receipt per month. If bad/duplicate
+        # data contains several salary dates, use the largest observed receipt
+        # as the monthly event instead of summing it into multiple paydays.
+        rows = []
+        for period, month_rows in salary_rows.groupby("period"):
+            event = month_rows.loc[month_rows["fixed_monthly_income"].idxmax()]
+            rows.append({
+                "period": period,
+                "date": pd.Timestamp(event["date"]),
+                "amount": float(event["fixed_monthly_income"]),
+            })
+        records = sorted(rows, key=lambda row: row["period"])[-6:]
+        if len(records) < 2:
+            return None
+        gaps = [(b["date"] - a["date"]).days for a, b in zip(records, records[1:])]
+        if not all(27 <= gap <= 32 for gap in gaps):
+            return None
+        days = [row["date"].day for row in records]
+        end_of_month = all(
+            day == calendar.monthrange(row["date"].year, row["date"].month)[1]
+            for day, row in zip(days, records)
+        )
+        anchor_day = int(np.median(days))
+        target_last = calendar.monthrange(target_year, target_month)[1]
+        payday = target_last if end_of_month else min(anchor_day, target_last)
+        payday_date = self._adjust_salary_payday(pd.Timestamp(target_year, target_month, payday))
+        target_period = pd.Period(year=target_year, month=target_month, freq="M")
+        already_received = any(row["period"] == target_period for row in records)
+        amount = self._weighted_mean([row["amount"] for row in records])
+        return {
+            "date": payday_date,
+            "amount": 0.0 if already_received else round(max(0.0, amount)),
+            "alreadyReceivedThisMonth": already_received,
+            "basedOnMonths": len(records),
+            "cadence": "monthly",
+            "isConfirmed": False,
+        }
+
     def _income_monthly_forecast(
         self,
         history: pd.DataFrame,
@@ -325,29 +386,44 @@ class LSTMService:
         Thu nhập được dự báo THEO THÁNG, không theo weekday.
         Tổng thu nhập tháng = mức thu nhập tháng lịch sử gần đây.
         Phần còn lại = max(tổng tháng dự kiến - thu đã nhận, 0).
-        Các prediction theo ngày chỉ là phân bổ trung bình để UI/API cũ vẫn dùng được.
+        Không gán thu nhập tháng vào từng ngày khi chưa biết ngày nhận tiền.
+        Ngày nhận lương chỉ được đưa vào timeline khi người dùng xác nhận.
         """
         monthly_total, meta = self._monthly_level_forecast(history, "income", months=6)
         monthly_total, meta = self._adjust_monthly_forecast_for_horizon(
             monthly_total, meta, target_year, target_month, history
         )
-        days_in_month = calendar.monthrange(target_year, target_month)[1]
-
-        # Nếu không có tháng hoàn chỉnh, dùng mức trung bình ngày lịch sử x số ngày tháng.
+        # Nếu không có tháng hoàn chỉnh, dùng tổng thu theo tháng đã quan sát.
         if monthly_total <= 0 and not history.empty:
-            observed_days = max(int(history["date"].nunique()), 1)
-            daily_avg = float(history["income"].sum()) / observed_days
-            monthly_total = max(0.0, daily_avg * days_in_month)
-            meta.update({
-                "model": "income_daily_average_fallback",
-                "averagePerDay": round(daily_avg),
-                "forecastLow": round(monthly_total * 0.75),
-                "forecastHigh": round(monthly_total * 1.25),
-            })
+            # Income is event based: salary may arrive once per month. A daily
+            # average multiplied by 30 would turn one payroll transaction into
+            # thirty salaries. Use observed monthly sums from earlier months.
+            partial_months = self._monthly_totals(history, "income")
+            target_period = pd.Period(year=target_year, month=target_month, freq="M")
+            partial_months = partial_months[partial_months["period"] < target_period]
+            observed_monthly = partial_months["value"].astype(float).tail(3).tolist()
+            observed_monthly = [value for value in observed_monthly if value > 0]
+            if observed_monthly:
+                monthly_total = max(0.0, self._weighted_mean(observed_monthly))
+                meta.update({
+                    "model": "observed_monthly_income_fallback",
+                    "fallbackMonthsUsed": len(observed_monthly),
+                    "fallbackMonthlyValues": [round(value) for value in observed_monthly],
+                    "forecastLow": round(monthly_total * 0.75),
+                    "forecastHigh": round(monthly_total * 1.25),
+                })
 
         remaining = max(0.0, monthly_total - actual_income)
-        per_day = remaining / len(target_dates) if target_dates else 0.0
-        preds = [per_day] * len(target_dates)
+        salary_event = self._fixed_salary_event_forecast(history, target_year, target_month)
+        # Never spread salary across days. Put one estimate on its inferred
+        # historical payday, provided that day is in this forecast window.
+        preds = [0.0] * len(target_dates)
+        if salary_event and salary_event["amount"] > 0:
+            for index, day in enumerate(target_dates):
+                if pd.Timestamp(day).normalize() == salary_event["date"]:
+                    preds[index] = float(salary_event["amount"])
+                    break
+        per_day = sum(preds) / len(target_dates) if target_dates else 0.0
 
         low_total = float(meta.get("forecastLow", monthly_total))
         high_total = float(meta.get("forecastHigh", monthly_total))
@@ -355,13 +431,21 @@ class LSTMService:
         meta.update({
             "confidence": round(min(0.80, 0.30 + months_used * 0.08), 2),
             "forecastType": "monthly_income",
+            "incomeCadence": "monthly",
+            "salaryReceiptPolicy": "one fixed monthly salary event; infer its date from history and keep it unconfirmed",
+            "dailyIncomeValuesAreSchedule": False,
+            "dailyIncomeIsAllocation": False,
+            "salaryPaydayForecast": ({
+                **salary_event,
+                "date": salary_event["date"].strftime("%Y-%m-%d"),
+            } if salary_event else None),
             "expectedMonthlyIncome": round(max(actual_income, monthly_total)),
             "actualIncomeSoFar": round(actual_income),
             "remainingIncomeForecast": round(remaining),
             "averageRemainingPerDay": round(per_day),
             "forecastLow": round(max(actual_income, low_total)),
             "forecastHigh": round(max(actual_income, high_total)),
-            "note": "Thu nhập được ước tính theo tổng tháng; giá trị theo ngày chỉ là mức trung bình phân bổ để tương thích giao diện.",
+            "note": "Lương chỉ dự báo một lần trên ngày nhận ước tính từ lịch sử; đây chưa phải khoản thu đã xác nhận hoặc số dư thực tế.",
         })
         return preds, meta
 
@@ -1215,7 +1299,7 @@ class LSTMService:
                 "spendingProbability": behavior.get("spendingProbability"),
                 "spendingProbabilityPercent": behavior.get("spendingProbabilityPercent"),
                 "estimatedAmountIfSpending": behavior.get("estimatedAmountIfSpending"),
-                "incomeIsAllocation": inc_meta.get("forecastType") == "monthly_income",
+                "incomeIsAllocation": bool(inc_meta.get("dailyIncomeIsAllocation", False)),
                 "expenseIsAllocation": exp_meta.get("forecastType") == "monthly_expense" and not bool(behavior),
             })
 
@@ -1344,14 +1428,14 @@ class LSTMService:
         observed = daily[daily.get("observed", True) == True] if "observed" in daily.columns else daily
         first_tx = observed["date"].min() if not observed.empty else None
         last_tx = observed["date"].max() if not observed.empty else None
-        print("\n" + "=" * 58)
-        print(f"[FORECAST] User: {user_id}")
-        print(f"[FORECAST] TODAY       : {today.strftime('%Y-%m-%d')}")
-        print(f"[FORECAST] TARGET MONTH: {target_month:02d}/{target_year}")
-        print(f"[FORECAST] REQUEST     : year={year}, month={month}, prediction_days={prediction_days}")
-        print(f"[FORECAST] TX RANGE    : {first_tx.strftime('%Y-%m-%d') if first_tx is not None else 'N/A'} -> {last_tx.strftime('%Y-%m-%d') if last_tx is not None else 'N/A'}")
-        print(f"[FORECAST] NOTE        : TX cũ chỉ dùng làm HISTORY; không đổi TARGET MONTH.")
-        print("=" * 58)
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
 
         # Phân biệt rõ:
         # - tháng quá khứ: chỉ tổng hợp thực tế, không forecast
@@ -1378,8 +1462,8 @@ class LSTMService:
         # - past month: chỉ dữ liệu tới cuối tháng đó.
         history = daily[daily["date"] <= min(cutoff, today)].copy()
 
-        print(f"[FORECAST] HISTORY     : {history['date'].min().strftime('%Y-%m-%d') if not history.empty else 'N/A'} -> {history['date'].max().strftime('%Y-%m-%d') if not history.empty else 'N/A'}")
-        print(f"[FORECAST] ACTUAL TARGET TX DAYS: {int(actual_month['observed'].sum()) if (not actual_month.empty and 'observed' in actual_month.columns) else 0}")
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
 
 
         # QUAN TRỌNG:
@@ -1401,7 +1485,8 @@ class LSTMService:
         actual_income = float(actual_month["income"].sum()) if not actual_month.empty else 0.0
         actual_expense = float(actual_month["expense"].sum()) if not actual_month.empty else 0.0
 
-        # THU: luôn forecast theo mức tổng tháng, sau đó phân bổ trung bình/ngày.
+        # THU: forecast tổng theo tháng; lương được đặt vào một ngày nhận ước tính,
+        # không bị chia đều cho từng ngày.
         inc_preds, inc_meta = self._income_monthly_forecast(
             history, actual_income, target_year, target_month, target_dates
         )
@@ -1434,10 +1519,10 @@ class LSTMService:
                              "dailyBehavior": short_meta.get("dailyBehavior", []),
                              "hybridFirstWeek": True})
 
-        print(f"[FORECAST] INCOME MODEL : {inc_meta.get('model')} / {inc_meta.get('forecastType')}")
-        print(f"[FORECAST] EXPENSE MODEL: {exp_meta.get('model')} / {exp_meta.get('forecastType')}")
-        print(f"[FORECAST] FORECAST DAYS: {len(target_dates)}")
-        print("=" * 58 + "\n")
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
+        pass  # Diagnostics omitted from request processing.
 
         predictions = []
         for d, inc, exp in zip(target_dates, inc_preds, exp_preds):
@@ -1750,8 +1835,15 @@ class LSTMService:
     def _stable_id(*parts: Any) -> str:
         return hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:20]
 
+    @staticmethod
+    def _adjust_salary_payday(date: pd.Timestamp) -> pd.Timestamp:
+        """Shift a Sunday payday back one day to Saturday."""
+        day = pd.Timestamp(date).normalize()
+        return day - timedelta(days=1) if day.weekday() == 6 else day
+
     def _advisor_transactions(self, transactions: List[Any], timezone: str,
-                              today: pd.Timestamp) -> Tuple[List[Any], List[str]]:
+                              today: pd.Timestamp, category_catalog: Any = None) -> Tuple[List[Any], List[str]]:
+        category_catalog = build_catalog(category_catalog)
         clean, warnings_out, seen = [], [], set()
         for index, tx in enumerate(transactions or []):
             try:
@@ -1777,14 +1869,38 @@ class LSTMService:
                     raise ValueError("Giao dịch không thể đồng thời là thu và chi.")
                 kind = "expense" if expense is True else "income" if income is True else (
                     "expense" if amount < 0 else "income")
+                category = resolve_category_metadata(tx, category_catalog)
+                financial_role = category["financial_role"]
+                non_operating_inflow = amount > 0 and financial_role in (
+                    "borrowed_principal", "debt_collection", "investment_return")
                 clean.append(SimpleNamespace(
                     id=tid, money=abs(amount) * (-1 if kind == "expense" else 1),
-                    date_time=day, is_expense=kind == "expense", is_income=kind == "income",
-                    category=str(self._field(tx, "category_name", "type_name", "typeName", "category", "type", default="")),
-                    category_id=str(self._field(tx, "category_id", "type", default="")),
+                    date_time=day, is_expense=kind == "expense",
+                    is_income=kind == "income" and not non_operating_inflow,
+                    forecast_excluded=non_operating_inflow,
+                    category=category["category_name"],
+                    category_id=category["category_id"],
+                    parent_category_id=category["parent_category_id"],
+                    category_group_id=category["category_group_id"],
+                    category_group_name=category["category_group_name"],
+                    category_path_ids=category["category_path_ids"],
+                    category_path=category["category_path"],
+                    category_level=category["category_level"],
+                    financial_role=financial_role,
+                    income_cadence=category.get("income_cadence"),
+                    is_fixed_income=category.get("is_fixed_income", False),
+                    expected_income_events_per_month=category.get("expected_income_events_per_month"),
+                    category_class=category["category_class"],
+                    is_essential=category["is_essential"],
+                    is_consumption_expense=category["is_consumption_expense"],
                     note=str(self._field(tx, "note", default="")),
                     merchant=str(self._field(tx, "merchant", "payee", default="")),
                     recurrence_id=str(self._field(tx, "recurrence_id", "recurrenceId", default="")),
+                    source=str(self._field(tx, "source", default="")),
+                    user_confirmed=self._field(tx, "user_confirmed", "userConfirmed", default=None),
+                    classification_confidence=self._field(tx, "classification_confidence", "classificationConfidence", "confidence"),
+                    payment_method=str(self._field(tx, "payment_method", "paymentMethod", default="")),
+                    chat_intent=str(self._field(tx, "chat_intent", "chatIntent", default="")),
                 ))
             except (ValueError, TypeError, OverflowError) as exc:
                 warnings_out.append(f"Bỏ giao dịch #{index}: {exc}")
@@ -1797,7 +1913,9 @@ class LSTMService:
         """
         groups: Dict[Any, List[Any]] = {}
         for tx in transactions:
-            label = tx.recurrence_id or tx.merchant or re.sub(r"\s+", " ", tx.note.strip().lower())
+            label = (tx.recurrence_id or tx.merchant or
+                     re.sub(r"\s+", " ", tx.note.strip().lower()) or
+                     (tx.category if tx.is_fixed_income else ""))
             if not label:
                 continue
             key = ("expense" if tx.is_expense else "income", tx.category, label)
@@ -1823,22 +1941,47 @@ class LSTMService:
                 continue
             if (today - dates[-1]).days > (65 if cadence == "monthly" else step * 2):
                 continue
-            due = dates[-1]
             anchor_day = int(np.median([d.day for d in dates]))
             end_of_month = all(d.day == calendar.monthrange(d.year, d.month)[1] for d in dates)
-            for _ in range(100):
-                if cadence == "monthly":
-                    period = due.to_period("M") + 1
+            is_fixed_salary = bool(records[-1].is_fixed_income)
+            next_month = today.to_period("M") + 1
+            next_month_last = calendar.monthrange(next_month.year, next_month.month)[1]
+            next_month_due = pd.Timestamp(
+                next_month.year,
+                next_month.month,
+                next_month_last if end_of_month else min(anchor_day, next_month_last),
+            )
+            if is_fixed_salary:
+                next_month_due = self._adjust_salary_payday(next_month_due)
+            if cadence == "monthly":
+                period = dates[-1].to_period("M") + 1
+                due = None
+                for _ in range(100):
                     last = calendar.monthrange(period.year, period.month)[1]
-                    due = pd.Timestamp(period.year, period.month, last if end_of_month else min(anchor_day, last))
-                else:
+                    nominal_day = last if end_of_month else min(anchor_day, last)
+                    candidate_due = pd.Timestamp(period.year, period.month, nominal_day)
+                    if is_fixed_salary:
+                        candidate_due = self._adjust_salary_payday(candidate_due)
+                    if candidate_due > today:
+                        due = candidate_due
+                        break
+                    period += 1
+                if due is None:
+                    continue
+            else:
+                due = dates[-1]
+                for _ in range(100):
                     due += timedelta(days=step)
-                if due > today:
-                    break
+                    if due > today:
+                        break
             result.append({
                 "id": self._stable_id(*key), "title": records[-1].merchant or records[-1].note or key[2],
                 "kind": key[0], "category": key[1], "amount": round(median),
                 "cadence": cadence, "nextDueDate": due.strftime("%Y-%m-%d"),
+                "nextMonthDueDate": next_month_due.strftime("%Y-%m-%d"),
+                "incomeCadence": "monthly" if records[-1].is_fixed_income else None,
+                "isFixedIncome": bool(records[-1].is_fixed_income),
+                "expectedEventsPerMonth": 1 if records[-1].is_fixed_income else None,
                 "sampleCount": len(records), "transactionIds": [x.id for x in records if x.id],
                 "recurrenceId": records[-1].recurrence_id or None,
                 "status": "needs_confirmation", "confidenceType": "heuristic_not_probability",
@@ -1906,7 +2049,8 @@ class LSTMService:
         savings = self._number(c.get("savings_hold", 0), "savings_hold")
         balance = None if c.get("available_balance") is None else self._number(
             c["available_balance"], "available_balance", True)
-        clean, warnings_out = self._advisor_transactions(transactions, timezone, today)
+        clean, warnings_out = self._advisor_transactions(
+            transactions, timezone, today, c.get("category_catalog", c.get("categoryCatalog")))
         candidates = self._detect_recurring(clean, today)
         events = self._advisor_events(c, clean, today, timezone)
         dates = [today + timedelta(days=i) for i in range(1, horizon + 1)]
@@ -2040,13 +2184,33 @@ class LSTMService:
                          [action("view_budget", "Xem ngân sách", {"budgetId": b["id"]}),
                           action("edit_budget", "Điều chỉnh", {"budgetId": b["id"]})])
         for candidate in candidates:
-            if c.get("enable_recurring_confirmation") is not True:
+            is_fixed_income_candidate = candidate.get("isFixedIncome") is True
+            if not is_fixed_income_candidate and c.get("enable_recurring_confirmation") is not True:
                 continue
             if candidate["recurrenceId"] and candidate["recurrenceId"] in recurring_ids:
                 continue
-            add_card("confirm_recurring", candidate["id"], "Có thể là khoản định kỳ",
-                     f"{candidate['title']}: khoảng {candidate['amount']:,.0f}đ. Xác nhận lịch trước khi đưa vào kế hoạch.", 4,
-                     [action("confirm_recurring", "Xác nhận lịch", {"candidateId": candidate["id"], "candidate": candidate})])
+            if is_fixed_income_candidate:
+                recommended_date = candidate.get("nextMonthDueDate") or candidate["nextDueDate"]
+                title = "Xác nhận ngày nhận lương tháng tới"
+                body = (f"Dựa trên {candidate['sampleCount']} lần nhận gần nhất, lương khoảng "
+                        f"{candidate['amount']:,.0f}đ có thể về ngày {recommended_date}. "
+                        "Đây là ngày dự kiến; chưa cộng vào số dư hay lịch thu đã xác nhận.")
+                add_card("confirm_salary_date", candidate["id"], title, body, 3,
+                         [action("confirm_recurring", "Xác nhận ngày nhận", {
+                             "candidateId": candidate["id"], "candidate": candidate,
+                             "suggestedEvent": {
+                                 "title": "Lương", "kind": "income",
+                                 "amount": candidate["amount"],
+                                 "due_date": recommended_date,
+                                 "category": "salary", "category_id": "salary",
+                                 "confirmed": False,
+                                 "recurrence_id": candidate.get("recurrenceId") or candidate["id"],
+                             },
+                         })], recommended_date)
+            else:
+                add_card("confirm_recurring", candidate["id"], "Có thể là khoản định kỳ",
+                         f"{candidate['title']}: khoảng {candidate['amount']:,.0f}đ. Xác nhận lịch trước khi đưa vào kế hoạch.", 4,
+                         [action("confirm_recurring", "Xác nhận lịch", {"candidateId": candidate["id"], "candidate": candidate})])
         dismissed = set(map(str, c.get("dismissed_card_ids", [])))
         cards = sorted([x for x in cards if x["id"] not in dismissed], key=lambda x: (x["priority"], x["id"]))
         notification_plan = []
@@ -2091,7 +2255,14 @@ class LSTMService:
                                 "Đây là hạn mức dòng tiền; ngân sách từng danh mục vẫn áp dụng riêng.",
                                 "Chỉ bảo vệ trong khoảng ngày hiển thị; tính lại khi dữ liệu thay đổi."],
             },
-            "timeline": timeline, "recurringCandidates": candidates, "actionCards": cards,
+            "timeline": timeline, "recurringCandidates": candidates,
+            "salaryRecommendations": [
+                {**candidate, "recommendationType": "next_salary_date",
+                 "recommendedDate": candidate.get("nextMonthDueDate") or candidate["nextDueDate"],
+                 "status": "suggested", "requiresConfirmation": True}
+                for candidate in candidates if candidate.get("isFixedIncome") is True
+            ],
+            "actionCards": cards,
             "budgets": budgets, "notificationPlan": notification_plan,
             "firstShortfallDate": first_shortfall, "warnings": list(dict.fromkeys(warnings_out)),
             "integration": {"actionsExecuted": False, "notificationsSent": False,
@@ -2113,7 +2284,9 @@ class LSTMService:
             context = dict(advisor_context or {})
             advisor = self.build_advisor(user_id, transactions, context)
             today = self._local_day(advisor["asOf"], advisor["timezone"])
-            clean, _ = self._advisor_transactions(transactions, advisor["timezone"], today)
+            clean, _ = self._advisor_transactions(
+                transactions, advisor["timezone"], today,
+                context.get("category_catalog", context.get("categoryCatalog")))
             if year is not None or month is not None:
                 if year is None or month is None or not 1 <= int(month) <= 12 or not 1 <= int(year) <= 9999:
                     raise ValueError("Phải truyền đồng thời year hợp lệ và month trong 1..12.")
@@ -2189,7 +2362,9 @@ class LSTMService:
             context["horizon_days"] = days
             advisor = self.build_advisor(user_id, transactions, context)
             today = self._local_day(advisor["asOf"], advisor["timezone"])
-            clean, warnings_out = self._advisor_transactions(transactions, advisor["timezone"], today)
+            clean, warnings_out = self._advisor_transactions(
+                transactions, advisor["timezone"], today,
+                context.get("category_catalog", context.get("categoryCatalog")))
             if (year is None) != (month is None):
                 raise ValueError("Phải truyền đồng thời year và month hoặc bỏ cả hai.")
             selected_year = int(year) if year is not None else today.year
@@ -2225,7 +2400,7 @@ class LSTMService:
                     row = {"date": date_key, "displayDate": day.strftime("%d/%m/%Y"),
                            "weekday": ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"][day.weekday()],
                            "predictedIncome": 0, "predictedExpense": 0, "confidence": 0.0,
-                           "incomeIsAllocation": True, "expenseIsAllocation": True,
+                           "incomeIsAllocation": False, "expenseIsAllocation": True,
                            "description": "Chưa đủ lịch sử để ước tính thu–chi ngày này."}
                 income, expense = int(row["predictedIncome"]), int(row["predictedExpense"])
                 cumulative_income += income
@@ -2306,7 +2481,7 @@ class LSTMService:
                     "personalAdvisor.timeline dùng số dư thật và khoản xác nhận; không cộng thu phân bổ vào số dư."),
                 "forecastExplanation": {
                     "method": "Tính đầy đủ từng tháng từ cùng lịch sử thật, lấy đúng ngày trong cửa sổ, ghép liên tục và tính lại lũy kế.",
-                    "income": "Thu theo ngày là phân bổ tổng thu còn lại của từng tháng; không phải cam kết nhận tiền ngày đó.",
+                    "income": "Lương được dự báo tối đa một lần trên ngày nhận suy ra từ lịch sử; vẫn là ước tính, không phải thu nhập đã xác nhận.",
                     "expense": "Giữ mô hình ngắn hạn cho phần tháng hiện tại theo engine; ngày thuộc tháng tương lai dùng phân bổ tổng tháng.",
                     "forecastDays": days, "dailyDetailAvailable": True,
                     "dailyDetailKey": "summary.dailyForecastDetail",
@@ -2585,6 +2760,8 @@ class LSTMService:
         """
         labels = context.get("category_labels", {})
         policies = context.get("category_policies", {})
+        category_catalog = context.get("category_catalog", context.get("categoryCatalog"))
+        category_catalog = build_catalog(category_catalog)
         if not isinstance(labels, dict) or not isinstance(policies, dict):
             raise ValueError("category_labels và category_policies phải là object.")
         normalize = lambda v: self._normalized_text(v).replace("_", " ")
@@ -2615,12 +2792,19 @@ class LSTMService:
             if not tx.is_expense:
                 continue
             cid = getattr(tx, "category_id", "")
-            key = identity(tx.category, cid)
+            group_id = getattr(tx, "category_group_id", "unclassified")
+            key = group_id if group_id != "unclassified" else identity(tx.category, cid)
             if key is None:
                 continue
-            b = buckets.setdefault(key, {"label": label_map.get(cid) or label_map.get(tx.category) or tx.category,
-                                         "ids": set(), "transactions": []})
-            b["ids"].add(cid)
+            group_name = getattr(tx, "category_group_name", "")
+            b = buckets.setdefault(key, {
+                "label": label_map.get(group_id) or group_name or label_map.get(cid) or tx.category,
+                "ids": set(), "childCategories": set(), "categoryGroupId": group_id,
+                "categoryGroupName": group_name, "transactions": []})
+            if cid:
+                b["ids"].add(cid)
+            b["ids"].add(str(group_id))
+            b["childCategories"].add(str(tx.category))
             b["transactions"].append(tx)
         timeline = {r["date"]:r for r in advisor.get("timeline", [])}
         output = []
@@ -2656,8 +2840,17 @@ class LSTMService:
                     1,{"source":"confirmed_event","eventId":event["id"],"amount":round(amount),"dueDate":event["dueDate"]})
             for key,bucket in buckets.items():
                 raw_label=bucket["label"]
-                default_label, default_kind=aliases.get(key,(raw_label,"unknown"))
-                policy=policy_map.get(key,{})
+                group_policy = {
+                    "expense_living": ("Chi tiêu sinh hoạt", "essential"),
+                    "expense_fixed": ("Chi tiêu cố định", "fixed"),
+                    "expense_unexpected": ("Chi tiêu phát sinh", "unexpected"),
+                    "investment_saving": ("Đầu tư và tiết kiệm", "financial_allocation"),
+                    "loan_borrow": ("Vay, cho vay và trả nợ", "debt"),
+                }
+                normalized_key = normalize(key)
+                default_label, default_kind=group_policy.get(
+                    str(key), aliases.get(normalized_key, (raw_label,"unknown")))
+                policy=policy_map.get(normalized_key,{})
                 for cid in bucket["ids"]:
                     if cid and normalize(cid) in policy_map:
                         policy=policy_map[normalize(cid)]
@@ -2665,7 +2858,7 @@ class LSTMService:
                     raise ValueError("Mỗi category_policy phải là object.")
                 label=str(policy.get("label") or default_label)
                 kind=str(policy.get("advice_type") or default_kind)
-                essential=policy.get("essential") is True or default_kind=="essential"
+                essential=(policy.get("essential") is True or default_kind in ("essential", "fixed"))
                 txs=bucket["transactions"]
                 end=today-timedelta(days=1)
                 recent_start=end-timedelta(days=27)
@@ -2676,21 +2869,33 @@ class LSTMService:
                 evidence={"source":"recorded_transactions","asOf":str(today.date()),
                           "category":label,"historyStart":str(recent_start.date()),"historyEnd":str(end.date()),
                           "transactionCount":sum(1 for t in txs if recent_start<=t.date_time<=end),
-                          "spendingDays":len(daily)}
+                          "spendingDays":len(daily),
+                          "categoryGroupId":bucket["categoryGroupId"],
+                          "categoryGroup":bucket["categoryGroupName"],
+                          "childCategories":sorted(bucket["childCategories"]),
+                          "financialRoles":sorted({getattr(t,"financial_role","unclassified") for t in txs})}
                 # Match budget by stable category ID OR normalized label, never budget document ID.
                 relevant=[]
                 for budget in context.get("budgets",[]):
                     if budget.get("isActive",True) is False:
                         continue
                     by_id=str(budget.get("type",budget.get("category_id","")))
+                    budget_meta=resolve_category_metadata(budget, category_catalog)
+                    budget_category_id=budget_meta["category_id"]
                     by_label=identity(budget.get("category",budget.get("typeName",budget.get("type_name",""))),by_id)
-                    match=(by_id and by_id in bucket["ids"]) or by_label==key
+                    match=((budget_category_id and budget_category_id in bucket["ids"])
+                           or by_label in (normalize_key(key), normalize(raw_label)))
                     if match and int(budget.get("year",today.year))==day.year and int(budget.get("month",today.month))==day.month:
                         relevant.append(budget)
                 if len(relevant)==1 and (day.year,day.month)==(today.year,today.month):
                     budget=relevant[0]
                     limit=self._number(budget.get("limit",budget.get("limitMoney")),"budget.limit")
-                    actual=sum(abs(t.money) for t in txs if (t.date_time.year,t.date_time.month)==(day.year,day.month))
+                    budget_meta=resolve_category_metadata(budget, category_catalog)
+                    budget_scope=category_scope_ids(budget, category_catalog)
+                    scoped_txs=[t for t in txs
+                        if (not budget_meta["category_id"] or budget_meta["category_id"] in set(getattr(t,"category_path_ids",[])))
+                        and (not budget_scope or getattr(t,"category_id","") in budget_scope)]
+                    actual=sum(abs(t.money) for t in scoped_txs if (t.date_time.year,t.date_time.month)==(day.year,day.month))
                     spent=self._number(budget["spent"],"budget.spent") if budget.get("spent") is not None else actual
                     if budget.get("spent") is not None or complete:
                         remaining=max(limit-spent,0)
@@ -2701,8 +2906,15 @@ class LSTMService:
                             over=max(spent-limit,0)
                             title=(f"{label}: đã vượt ngân sách" if over else f"{label}: ngân sách đang dùng nhanh")
                             reason=f"Tháng {day.month:02d}/{day.year} đã ghi nhận {spent:,.0f}đ / {limit:,.0f}đ; còn {remaining:,.0f}đ."
-                            instruction=("Giữ các khoản thiết yếu; xem lại khoản có thể dời lịch hoặc điều chỉnh ngân sách theo nhu cầu thực tế."
-                                if essential else "Hoãn khoản chưa cần thiết trong danh mục này; kiểm tra phần ngân sách còn lại trước khi mua thêm.")
+                            instructions={
+                                "investment_saving": "Phân biệt tiền tiết kiệm, đầu tư và chi phí học tập/bảo hiểm; không cắt khoản đầu tư hoặc tiết kiệm chỉ vì tổng dòng tiền ra cao.",
+                                "loan_borrow": "Kiểm tra lịch trả nợ và lãi; không xem khoản vay mới là thu nhập có thể chi tiêu.",
+                                "expense_unexpected": "Ưu tiên xử lý nhu cầu phát sinh cần thiết; hoãn khoản chưa cấp bách nếu phù hợp.",
+                                "expense_fixed": "Kiểm tra hạn thanh toán và các dịch vụ định kỳ; không bỏ qua hóa đơn thiết yếu.",
+                                "expense_living": "Xem từng danh mục con để chọn khoản có thể tối ưu mà không ảnh hưởng nhu cầu thiết yếu.",
+                            }
+                            instruction=instructions.get(key,
+                                "Giữ khoản thiết yếu và rà soát từng danh mục con trước khi điều chỉnh.")
                             add("budget_pressure",key+str(day.to_period('M')),title,reason,instruction,2,
                                 {**evidence,"source":"budget_and_actuals","budgetId":str(budget["id"]),"limit":round(limit),
                                  "spent":round(spent),"remaining":round(remaining),"overBudget":round(over),
@@ -2713,8 +2925,16 @@ class LSTMService:
                 a,b=sum(last7.values()),sum(prev7.values())
                 if complete and history_start<=end-timedelta(days=13) and (today-history_last).days<=3 and len(last7)>=2 and len(prev7)>=2 and b>0 and a>=b*1.25 and a-b>=50000 and day<=today+timedelta(days=7):
                     increase=(a-b)/b*100
-                    instruction=("Đối chiếu các khoản phát sinh mới với nhu cầu thực tế; không cắt khoản thiết yếu chỉ vì tổng chi tăng."
-                        if essential else "Kiểm tra các lần mua phát sinh thêm; thử hoãn một khoản không cần thiết trước khi mua tiếp.")
+                    if key == "investment_saving":
+                        instruction="Đối chiếu các khoản đầu tư/tiết kiệm với kế hoạch đã đặt; mức tăng phân bổ không đồng nghĩa với tiêu dùng lãng phí."
+                    elif key == "loan_borrow":
+                        instruction="Kiểm tra khoản trả nợ, lãi và khoản vay mới theo hợp đồng; không đánh đồng trả nợ với chi tiêu sinh hoạt."
+                    elif key == "expense_unexpected":
+                        instruction="Xác nhận khoản phát sinh có cần thiết không; không trì hoãn việc y tế hoặc sửa chữa khẩn cấp chỉ vì số liệu tăng."
+                    elif essential:
+                        instruction="Đối chiếu khoản tăng với nhu cầu thực tế; không cắt khoản thiết yếu chỉ vì tổng chi tăng."
+                    else:
+                        instruction="Kiểm tra các lần mua phát sinh thêm; chỉ hoãn khoản chưa cần thiết nếu phù hợp với kế hoạch."
                     add("category_increase",key,f"Kiểm tra khoản tăng ở {label}",
                         f"7 ngày đã kết thúc chi {a:,.0f}đ, so với {b:,.0f}đ trong 7 ngày trước (+{increase:.0f}%).",
                         instruction,3,{**evidence,"current7Days":round(a),"previous7Days":round(b),
@@ -2765,6 +2985,9 @@ class LSTMService:
         """
         try:
             c=dict(advisor_context or {})
+            supplied_catalog=c.get("category_catalog",c.get("categoryCatalog"))
+            if supplied_catalog is not None:
+                c["category_catalog"]=build_catalog(supplied_catalog)
             if not isinstance(c.get('budgets',[]),list) or not all(isinstance(b,dict) for b in c.get('budgets',[])):
                 raise ValueError('budgets phải là danh sách object')
             budgets=[]
@@ -2785,7 +3008,8 @@ class LSTMService:
             if c.get("budgets"):
                 timezone = str(c.get("timezone", "Asia/Ho_Chi_Minh"))
                 ref = self._local_day(c.get("reference_date") or datetime.now(ZoneInfo(timezone)), timezone)
-                normalized_txs, _ = self._advisor_transactions(transactions, timezone, ref)
+                normalized_txs, _ = self._advisor_transactions(
+                    transactions, timezone, ref, c.get("category_catalog", c.get("categoryCatalog")))
                 normalized_budgets = []
                 for original in c["budgets"]:
                     budget = dict(original)
@@ -2795,15 +3019,16 @@ class LSTMService:
                         if c.get("history_complete") is not True:
                             budget_warnings.append("Có ngân sách chưa có số đã chi; chưa dùng để kết luận vượt hạn mức.")
                             continue
-                        bid = str(budget.get("type", budget.get("category_id", "")))
-                        name = self._normalized_text(budget.get("category", budget.get("typeName", budget.get("type_name", ""))))
+                        budget_meta = resolve_category_metadata(
+                            budget, c.get("category_catalog", c.get("categoryCatalog")))
+                        budget_category_id = budget_meta["category_id"]
                         yy, mm = int(budget.get("year", ref.year)), int(budget.get("month", ref.month))
                         if (yy, mm) > (ref.year, ref.month):
                             budget["spent"] = 0.0
                         else:
                             budget["spent"] = sum(abs(t.money) for t in normalized_txs if t.is_expense
                                 and (t.date_time.year, t.date_time.month)==(yy, mm)
-                                and ((bid and t.category_id==bid) or (name and self._normalized_text(t.category)==name)))
+                                and budget_category_id in set(getattr(t, "category_path_ids", [])))
                     normalized_budgets.append(budget)
                 c["budgets"] = normalized_budgets
             response=self._predict_v12(user_id,transactions,prediction_days,year,month,
@@ -2814,16 +3039,20 @@ class LSTMService:
             summary.setdefault("warnings", []).extend(budget_warnings)
             advisor=summary["personalAdvisor"]
             today=self._local_day(advisor["asOf"],advisor["timezone"])
-            clean,_=self._advisor_transactions(transactions,advisor["timezone"],today)
-            unresolved = sorted({t.category for t in clean if t.is_expense
-                and re.fullmatch(r"[+-]?\d+(?:\.0+)?", t.category)
-                and not c.get("category_labels", {}).get(t.category)
-                and not c.get("category_labels", {}).get(getattr(t, "category_id", ""))})
+            clean,_=self._advisor_transactions(
+                transactions,advisor["timezone"],today,
+                c.get("category_catalog",c.get("categoryCatalog")))
+            unresolved = sorted({getattr(t, "category_id", "") or t.category for t in clean if t.is_expense
+                and (not getattr(t, "category_id", "")
+                     or getattr(t, "category_group_id", "unclassified") == "unclassified")})
             if unresolved:
                 summary.setdefault("warnings", []).append(
                     "Một số giao dịch chỉ có mã danh mục; chưa đủ tên danh mục để đưa ra gợi ý cụ thể.")
             summary["categoryResolution"] = {"unresolvedIds": unresolved,
-                "requiredFields": "type_name/typeName hoặc advisor_context.category_labels"}
+                "requiredFields": ["category_id", "parent_category_id", "category_group_id", "financial_role"],
+                "numericTypeNeedsCatalog": True,
+                "source": "transaction_metadata_or_category_catalog"}
+            summary["categoryAnalysis"] = summarize_category_hierarchy(clean)
             balanced=self._balanced_trend(clean,today,c.get("history_complete") is True,advisor)
             detail=summary.get("dailyForecastDetail",[])
             advice=self._category_recommendations(clean,[d["date"] for d in detail],c,advisor,today)
@@ -2911,10 +3140,23 @@ class LSTMService:
         """
         summary=response.summary
         yy,mm=(int(year),int(month)) if year is not None and month is not None else (today.year,today.month)
-        normalized,diagnostics=_normalize_transactions(transactions,today)
+        category_catalog=context.get("category_catalog",context.get("categoryCatalog"))
+        category_catalog=build_catalog(category_catalog)
+        normalized,diagnostics=_normalize_transactions(transactions,today,category_catalog)
         month_txs=[t for t in normalized if (t.date_time.year,t.date_time.month)==(yy,mm) and t.money<0]
-        cluster=KMeansService().cluster_spending(user_id,normalized,year=yy,month=mm,reference_date=today)
-        anomaly=IsolationForestService().detect_anomalies(user_id,normalized,year=yy,month=mm,reference_date=today)
+        month_category_txs=[t for t in normalized if (t.date_time.year,t.date_time.month)==(yy,mm)]
+        summary['categoryAnalysis']=summarize_category_hierarchy(month_category_txs)
+        summary['categoryHierarchyVersion']='category_hierarchy_v1'
+        summary['financialFlowSemantics']={
+            'forecastExpense':'cash_outflow_including_saving_investment_and_debt_payments',
+            'forecastIncome':'operating_income_excludes_borrowing_debt_collection_and_investment_return',
+            'salary':'fixed_monthly_income_once_per_month; no daily salary estimate without a confirmed payday',
+            'categoryAnalysis':'separates_expense_groups_and_financial_roles',
+        }
+        cluster=KMeansService().cluster_spending(user_id,normalized,year=yy,month=mm,
+            reference_date=today,category_catalog=category_catalog)
+        anomaly=IsolationForestService().detect_anomalies(user_id,normalized,year=yy,month=mm,
+            reference_date=today,category_catalog=category_catalog)
         complete=context.get('history_complete') is True
         feedback=context.get('recommendation_feedback',{})
         if not isinstance(feedback,dict):
@@ -2940,21 +3182,36 @@ class LSTMService:
                 'nếu đã có kế hoạch, hãy đối chiếu với kế hoạch của bạn trước khi điều chỉnh.',
                 1 if a.severity=='high' else 3,['isolation_forest','business_rules'],
                 {'transactionId':a.transaction_id,'amount':abs(a.money),'severity':a.severity,
-                 'score':a.anomaly_score,'scoreMeaning':'relative_not_probability'},a.type_name)
+                 'score':a.anomaly_score,'scoreMeaning':'relative_not_probability',
+                 'categoryId':getattr(tx,'category_id',None),
+                 'parentCategoryId':getattr(tx,'parent_category_id',None),
+                 'categoryGroupId':getattr(tx,'category_group_id',None),
+                 'categoryGroup':getattr(tx,'category_group_name',None),
+                 'financialRole':getattr(tx,'financial_role',None)},a.type_name)
         budget_rows=[]
         seen_budgets=set()
+        seen_budget_scopes=[]
         for b in context.get('_recommendation_budgets',context.get('budgets',[])):
             if b.get('isActive',True) is False or (int(b.get('year',today.year)),int(b.get('month',today.month)))!=(yy,mm):
                 continue
-            cid=str(b.get('type',b.get('category_id','')))
-            label=str(b.get('category',b.get('typeName',b.get('type_name',cid))))
-            key=_category_key(label)
-            identity=cid or key
-            if identity in seen_budgets:
-                raise ValueError('Trùng ngân sách tháng/danh mục; hãy gửi một ngân sách đang hoạt động')
+            budget_category=resolve_category_metadata(b,category_catalog)
+            cid=budget_category['category_id']
+            label=str(b.get('category',b.get('typeName',b.get('type_name',budget_category['category_name']))))
+            key=cid or _category_key(label)
+            identity=key
+            scope=category_scope_ids(b,category_catalog)
+            if not scope and identity:
+                scope={identity}
+            if identity in seen_budgets or any(
+                scope.intersection(other_scope) for other_scope, _ in seen_budget_scopes
+            ):
+                raise ValueError('Ngân sách cha và con đang chồng lấn; hãy chỉ gửi ngân sách ở một cấp danh mục')
             seen_budgets.add(identity)
+            seen_budget_scopes.append((scope,identity))
             limit=self._number(b.get('limit',b.get('limitMoney')),'budget.limit')
-            matching=[t for t in month_txs if (cid and str(t.type)==cid) or (not cid and _category_key(t.type_name)==key)]
+            matching=[t for t in month_txs if cid and cid in set(getattr(t,'category_path_ids',[]))]
+            if not matching and not cid:
+                matching=[t for t in month_txs if _category_key(t.type_name)==key]
             observed=sum(abs(t.money) for t in matching)
             known=b.get('spent') is not None or complete
             spent=self._number(b['spent'],'budget.spent') if b.get('spent') is not None else observed
@@ -2965,11 +3222,20 @@ class LSTMService:
             projection=spent/today.day*endday if known and current and today.day>=7 else None
             ev={'budgetId':str(b.get('id','')),'limit':limit,'spent':spent,'remaining':remaining,
                 'actualComplete':known,'projection':round(projection) if projection is not None else None,
-                'projectionMethod':'elapsed_day_rate_not_lstm','month':f'{mm:02d}/{yy}'}
+                'projectionMethod':'elapsed_day_rate_not_lstm','month':f'{mm:02d}/{yy}',
+                'categoryId':cid or None,'categoryGroupId':budget_category['category_group_id'],
+                'categoryGroup':budget_category['category_group_name'],
+                'scopeCategoryIds':sorted(scope)}
             budget_rows.append(ev)
-            essential=key in {'rent_house','education','physical_examination','insurance','electricity_bill','water_money','move'}
-            action=('Giữ các khoản thiết yếu; rà soát phát sinh và điều chỉnh hạn mức nếu nhu cầu thực tế thay đổi.' if essential else
-                    'Xem lại khoản chưa cần thiết trong danh mục này; cân nhắc hoãn trước khi chi thêm.')
+            group_id=budget_category['category_group_id']
+            actions={
+                'expense_living':'Xem từng danh mục con và tìm cách tối ưu mà không cắt nhu cầu cơ bản.',
+                'expense_fixed':'Kiểm tra hóa đơn định kỳ và thời hạn; không trì hoãn khoản thiết yếu.',
+                'expense_unexpected':'Ưu tiên khoản phát sinh cần thiết; hoãn khoản chưa cấp bách nếu phù hợp.',
+                'investment_saving':'Phân biệt tiết kiệm, đầu tư, học tập và bảo hiểm; không xem toàn bộ là tiêu dùng cần cắt.',
+                'loan_borrow':'Kiểm tra dư nợ, tiền gốc và lãi; không xem tiền vay là thu nhập thường xuyên.',
+            }
+            action=actions.get(group_id,'Đối chiếu danh mục và kế hoạch đã ghi nhận trước khi thay đổi chi tiêu.')
             if spent>limit:
                 add('budget_exceeded',identity,f'{label}: đã vượt ngân sách',
                     f'Đã ghi nhận {spent:,.0f}đ trên hạn mức {limit:,.0f}đ; vượt {spent-limit:,.0f}đ.',
@@ -2984,7 +3250,10 @@ class LSTMService:
         # Cluster-dependent suggestions genuinely use learned memberships.
         for c in cluster.clusters[:2]:
             stats=c.characteristics
-            names=', '.join(list(stats.get('topCategories',{}))[:2])
+            group_names=', '.join(group.get('name','') for group in
+                sorted(stats.get('categoryGroups',{}).values(),
+                       key=lambda item:item.get('cashOutflow',0),reverse=True)[:2])
+            names=group_names or ', '.join(list(stats.get('topCategories',{}))[:2])
             ids=sorted(c.transaction_ids)
             add('behavior_review',self._stable_id(*ids),f'Rà soát nhóm {names}',
                 f'K-Means nhóm {len(ids)} giao dịch tương đồng, tổng {stats["totalAmount"]:,.0f}đ.',
@@ -3018,6 +3287,8 @@ class LSTMService:
             'budgetCount':len(budget_rows),'historyComplete':complete,
             'inputDiagnostics':diagnostics,'scope':f'{mm:02d}/{yy}',
             'feedbackPersistence':'client_must_store_and_resend',
+            'categoryHierarchyVersion':'category_hierarchy_v1',
+            'unclassifiedTransactions':summary['categoryAnalysis']['unclassifiedTransactionCount'],
             'generatedCount':len(unique),'displayedCount':len(selected)}
         summary['budgetRecommendationsEvidence']=budget_rows
         if not complete:
