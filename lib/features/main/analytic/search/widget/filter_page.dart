@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:currency_text_input_formatter/currency_text_input_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,7 +24,7 @@ class FilterPage extends StatefulWidget {
 
 class _FilterPageState extends State<FilterPage> {
   final NumberFormat currencyFormatter =
-  NumberFormat.currency(locale: 'vi_VI', symbol: '');
+  NumberFormat.currency(locale: 'vi_VN', symbol: '');
 
   final TextEditingController moneyController = TextEditingController();
   final TextEditingController finishMoneyController = TextEditingController();
@@ -59,7 +60,7 @@ class _FilterPageState extends State<FilterPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ProfileSurface(child: Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).translate('filter')),
         centerTitle: true,
@@ -97,7 +98,7 @@ class _FilterPageState extends State<FilterPage> {
             title: AppLocalizations.of(context).translate('friend'),
             value: filter.friends!.isEmpty
                 ? AppLocalizations.of(context).translate('all')
-                : '${filter.friends!.length} người',
+                : '${filter.friends!.length} ${AppLocalizations.of(context).translate('profile_people')}',
             onTap: _pickFriend,
           ),
           _tile(
@@ -117,7 +118,7 @@ class _FilterPageState extends State<FilterPage> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _tile({
@@ -126,38 +127,23 @@ class _FilterPageState extends State<FilterPage> {
     required String value,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title)),
-            Text(value, style: TextStyle(color: Colors.grey.shade600)),
-            const Icon(Icons.chevron_right_rounded),
-          ],
-        ),
-      ),
-    );
+    return Padding(padding: const EdgeInsets.only(bottom: 12),
+        child: ProfileRow(title: title, value: value, icon: icon, onTap: onTap));
   }
 
   void _showMoneyPicker() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: ProfileStyle.card(context),
+      clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => ListView.builder(
+      builder: (_) => SizedBox(height: 360, child: ProfileSurface(child: ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: moneyList.length,
         itemBuilder: (_, index) => ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title:
           Text(AppLocalizations.of(context).translate(moneyList[index])),
           onTap: () async {
@@ -165,14 +151,17 @@ class _FilterPageState extends State<FilterPage> {
             await _inputMoney(index);
           },
         ),
-      ),
+      ))),
     );
   }
 
   Future _inputMoney(int index) async {
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => ProfileSurface(child: AlertDialog(
+        backgroundColor: ProfileStyle.card(context), surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        scrollable: true,
         title:
         Text(AppLocalizations.of(context).translate('enter_amount')),
         content: Column(
@@ -187,7 +176,7 @@ class _FilterPageState extends State<FilterPage> {
                 CurrencyTextInputFormatter(currencyFormatter),
               ],
               decoration:
-              const InputDecoration(hintText: 'Từ'),
+              ProfileStyle.input(context, AppLocalizations.of(context).translate('profile_from')),
             ),
             if (index == 3) ...[
               const SizedBox(height: 12),
@@ -200,7 +189,7 @@ class _FilterPageState extends State<FilterPage> {
                   CurrencyTextInputFormatter(currencyFormatter),
                 ],
                 decoration:
-                const InputDecoration(hintText: 'Đến'),
+                ProfileStyle.input(context, AppLocalizations.of(context).translate('profile_to')),
               ),
             ],
           ],
@@ -211,10 +200,10 @@ class _FilterPageState extends State<FilterPage> {
               setState(() => filter.chooseIndex[0] = index);
               Navigator.pop(context);
             },
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context).translate('confirm')),
           )
         ],
-      ),
+      )),
     );
   }
 
@@ -242,6 +231,7 @@ class _FilterPageState extends State<FilterPage> {
   Future pickDateRange() async {
     final result = await showDateRangePicker(
       context: context,
+      builder: (_, child) => ProfileSurface(child: child!),
       initialDateRange: range,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -260,7 +250,10 @@ class _FilterPageState extends State<FilterPage> {
   Future _inputNote() async {
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => ProfileSurface(child: AlertDialog(
+        backgroundColor: ProfileStyle.card(context), surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        scrollable: true,
         title: Text(AppLocalizations.of(context).translate('note')),
         content: TextField(
           controller: noteController,
@@ -269,10 +262,10 @@ class _FilterPageState extends State<FilterPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context).translate('confirm')),
           )
         ],
-      ),
+      )),
     );
   }
 
@@ -297,12 +290,16 @@ class _FilterPageState extends State<FilterPage> {
   void _showGroupPicker() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: ProfileStyle.card(context),
+      clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => ListView.builder(
+      builder: (_) => SizedBox(height: 360, child: ProfileSurface(child: ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: groupList.length,
         itemBuilder: (_, index) => ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text(
             AppLocalizations.of(context).translate(groupList[index]),
           ),
@@ -311,7 +308,7 @@ class _FilterPageState extends State<FilterPage> {
             Navigator.pop(context);
           },
         ),
-      ),
+      ))),
     );
   }
 

@@ -12,7 +12,7 @@ class MonthlyComparisonChart extends StatelessWidget {
 
   double _amount(Map period) {
     final value =
-        period['amount'] ?? period['income'] ?? period['expense'];
+        period['amount'] ?? period['expense'] ?? period['income'];
 
     if (value is! num) return 0;
     final result = value.toDouble();
@@ -112,12 +112,12 @@ class MonthlyComparisonChart extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           bar(
-            localizations.translate('chat_previous_month'),
+            '${(evidence['previous'] as Map)['startDate'] ?? ''} → ${(evidence['previous'] as Map)['endDate'] ?? ''}',
             previous,
             const Color(0xFF00A8CC),
           ),
           bar(
-            localizations.translate('chat_current_month'),
+            '${(evidence['current'] as Map)['startDate'] ?? ''} → ${(evidence['current'] as Map)['endDate'] ?? ''}',
             current,
             const Color(0xFF2DD8C6),
           ),

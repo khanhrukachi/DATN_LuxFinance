@@ -1,6 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/circle_text.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/remove_icon.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
@@ -28,95 +27,57 @@ class _AddFriendPageState extends State<AddFriendPage> {
   @override
   void initState() {
     friends.addAll(widget.friends);
-    colors.addAll(widget.colors);
+    colors.addAll(List.generate(widget.friends.length, (i) =>
+    i < widget.colors.length ? widget.colors[i] : SpendingStyle.teal));
     super.initState();
   }
 
   @override
+  void dispose() { _friend.dispose(); super.dispose(); }
+
+  void _addFriend() {
+    final name = _friend.text.trim();
+    if (name.isEmpty) return;
+    setState(() { friends.add(name); colors.add(SpendingStyle.teal); _friend.clear(); });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tr = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(AppLocalizations.of(context).translate('add_friends')),
-        centerTitle: true,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              widget.action(friends, colors);
-              Navigator.pop(context);
-            },
-            child: Text(AppLocalizations.of(context).translate('done')),
-          )
-        ],
+      backgroundColor: SpendingStyle.background(context),
+      appBar: AppBar(elevation: 0, backgroundColor: SpendingStyle.background(context),
+        centerTitle: false, title: Text(tr.translate('add_friends')),
+        actions: [SpendingSaveAction(label: tr.translate('done'), onPressed: () {
+          widget.action(friends, colors); Navigator.pop(context);
+        })],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextFormField(
-                textCapitalization: TextCapitalization.words,
-                controller: _friend,
-                style: AppStyles.p,
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    setState(() {
-                      friends.add(value.trim());
-                      colors.add(Color.fromRGBO(Random().nextInt(255),
-                          Random().nextInt(255), Random().nextInt(255), 1));
-                      _friend.text = "";
-                    });
-                  }
-                },
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText:
-                  AppLocalizations.of(context).translate('add_friends'),
-                  hintStyle: AppStyles.p,
-                ),
-              ),
+      body: Padding(padding: const EdgeInsets.all(16),
+        child: Column(children: [
+          TextFormField(controller: _friend, textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done, onFieldSubmitted: (_) => _addFriend(),
+            cursorColor: SpendingStyle.accent(context),
+            decoration: SpendingStyle.input(context, tr.translate('add_friends'),
+                icon: Icons.person_add_alt_1_rounded).copyWith(
+                suffixIcon: IconButton(icon: Icon(Icons.add_rounded, color: SpendingStyle.accent(context)),
+                    onPressed: _addFriend)),
+          ),
+          const SizedBox(height: 16),
+          Expanded(child: ListView.separated(itemCount: friends.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) => Container(
+              padding: const EdgeInsets.all(12), decoration: SpendingStyle.decoration(context),
+              child: Row(children: [
+                circleText(text: friends[i].isEmpty ? '?' : friends[i].substring(0, 1),
+                    color: colors[i]),
+                const SizedBox(width: 12),
+                Expanded(child: Text(friends[i], style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+                const SizedBox(width: 8),
+                removeIcon(action: () => setState(() { friends.removeAt(i); colors.removeAt(i); })),
+              ]),
             ),
-            const Divider(color: Colors.grey, thickness: 0.5),
-            if (friends.isNotEmpty)
-              Expanded(
-                child: ListView.builder(
-                  itemCount: friends.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Row(
-                        children: [
-                          circleText(
-                            text: friends[index][0],
-                            color: colors[index],
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            friends[index],
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const Spacer(),
-                          removeIcon(action: () {
-                            setState(() {
-                              friends.removeAt(index);
-                            });
-                          })
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              )
-          ],
-        ),
+          )),
+        ]),
       ),
     );
   }

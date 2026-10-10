@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,14 +9,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
-import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/features/main/profile/widget/show_birthday.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:shimmer/shimmer.dart';
-import 'package:personal_financial_management/features/auth/signup/gender_widget.dart';
 import '../../../core/constants/function/get_survey_data.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -28,7 +27,7 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ProfileSurface(child: Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).translate('account')),
         centerTitle: true,
@@ -79,7 +78,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             controller: nameController,
                             textCapitalization: TextCapitalization.words,
                             style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w600),
+                                fontSize: 15, fontWeight: FontWeight.w600),
+                            decoration: ProfileStyle.input(context, AppLocalizations.of(context).translate('full_name'), icon: Icons.person_outline_rounded),
                           ),
                         ],
                       ),
@@ -94,11 +94,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           _label(AppLocalizations.of(context).translate('birthday')),
                           const SizedBox(height: 10),
                           InkWell(
+                            borderRadius: BorderRadius.circular(16),
                             onTap: () async {
                               final picked = await showDatePicker(
                                 context: context,
+                                builder: (_, child) => ProfileSurface(child: child!),
                                 initialDate: selectedDate,
-                                firstDate: DateTime(2000),
+                                firstDate: DateTime(1900),
                                 lastDate: DateTime.now(),
                               );
                               if (picked != null) {
@@ -119,23 +121,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         children: [
                           _label(AppLocalizations.of(context).translate('gender')),
                           const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              const Spacer(),
-                              GenderWidget(
-                                currentGender: gender,
-                                gender: true,
-                                action: () => setState(() => gender = true),
-                              ),
-                              const Spacer(),
-                              GenderWidget(
-                                currentGender: gender,
-                                gender: false,
-                                action: () => setState(() => gender = false),
-                              ),
-                              const Spacer(),
-                            ],
-                          ),
+                          Wrap(spacing: 10, runSpacing: 8, children: [
+                            for (final value in [true, false])
+                              ChoiceChip(label: Text(AppLocalizations.of(context).translate(value ? 'male' : 'female')),
+                                  selected: gender == value,
+                                  selectedColor: ProfileStyle.accent(context).withOpacity(.14),
+                                  backgroundColor: ProfileStyle.background(context),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  side: BorderSide(color: gender == value ? ProfileStyle.accent(context) : ProfileStyle.teal.withOpacity(.2)),
+                                  onSelected: (_) => setState(() => gender = value)),
+                          ]),
                         ],
                       ),
                     ),
@@ -147,7 +142,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildDropdown(
-                            label: "Nơi ở hiện tại",
+                            label: AppLocalizations.of(context).translate('current_address'),
                             value: SurveyData.provinces.contains(user.currentAddress)
                                 ? user.currentAddress
                                 : SurveyData.provinces.first,
@@ -155,7 +150,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onChanged: (v) => setState(() => user.currentAddress = v),
                           ),
                           _buildDropdown(
-                            label: "Tình trạng hôn nhân",
+                            label: AppLocalizations.of(context).translate('marital_status'),
                             value: ["Độc thân", "Đã kết hôn", "Khác"].contains(user.maritalStatus)
                                 ? user.maritalStatus
                                 : "Độc thân",
@@ -163,13 +158,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onChanged: (v) => setState(() => user.maritalStatus = v),
                           ),
                           _buildDropdown(
-                            label: "Ngành nghề",
+                            label: AppLocalizations.of(context).translate('job'),
                             value: SurveyData.jobs.contains(user.job) ? user.job : SurveyData.jobs.first,
                             options: SurveyData.jobs,
                             onChanged: (v) => setState(() => user.job = v),
                           ),
                           _buildDropdown(
-                            label: "Trình độ học vấn",
+                            label: AppLocalizations.of(context).translate('education'),
                             value: SurveyData.educationLevels.contains(user.educationLevel)
                                 ? user.educationLevel
                                 : SurveyData.educationLevels.first,
@@ -177,7 +172,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onChanged: (v) => setState(() => user.educationLevel = v),
                           ),
                           _buildDropdown(
-                            label: "Lối sống",
+                            label: AppLocalizations.of(context).translate('lifestyle'),
                             value: ["Tiết kiệm", "Cân bằng", "Hưởng thụ"].contains(user.lifestyle)
                                 ? user.lifestyle
                                 : "Cân bằng",
@@ -185,7 +180,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onChanged: (v) => setState(() => user.lifestyle = v),
                           ),
                           _buildDropdown(
-                            label: "Khẩu vị rủi ro",
+                            label: AppLocalizations.of(context).translate('risk_tolerance'),
                             value: ["Thấp", "Trung bình", "Cao"].contains(user.riskTolerance)
                                 ? user.riskTolerance
                                 : "Trung bình",
@@ -193,7 +188,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             onChanged: (v) => setState(() => user.riskTolerance = v),
                           ),
                           _buildMultiSelectDropdown(
-                            label: "Sở thích",
+                            label: AppLocalizations.of(context).translate('hobbies'),
                             values: user.hobbies,
                             options: SurveyData.hobbies,
                             onChanged: (list) => setState(() => user.hobbies = list),
@@ -204,17 +199,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     const SizedBox(height: 30),
 
                     // Nút lưu
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.buttonLogin,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        onPressed: () async {
+                    ProfileButton(text: AppLocalizations.of(context).translate('save'),
+                        onPressed:  () async {
                           loadingAnimation(context);
                           await SpendingFirebase.updateInfo(
                             user: user.copyWith(
@@ -230,14 +216,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             msg: AppLocalizations.of(context).translate("success"),
                           );
                           Navigator.pop(context);
-                        },
-                        child: Text(
-                          AppLocalizations.of(context).translate('save'),
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                        }),
                   ],
                 ),
               );
@@ -245,238 +224,73 @@ class _EditProfilePageState extends State<EditProfilePage> {
           );
         },
       ),
-    );
+    ));
   }
 
-  // Helper Dropdown
-  Widget _buildDropdown({
-    required String label,
-    required String value,
-    required List<String> options,
-    required Function(String) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(label),
-        const SizedBox(height: 6),
-        GestureDetector(
-          onTap: () {
-            showDialog(
-              context: context,
-              barrierColor: Colors.black.withOpacity(0.3),
-              builder: (_) => Center(
-                child: Material( // ✅ BẮT BUỘC
-                  color: Colors.transparent,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface, // 🌗 dark/light
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Chọn $label",
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const Divider(),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: options.length,
-                            itemBuilder: (_, index) {
-                              final item = options[index];
-                              return ListTile(
-                                title: Text(item),
-                                trailing: item == value
-                                    ? Icon(Icons.check,
-                                    color: Theme.of(context).colorScheme.primary)
-                                    : null,
-                                onTap: () {
-                                  onChanged(item);
-                                  Navigator.pop(context);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    value,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
+  String _optionLabel(String value) {
+    const keys = <String, String>{
+      'Độc thân': 'single', 'Đã kết hôn': 'married', 'Khác': 'other',
+      'Tiết kiệm': 'saving', 'Cân bằng': 'balanced', 'Hưởng thụ': 'enjoy',
+      'Thấp': 'low', 'Trung bình': 'medium', 'Cao': 'high',
+    };
+    return keys.containsKey(value) ? AppLocalizations.of(context).translate(keys[value]!) : value;
   }
 
-  Widget _buildMultiSelectDropdown({
-    required String label,
-    required List<String> values,
-    required List<String> options,
-    required Function(List<String>) onChanged,
-  }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  Widget _buildDropdown({required String label, required String value,
+    required List<String> options, required Function(String) onChanged}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start, children: [
+    _label(label), const SizedBox(height: 8),
+    ProfileSelection(value: _optionLabel(value), onTap: () {
+      showDialog<void>(context: context, builder: (dialogContext) => ProfilePickerDialog(
+          title: '${AppLocalizations.of(context).translate('choose')} $label',
+          child: ListView.separated(itemCount: options.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (_, index) {
+                final item = options[index]; final selected = item == value;
+                return Material(color: selected ? ProfileStyle.accent(context).withOpacity(.1) : ProfileStyle.card(context),
+                    borderRadius: BorderRadius.circular(12), clipBehavior: Clip.antiAlias,
+                    child: ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        title: Text(_optionLabel(item)),
+                        trailing: selected ? Icon(Icons.check_circle_outline_rounded, color: ProfileStyle.accent(context)) : null,
+                        onTap: () { onChanged(item); Navigator.pop(dialogContext); }));
+              })));
+    }), const SizedBox(height: 14),
+  ]);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _label(label),
-        const SizedBox(height: 6),
+  Widget _buildMultiSelectDropdown({required String label, required List<String> values,
+    required List<String> options, required Function(List<String>) onChanged}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start, children: [
+    _label(label), const SizedBox(height: 8),
+    ProfileSelection(value: values.isEmpty ? AppLocalizations.of(context).translate('choose_hobbies') : values.join(', '),
+        onTap: () {
+          final selected = List<String>.from(values);
+          showDialog<void>(context: context, builder: (dialogContext) => StatefulBuilder(
+              builder: (_, updateDialog) => ProfilePickerDialog(
+                title: '${AppLocalizations.of(context).translate('choose')} $label',
+                child: ListView.builder(itemCount: options.length, itemBuilder: (_, index) {
+                  final item = options[index];
+                  return CheckboxListTile(value: selected.contains(item), title: Text(item),
+                      activeColor: ProfileStyle.accent(context),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      onChanged: (checked) => updateDialog(() {
+                        if (checked == true) { selected.add(item); } else { selected.remove(item); }
+                      }));
+                }),
+                footer: ProfileButton(text: AppLocalizations.of(context).translate('confirm'),
+                    onPressed: () { onChanged(selected); Navigator.pop(dialogContext); }),
+              )));
+        }), const SizedBox(height: 14),
+  ]);
 
-        InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () {
-            final tempSelected = List<String>.from(values);
+  Widget _infoCard({required Widget child}) => Material(
+      color: ProfileStyle.card(context), clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: ProfileStyle.teal.withOpacity(.16))),
+      child: Padding(padding: const EdgeInsets.all(18), child: child));
 
-            showDialog(
-              context: context,
-              barrierColor: Colors.black.withOpacity(0.4),
-              builder: (_) => Center(
-                child: Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.9,
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Chọn $label",
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        Divider(color: colorScheme.outline),
-
-                        Expanded(
-                          child: StatefulBuilder(
-                            builder: (context, setStateDialog) {
-                              return ListView.builder(
-                                itemCount: options.length,
-                                itemBuilder: (_, index) {
-                                  final item = options[index];
-                                  final isSelected =
-                                  tempSelected.contains(item);
-
-                                  return CheckboxListTile(
-                                    value: isSelected,
-                                    title: Text(item),
-                                    activeColor: colorScheme.primary,
-                                    onChanged: (checked) {
-                                      setStateDialog(() {
-                                        if (checked == true) {
-                                          tempSelected.add(item);
-                                        } else {
-                                          tempSelected.remove(item);
-                                        }
-                                      });
-                                    },
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              onChanged(tempSelected);
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Xác nhận"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            decoration: BoxDecoration(
-              border: Border.all(color: colorScheme.outline),
-              borderRadius: BorderRadius.circular(8),
-              color: colorScheme.surface,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    values.isEmpty
-                        ? "Chọn sở thích"
-                        : values.join(", "),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                Icon(Icons.arrow_drop_down,
-                    color: colorScheme.onSurfaceVariant),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _infoCard({required Widget child}) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: child,
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Text(
-      text,
-      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[700]),
-    );
-  }
+  Widget _label(String text) => Padding(padding: const EdgeInsets.only(bottom: 4),
+      child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+          color: ProfileStyle.muted(context))));
 
   Widget showAvatar({
     File? image,
@@ -492,15 +306,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: image == null
                 ? CachedNetworkImage(
               imageUrl: url,
-              width: 140,
-              height: 140,
+              width: 104,
+              height: 104,
               fit: BoxFit.cover,
               placeholder: (_, __) => Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
+                baseColor: ProfileStyle.background(context),
+                highlightColor: ProfileStyle.teal.withOpacity(.15),
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: 104,
+                  height: 104,
                   decoration: BoxDecoration(
                     color: Colors.grey,
                     borderRadius: BorderRadius.circular(70),
@@ -509,17 +323,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               errorWidget: (_, __, ___) => const Icon(Icons.error),
             )
-                : Image.file(image, width: 140, height: 140, fit: BoxFit.cover),
+                : Image.file(image, width: 104, height: 104, fit: BoxFit.cover),
           ),
           Positioned(
             bottom: 0,
             right: 0,
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.white,
-              child: const FaIcon(
+              backgroundColor: ProfileStyle.card(context),
+              child: FaIcon(
                 FontAwesomeIcons.circlePlus,
-                color: Colors.blue,
+                color: ProfileStyle.accent(context),
                 size: 20,
               ),
             ),
@@ -532,6 +346,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _showBottomSheet(Function(File?) getFile) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: ProfileStyle.card(context),
+      clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -561,6 +377,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       VoidCallback onTap,
       ) {
     return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -574,13 +391,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               size: 24,
             ),
             const SizedBox(width: 12),
-            Text(
+            Expanded(child: Text(
               AppLocalizations.of(context).translate(textKey),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
-            ),
+            )),
           ],
         ),
       ),

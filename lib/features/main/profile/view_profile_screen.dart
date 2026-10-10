@@ -1,8 +1,8 @@
+import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import 'package:personal_financial_management/models/user.dart' as myuser;
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
@@ -20,9 +20,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
 
-    return Scaffold(
+    return ProfileSurface(child: Scaffold(
       appBar: AppBar(
-        elevation: 2,
+        elevation: 0,
         title: Text(AppLocalizations.of(context).translate('account')),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
@@ -44,18 +44,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             final user = myuser.User.fromFirebase(snapshot.requireData);
-            DateTime birthday = DateFormat("dd/MM/yyyy").parse(user.birthday);
+
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               child: Column(
                 children: [
                   CircleAvatar(
-                    radius: 75,
+                    radius: 52,
                     backgroundImage: CachedNetworkImageProvider(user.avatar),
-                    backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+                    backgroundColor: ProfileStyle.accent(context).withOpacity(.12),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                   _buildCardItem(
                     icon: Icons.person,
                     iconColor: Colors.blue,
@@ -68,7 +68,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     icon: Icons.calendar_today,
                     iconColor: Colors.orange,
                     title: AppLocalizations.of(context).translate('birthday'),
-                    content: DateFormat("dd/MM/yyyy").format(birthday),
+                    content: user.birthday,
                     isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 12),
@@ -81,6 +81,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         : AppLocalizations.of(context).translate('female'),
                     isDarkMode: isDarkMode,
                   ),
+                  const SizedBox(height: 12),
                   _buildCardItem(
                     icon: Icons.work,
                     iconColor: Colors.purple,
@@ -113,10 +114,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return const Center(child: Text('Error fetching user data.'));
+          return ProfileEmpty(icon: Icons.cloud_off_outlined, text: AppLocalizations.of(context).translate('profile_load_error'));
         },
       ),
-    );
+    ));
   }
 
   Widget _buildCardItem({
@@ -126,31 +127,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     required String content,
     required bool isDarkMode,
   }) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.15),
-          child: Icon(icon, color: iconColor, size: 22),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isDarkMode ? Colors.white70 : Colors.grey.shade600,
-          ),
-        ),
-        subtitle: Text(
-          content,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-      ),
-    );
+    return ProfileRow(title: title, value: content, icon: icon);
   }
 }

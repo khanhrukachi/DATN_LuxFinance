@@ -1,245 +1,175 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
+import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 
 class SummarySpending extends StatelessWidget {
   const SummarySpending({
     Key? key,
     required this.monthSpendingList,
     required this.allSpendingList,
+    this.isLoading = false,
   }) : super(key: key);
 
   final List<Spending> monthSpendingList;
-
   final List<Spending> allSpendingList;
-
-  // =================== LOGIC ===================
+  final bool isLoading;
 
   int getTotalIncome(List<Spending> list) =>
-      list.where((e) => e.money > 0).fold(0, (s, e) => s + e.money);
-
+      list.where((e) => e.money > 0).fold(0, (sum, e) => sum + e.money);
   int getTotalExpense(List<Spending> list) =>
-      list.where((e) => e.money < 0).fold(0, (s, e) => s + e.money.abs());
-
+      list.where((e) => e.money < 0).fold(0, (sum, e) => sum + e.money.abs());
   int getBalance(List<Spending> list) =>
-      list.fold(0, (s, e) => s + e.money);
-
-  // =================== UI ===================
+      list.fold(0, (sum, e) => sum + e.money);
 
   @override
   Widget build(BuildContext context) {
-    if (monthSpendingList.isEmpty && allSpendingList.isEmpty) {
-      return _loading(context);
-    }
-
-    final income = getTotalIncome(monthSpendingList);
-    final expense = getTotalExpense(monthSpendingList);
+    final tr = AppLocalizations.of(context);
     final balance = getBalance(allSpendingList);
-
-    return _body(
-      context,
-      income: income,
-      expense: expense,
-      balance: balance,
-    );
-  }
-
-  Widget _body(
-      BuildContext context, {
-        required int income,
-        required int expense,
-        required int balance,
-      }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textPrimary = isDark ? Colors.white : const Color(0xFF1C1C1C);
-    final textSecondary =
-    isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.blue.withOpacity(0.15)),
-          boxShadow: [
-            if (!isDark)
-              BoxShadow(
-                color: Colors.blue.withOpacity(0.18),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: HomeStyle.decoration(context, hero: true),
+      child: isLoading
+          ? _loading(context)
+          : Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
+                decoration: BoxDecoration(
+                  color: HomeStyle.card(context).withOpacity(.65),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: HomeStyle.accent(context).withOpacity(.12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr.translate('current_money'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: HomeStyle.muted(context),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _amount(
+                            context,
+                            balance,
+                            fontSize: 25,
+                            color: balance < 0
+                                ? HomeStyle.danger
+                                : HomeStyle.text(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        gradient: HomeStyle.gradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_outlined,
+                        size: 20,
+                        color: HomeStyle.ink,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-          ],
-        ),
-        child: Column(
-          children: [
-            _row(
-              context,
-              icon: Icons.arrow_downward_rounded,
-              title: AppLocalizations.of(context)
-                  .translate('total_amount_collected'),
-              value: income,
-              color: const Color(0xFF2FBF71),
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
             ),
-            const SizedBox(height: 18),
-            _row(
-              context,
-              icon: Icons.arrow_upward_rounded,
-              title: AppLocalizations.of(context)
-                  .translate('total_amount_spent'),
-              value: expense,
-              color: const Color(0xFFE5533D),
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
-            ),
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 18),
-            _row(
-              context,
-              icon: Icons.account_balance_wallet_rounded,
-              title: AppLocalizations.of(context)
-                  .translate('current_money'),
-              value: balance.abs(),
-              prefix: balance >= 0 ? "" : "-",
-              color: balance >= 0
-                  ? const Color(0xFF5B7CFA)
-                  : const Color(0xFFE5533D),
-              isBold: true,
-              textPrimary: textPrimary,
-              textSecondary: textSecondary,
-            ),
-          ],
-        ),
+          ]),
+          const SizedBox(height: 14),
+          LayoutBuilder(builder: (context, constraints) {
+            final income = _metric(context,
+                title: tr.translate('income'),
+                amount: getTotalIncome(monthSpendingList),
+                icon: Icons.south_west_rounded,
+                color: HomeStyle.accent(context));
+            final expense = _metric(context,
+                title: tr.translate('spending'),
+                amount: getTotalExpense(monthSpendingList),
+                icon: Icons.north_east_rounded,
+                color: HomeStyle.danger);
+            if (constraints.maxWidth < 240 ||
+                MediaQuery.of(context).textScaleFactor > 1.4) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [income, const SizedBox(height: 8), expense]);
+            }
+            return IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [Expanded(child: income),
+                    const SizedBox(width: 10), Expanded(child: expense)]),
+            );
+          }),
+        ],
       ),
     );
   }
 
-  Widget _row(
-      BuildContext context, {
-        required IconData icon,
-        required String title,
-        required int value,
-        required Color color,
-        required Color textPrimary,
-        required Color textSecondary,
-        String prefix = "",
-        bool isBold = false,
-      }) {
-    final format = NumberFormat.decimalPattern("vi");
+  Widget _metric(BuildContext context, {
+    required String title, required int amount,
+    required IconData icon, required Color color,
+  }) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: HomeStyle.card(context).withOpacity(.65),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: color.withOpacity(.12)),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 5),
+        Expanded(child: Text(title, style: TextStyle(fontSize: 12,
+            fontWeight: FontWeight.w500, color: HomeStyle.muted(context)))),
+      ]),
+      const SizedBox(height: 5),
+      _amount(context, amount, fontSize: 16, color: color),
+    ]),
+  );
 
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                color.withOpacity(0.30),
-                color.withOpacity(0.08),
-              ],
-            ),
-          ),
-          child: Icon(icon, color: color),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              color: textSecondary,
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-        Text(
-          "$prefix${format.format(value)} đ",
-          style: TextStyle(
-            fontSize: isBold ? 17 : 15,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _amount(BuildContext context, int amount, {
+    required double fontSize, required Color color,
+  }) => SizedBox(
+    width: double.infinity,
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(HomeStyle.money(context, amount), maxLines: 1,
+          style: TextStyle(fontSize: fontSize,
+              fontWeight: FontWeight.w700, color: color)),
+    ),
+  );
 
-  // =================== LOADING ===================
-
-  Widget _loading(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
-    final highlightShimmer =
-    isDark ? Colors.grey.shade700 : Colors.grey.shade100;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          children: [
-            _shimmerRow(baseShimmer, highlightShimmer),
-            const SizedBox(height: 18),
-            _shimmerRow(baseShimmer, highlightShimmer),
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 18),
-            _shimmerRow(baseShimmer, highlightShimmer, isBold: true),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _shimmerRow(
-      Color baseShimmer,
-      Color highlightShimmer, {
-        bool isBold = false,
-      }) {
-    return Row(
-      children: [
-        Shimmer.fromColors(
-          baseColor: baseShimmer,
-          highlightColor: highlightShimmer,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(child: Container()),
-        Shimmer.fromColors(
-          baseColor: baseShimmer,
-          highlightColor: highlightShimmer,
-          child: Container(
-            height: isBold ? 22 : 18,
-            width: Random().nextInt(60) + 80,
-            decoration: BoxDecoration(
-              color: baseShimmer,
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _loading(BuildContext context) => Shimmer.fromColors(
+    baseColor: HomeStyle.card(context),
+    highlightColor: HomeStyle.teal.withOpacity(.18),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: 100, height: 12, color: Colors.white),
+      const SizedBox(height: 7),
+      Container(width: 180, height: 28, color: Colors.white),
+      const SizedBox(height: 14),
+      Row(children: [
+        Expanded(child: Container(height: 62, decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(14)))),
+        const SizedBox(width: 10),
+        Expanded(child: Container(height: 62, decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(14)))),
+      ]),
+    ]),
+  );
 }

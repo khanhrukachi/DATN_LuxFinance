@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Set
 
 
 PARENT_CATEGORIES: Dict[str, Dict[str, str]] = {
+    "expense": {"label": "Chi tiêu", "class": "consumption"},
     "income": {"label": "Thu nhập", "class": "income"},
     "expense_living": {
         "label": "Chi tiêu sinh hoạt",
@@ -38,6 +39,7 @@ PARENT_CATEGORIES: Dict[str, Dict[str, str]] = {
 }
 
 CHILD_PARENT: Dict[str, str] = {
+    "earn_profit": "income",
     "eating": "expense_living",
     "move": "expense_living",
     "market": "expense_living",
@@ -64,11 +66,11 @@ CHILD_PARENT: Dict[str, str] = {
     "education": "investment_saving",
     "insurance": "investment_saving",
     "saving": "investment_saving",
-    "borrow": "loan_borrow",
+    "borrow": "income",
     "loan": "loan_borrow",
     "pay": "loan_borrow",
     "pay_interest": "loan_borrow",
-    "debt_collection": "loan_borrow",
+    "debt_collection": "income",
     "salary": "income",
     "revenue": "income",
     "other_income": "income",
@@ -154,7 +156,7 @@ LABELS: Dict[str, str] = {
     "education": "Giáo dục", "insurance": "Bảo hiểm", "borrow": "Vay tiền",
     "loan": "Cho vay", "pay": "Trả nợ", "pay_interest": "Trả lãi",
     "debt_collection": "Thu hồi nợ",
-    "salary": "Lương", "revenue": "Doanh thu", "other_income": "Thu nhập khác",
+    "earn_profit": "Thu lợi nhuận", "salary": "Lương", "revenue": "Doanh thu", "other_income": "Thu nhập khác",
     "money_transferred_to": "Tiền nhận về",
 }
 

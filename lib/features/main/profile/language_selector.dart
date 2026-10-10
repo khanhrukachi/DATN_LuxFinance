@@ -1,62 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 
 class LanguageSelector extends StatelessWidget {
+  const LanguageSelector({Key? key, required this.currentLanguage,
+    required this.onLanguageChanged}) : super(key: key);
   final int currentLanguage;
   final Function(int) onLanguageChanged;
-
-  const LanguageSelector({
-    Key? key,
-    required this.currentLanguage,
-    required this.onLanguageChanged,
-  }) : super(key: key);
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(left: 20),
-      width: double.infinity,
-      height: 170,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          InkWell(
-            onTap: () => onLanguageChanged(0),
-            child: Row(
-              children: [
-                Image.asset("assets/images/vietnam.png", width: 70),
-                const Spacer(),
-                const Text(
-                  "Tiếng Việt",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Radio(
-                  value: 0,
-                  groupValue: currentLanguage,
-                  onChanged: (value) => onLanguageChanged(0),
-                )
-              ],
-            ),
-          ),
-          InkWell(
-            onTap: () => onLanguageChanged(1),
-            child: Row(
-              children: [
-                Image.asset("assets/images/english.png", width: 70),
-                const Spacer(),
-                const Text(
-                  "English",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Radio(
-                  value: 1,
-                  groupValue: currentLanguage,
-                  onChanged: (value) => onLanguageChanged(1),
-                )
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SafeArea(top: false,
+    child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 36, height: 4, margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: ProfileStyle.muted(context).withOpacity(.3),
+                  borderRadius: BorderRadius.circular(4))),
+          for (final index in [0, 1]) ...[
+            Material(color: index == currentLanguage ? ProfileStyle.accent(context).withOpacity(.1) : ProfileStyle.card(context),
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: index == currentLanguage ? ProfileStyle.accent(context) : ProfileStyle.teal.withOpacity(.16))),
+                child: ListTile(contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    leading: ClipRRect(borderRadius: BorderRadius.circular(5), child: Image.asset(
+                        index == 0 ? 'assets/images/vietnam.png' : 'assets/images/english.png', width: 38)),
+                    title: Text(index == 0 ? 'Tiếng Việt' : 'English', style: TextStyle(fontSize: 14,
+                        color: ProfileStyle.text(context), fontWeight: FontWeight.w600)),
+                    trailing: Icon(index == currentLanguage ? Icons.check_circle_rounded : Icons.circle_outlined,
+                        color: index == currentLanguage ? ProfileStyle.accent(context) : ProfileStyle.muted(context), size: 22),
+                    onTap: () => onLanguageChanged(index))),
+            if (index == 0) const SizedBox(height: 10),
+          ],
+        ])),
+  );
 }

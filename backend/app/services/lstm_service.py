@@ -2883,8 +2883,8 @@ class LSTMService:
                     budget_meta=resolve_category_metadata(budget, category_catalog)
                     budget_category_id=budget_meta["category_id"]
                     by_label=identity(budget.get("category",budget.get("typeName",budget.get("type_name",""))),by_id)
-                    match=((budget_category_id and budget_category_id in bucket["ids"])
-                           or by_label in (normalize_key(key), normalize(raw_label)))
+                    match = ((budget_category_id and budget_category_id in bucket["ids"])
+                        or by_label in (normalized_key, normalize(raw_label)))
                     if match and int(budget.get("year",today.year))==day.year and int(budget.get("month",today.month))==day.month:
                         relevant.append(budget)
                 if len(relevant)==1 and (day.year,day.month)==(today.year,today.month):

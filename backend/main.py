@@ -1,139 +1,55 @@
 import os
-os.environ['LOKY_MAX_CPU_COUNT'] = '4'
-
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "4")
+import logging
+import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import traceback
-
 from app.config import settings
-from app.routers import prediction_router, clustering_router, anomaly_router, insights_router
+from app.routers import prediction_router, clustering_router, anomaly_router, insights_router, chat_router
+from app.services.lstm_service import TF_AVAILABLE
 from app.schemas.response import HealthResponse
-from app.routers.chat import router as chat_router
 
+log = logging.getLogger(__name__)
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS,
+    allow_credentials="*" not in settings.CORS_ORIGINS, allow_methods=["*"],
+    allow_headers=["*"], expose_headers=["X-Request-ID"])
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("=== Starting LuxFinance ML Backend ===")
-    print(f"LSTM Sequence Length: {settings.LSTM_SEQUENCE_LENGTH}")
-    print(f"K-Means Clusters: {settings.KMEANS_N_CLUSTERS}")
-    print(f"Isolation Forest Contamination: {settings.ISOLATION_FOREST_CONTAMINATION}")
-    yield
-    print("=== Shutting down LuxFinance ML Backend ===")
-
-
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="LuxFinance ML Backend API",
-    version=settings.VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    lifespan=lifespan
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+@app.middleware("http")
+async def identify_request(request: Request, call_next):
+    request.state.request_id = uuid.uuid4().hex[:12]
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    return response
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    error_detail = f"Error: {str(exc)}\n{traceback.format_exc()}"
-    print(error_detail)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Máy chủ chưa xử lý được yêu cầu."}
-    )
+async def server_error(request: Request, exc: Exception):
+    rid = getattr(request.state,"request_id",uuid.uuid4().hex[:12])
+    log.error("Backend processing failure request_id=%s",rid,exc_info=exc)
+    return JSONResponse(status_code=500,content={"detail":{"code":"server_error",
+        "message":"Máy chủ chưa xử lý được yêu cầu.","requestId":rid}},headers={"X-Request-ID":rid})
 
+for router in (prediction_router, clustering_router, anomaly_router, insights_router, chat_router):
+    app.include_router(router,prefix=settings.API_V1_PREFIX)
 
-app.include_router(prediction_router, prefix=settings.API_V1_PREFIX)
-app.include_router(clustering_router, prefix=settings.API_V1_PREFIX)
-app.include_router(anomaly_router, prefix=settings.API_V1_PREFIX)
-app.include_router(insights_router, prefix=settings.API_V1_PREFIX)
-app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
+@app.get("/")
+def root():
+    return {"name":settings.PROJECT_NAME,"version":settings.VERSION,"docs":"/docs",
+        "health":"/health","chat":settings.API_V1_PREFIX+"/chat/ask"}
 
+@app.get("/health",response_model=HealthResponse)
+def health():
+    return HealthResponse(status="healthy",version=settings.VERSION,services={
+        "lstm":"available" if TF_AVAILABLE else "baseline_only",
+        "kmeans":"available","isolation_forest":"available","chat":"available"})
 
-@app.get("/", tags=["Root"])
-async def root():
-    return {
-        "name": settings.PROJECT_NAME,
-        "version": settings.VERSION,
-        "description": "ML Backend cho ung dung quan ly tai chinh ca nhan",
-        "endpoints": {
-            "docs": "/docs",
-            "redoc": "/redoc",
-            "health": "/health",
-            "prediction": f"{settings.API_V1_PREFIX}/predict/trend",
-            "clustering": f"{settings.API_V1_PREFIX}/cluster/behavior",
-            "anomaly": f"{settings.API_V1_PREFIX}/detect/anomaly",
-            "report": f"{settings.API_V1_PREFIX}/insights/report",
-            "ask": f"{settings.API_V1_PREFIX}/insights/ask",
-            "recommendations": f"{settings.API_V1_PREFIX}/insights/recommendations"
-        }
-    }
+@app.get(settings.API_V1_PREFIX+"/info")
+def info():
+    return {"services":[{"endpoint":route.path,"method":"POST"}
+        for route in app.routes if "POST" in getattr(route,"methods",set())],
+        "authentication":"Firebase Bearer token; UID must match request", "healthMeaning":"Services loaded; models are evaluated per request"}
 
-
-@app.get("/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
-    return HealthResponse(
-        status="healthy",
-        version=settings.VERSION,
-        services={
-            "lstm": "available",
-            "kmeans": "available",
-            "isolation_forest": "available"
-        }
-    )
-
-
-@app.get("/api/v1/info", tags=["Info"])
-async def api_info():
-    return {
-        "services": [
-            {
-                "name": "LSTM Trend Prediction",
-                "endpoint": "/api/v1/predict/trend",
-                "method": "POST"
-            },
-            {
-                "name": "K-Means Clustering",
-                "endpoint": "/api/v1/cluster/behavior",
-                "method": "POST"
-            },
-            {
-                "name": "Isolation Forest Anomaly Detection",
-                "endpoint": "/api/v1/detect/anomaly",
-                "method": "POST"
-            },
-            {
-                "name": "Financial Reports",
-                "endpoint": "/api/v1/insights/report",
-                "method": "POST"
-            },
-            {
-                "name": "Cash-flow Q&A",
-                "endpoint": "/api/v1/insights/ask",
-                "method": "POST"
-            },
-            {
-                "name": "Financial Recommendations",
-                "endpoint": "/api/v1/insights/recommendations",
-                "method": "POST"
-            }
-        ]
-    }
-
-
-if __name__ == "__main__":
+if __name__=="__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.DEBUG
-    )
+    uvicorn.run("main:app",host="0.0.0.0",port=8000,reload=settings.DEBUG)

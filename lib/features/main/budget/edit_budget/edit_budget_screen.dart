@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_card.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_type_selector.dart';
@@ -35,7 +36,8 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
   }
 
   Future<void> _updateBudget() async {
-    final limit = int.tryParse(limitController.text.replaceAll(',', '')) ?? 0;
+    if (isLoading) return;
+    final limit = int.tryParse(limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ?? 0;
     if (limit <= 0) {
       _showSnack(AppLocalizations.of(context).translate('invalid_limit'));
       return;
@@ -90,7 +92,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => BudgetTypeSelector(selectedType: selectedType),
     );
-    if (index != null) setState(() => selectedType = index);
+    if (mounted && index != null) setState(() => selectedType = index);
   }
 
   void _showOverlapSnack() {
@@ -114,7 +116,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+          backgroundColor: BudgetStyle.card(context),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -125,7 +127,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
                 Text(
                   local.translate('delete_budget'),
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.black,
                   ),
@@ -202,9 +204,9 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+      backgroundColor: BudgetStyle.background(context),
       appBar: AppBar(
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+        backgroundColor: BudgetStyle.background(context),
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         title: Text(
           AppLocalizations.of(context).translate('edit_budget'),
@@ -227,48 +229,17 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey.shade800 : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(0.3)
-                            : Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: BudgetCard(
-                    selectedType: selectedType,
-                    limitController: limitController,
-                    onTypeTap: _openTypeSelector,
-                  ),
+                BudgetCard(
+                  selectedType: selectedType,
+                  limitController: limitController,
+                  onTypeTap: isLoading ? () {} : _openTypeSelector,
                 ),
                 const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
+                  child: BudgetActionButton(
                     onPressed: isLoading ? null : _updateBudget,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context).translate('update_budget'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    label: AppLocalizations.of(context).translate('update_budget'),
                   ),
                 ),
               ],

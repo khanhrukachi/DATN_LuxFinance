@@ -7,15 +7,8 @@ import 'chat_intent.dart';
 /// Bộ phân tích câu nhập giao dịch dạng tự nhiên.
 /// Hỗ trợ số tiền, ngày tương đối/ngày cụ thể, giờ, địa điểm và ghi chú.
 class ChatParser {
-  // Direction follows LuxFinance's signed-money convention.
-  // Borrowing/transfers are cash inflows, not necessarily earned income.
-  static const Set<String> _incomeKeys = {
-    'debt_collection', 'borrow', 'earn_profit',
-    'salary', 'other_income', 'money_transferred_to',
-  };
-
   static const Map<String, List<String>> _categoryLabels = {
-    'current_money': ['Số dư hiện tại', 'Current balance'],
+    'market': ['Đi chợ / siêu thị', 'Groceries'],
     'eating': ['Ăn uống', 'Food and drinks'],
     'move': ['Đi lại', 'Transport'],
     'rent_house': ['Tiền nhà', 'Rent'],
@@ -33,7 +26,6 @@ class ChatParser {
     'housewares': ['Đồ gia dụng', 'Household goods'],
     'personal_belongings': ['Đồ cá nhân', 'Personal belongings'],
     'pet': ['Thú cưng', 'Pets'],
-    'family_service': ['Gia đình', 'Family'],
     'other_costs': ['Chi phí khác', 'Other expenses'],
     'sport': ['Thể thao', 'Sports'],
     'beautify': ['Làm đẹp', 'Beauty'],
@@ -49,9 +41,6 @@ class ChatParser {
     'earn_profit': ['Thu lợi nhuận', 'Profit received'],
     'salary': ['Lương', 'Salary'],
     'other_income': ['Thu nhập khác', 'Other income'],
-    'money_transferred': ['Chuyển tiền đi', 'Outgoing transfer'],
-    'money_transferred_to': ['Chuyển tiền đến', 'Incoming transfer'],
-    'new_group': ['Nhóm tùy chỉnh', 'Custom category'],
   };
 
   static String categoryLabel(String key, BuildContext context) {
@@ -88,8 +77,8 @@ class ChatParser {
     if (amount == null || amount <= 0) {
       return ChatParseResult.question(_t(
         context,
-        'Mình chưa hiểu rõ giao dịch. Bạn vui lòng mô tả khoản thu/chi để mình hỗ trợ nhé',
-        'I do not quite understand the transaction. Could you please describe the income/expense so I can help?',
+        'Bạn chưa nhập số tiền. Ví dụ: đi chợ mua đồ hết 50k lúc 17h30 ngày 9/8.',
+        'Please enter an amount, for example: groceries 50k at 17:30 on 9/8.',
       ));
     }
 
@@ -103,7 +92,7 @@ class ChatParser {
 
     // Re-resolve the index from the application's real list, never reindex it.
     final typeIndex = listType.indexWhere(
-          (item) => item['title'] == match.key && item['image'] != null,
+          (item) => item['title'] == match.key && item['isParent'] != 'true',
     );
     if (typeIndex < 0 || !_categoryLabels.containsKey(match.key)) {
       return ChatParseResult.question(_t(
@@ -115,6 +104,19 @@ class ChatParser {
 
     final date = _date(text);
     final time = _time(text);
+    final folded = _fold(text);
+    final hasDate = RegExp(
+      r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
+    ).hasMatch(folded);
+    final hasTime = _timePattern.hasMatch(folded) || RegExp(
+      r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b',
+    ).hasMatch(folded);
+    if ((hasDate && date == null) || (hasTime && time == null)) {
+      return ChatParseResult.question(_t(context,
+          'Ngày hoặc giờ chưa hợp lệ. Bạn kiểm tra lại giúp mình nhé.',
+          'Invalid date or time. Please check your transaction.'));
+    }
+
     final confidence = (match.confidence +
         (date != null ? 0.02 : 0) +
         (time != null ? 0.02 : 0) +
@@ -140,8 +142,19 @@ class ChatParser {
   /// Đọc 50k, 50 nghìn, 1.5 triệu, 1,5 triệu, 50.000đ và 50000.
   /// Các số thuộc ngày/giờ sẽ bị bỏ qua, không bị hiểu nhầm là số tiền.
   static double? _amount(String text) {
+    // Exclude complete date/time spans before looking for money. A day,
+    // month or minute must never become the amount of a transaction.
+    for (final pattern in <RegExp>[
+      RegExp(r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)'),
+      RegExp(r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)'),
+      RegExp(r'(?<![a-z0-9])ngay\s*\d{1,2}(?!\d)'),
+      _timePattern,
+      RegExp(r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])'),
+    ]) {
+      text = _without(text, pattern);
+    }
     final pattern = RegExp(
-      r'\d[\d.,]*(?:\s*(?:triệu|tr|million|k|nghìn|ngàn|đ|dong))?',
+      r'\d[\d.,]*(?:\s*(?:triệu|tr|million|k|nghìn|ngàn|đ|dong)(?![A-Za-zÀ-ỹĐđ0-9]))?',
       caseSensitive: false,
     );
 
@@ -265,7 +278,9 @@ class ChatParser {
     return false;
   }
 
-  static bool _isIncome(String category) => _incomeKeys.contains(category);
+  static bool _isIncome(String category) => listType.any(
+        (item) => item['title'] == category && item['type'] == 'income',
+  );
 
   /// Nhận hôm nay, hôm qua, ngày mai, ngày kia, thứ trong tuần,
   /// dd/MM/yyyy, dd tháng MM năm yyyy và "ngày dd tháng MM".
@@ -356,43 +371,31 @@ class ChatParser {
     return year < 100 ? year + 2000 : year;
   }
 
-  /// Nhận 18:30, 18h30, 18 giờ 30, 6 giờ tối, 6:30 PM.
+  // Match complete time tokens, including the minute suffix in 7h30p.
+  static final RegExp _timePattern = RegExp(
+    r'(?<![\d/.-])(\d{1,2})\s*(?::|h|gio)\s*(\d{1,2})?\s*(?:phut|p)?\s*(sang|trua|chieu|toi|am|pm)?(?![a-z0-9])',
+  );
+
   static DateTime? _time(String text) {
     final folded = _fold(text);
-    final pattern = RegExp(
-      r'\b(\d{1,2})(?:\s*(?::|h|giờ)\s*(\d{1,2})?)?\s*(sáng|trưa|chiều|tối|am|pm)?\b',
-    );
-    RegExpMatch? match;
-    for (final candidate in pattern.allMatches(folded)) {
-      final raw = candidate.group(0)!;
-      if (raw.contains(':') ||
-          RegExp(r'(h|giờ|sáng|trưa|chiều|tối|am|pm)')
-              .hasMatch(raw)) {
-        match = candidate;
-        break;
-      }
-    }
+    final match = _timePattern.firstMatch(folded) ?? RegExp(
+      r'(?<![\d/.-])(\d{1,2})\s+(sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
+    ).firstMatch(folded);
     if (match == null) return null;
-
-    final start = match.start;
-    final before = start > 0 ? folded[start - 1] : '';
-    if (before == '/' || before == '-' || before == '.') return null;
-    final marker = (match.group(3) ?? '').toLowerCase();
-    final hasTimeWord = match.group(0)!.contains(':') ||
-        RegExp(r'(h|giờ|sáng|trưa|chiều|tối|am|pm)').hasMatch(match.group(0)!);
-    if (!hasTimeWord) return null;
-
+    final hasSeparator = match.groupCount == 3;
     var hour = int.parse(match.group(1)!);
-    final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
-    if (marker == 'chiều' || marker == 'tối' || marker == 'pm') {
+    final minute = hasSeparator ? int.tryParse(match.group(2) ?? '0') ?? 0 : 0;
+    final marker = (hasSeparator ? match.group(3) : match.group(2)) ?? '';
+    if (marker.isNotEmpty && (hour < 1 || hour > 12)) return null;
+    if (marker == 'chieu' || marker == 'toi' || marker == 'pm') {
       if (hour < 12) hour += 12;
-    } else if (marker == 'sáng' || marker == 'am') {
+    } else if (marker == 'sang' || marker == 'am') {
       if (hour == 12) hour = 0;
-    } else if (marker == 'trưa' && hour < 11) {
+    } else if (marker == 'trua' && hour < 11) {
       hour += 12;
     }
     if (hour > 23 || minute > 59) return null;
-    return DateTime(0, 1, 1, hour, minute);
+    return DateTime(2000, 1, 1, hour, minute);
   }
 
   static DateTime _mergeDateAndTime(DateTime date, DateTime? time) {
@@ -413,83 +416,69 @@ class ChatParser {
     return match?.group(1)?.trim() ?? '';
   }
 
-  static String _cleanNote(String text) {
-    final explicit = RegExp(
-      r'(?:ghi chú|ghi chu|note)\s*[:：]\s*(.+)$',
-      caseSensitive: false,
-    ).firstMatch(text);
-    if (explicit != null) {
-      return _tidyNote(explicit.group(1)!);
-    }
+  // Fold accents without changing offsets so removals preserve the original
+  // spelling of arbitrary dishes/items, rather than selecting from a food list.
+  static String _foldKeepingOffsets(String value) =>
+      _fold(value, preserveOffsets: true);
 
-    var note = text
-        .replaceAll(RegExp(
-      r'\b\d{1,2}(?::\d{1,2}|\s*h\s*\d{0,2}|\s*giờ\s*\d{0,2})\s*(sáng|trưa|chiều|tối|am|pm)?\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\d[\d.,]*(?:\s*(triệu|tr|million|k|nghìn|ngàn|đ|dong))?',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\b(hôm nay|hôm qua|ngày mai|ngày kia|today|yesterday|tomorrow)\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\b(?:ngày|ngay)\s*\d{1,2}(?:\s*(?:tháng|thang)\s*\d{1,2})?(?:\s*(?:năm|nam)\s*\d{2,4})?\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(r'\b\d{1,2}[/:.-]\d{1,2}(?:[/:.-]\d{2,4})?\b'), '')
-        .replaceAll(RegExp(
-      r'\b\d{1,2}(?:\s*(?:h|giờ)\s*\d{0,2})?\s*(sáng|trưa|chiều|tối|am|pm)?\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\b(?:ở|o|tại|tai|at|in)\s+[^,.;]+',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\b(tôi|mình|minh|em|anh|chị|chi|bạn|toi|di|đi|đã|da|vừa|vua|nay)\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(
-      r'\b(ăn|an|uống|uong|mua|dùng|dung|sử dụng|su dung|chi|tiêu|tieu|hết|het|trả|tra|thanh toán|thanh toan|nhận|nhan|đóng|dong|gửi|gui)\b',
-      caseSensitive: false,
-    ), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    return _tidyNote(_removeFillerWords(note));
-  }
-
-  static String _removeFillerWords(String value) {
-    var result = value;
-    const fillers = [
-      'tôi', 'toi', 'mình', 'minh', 'em', 'anh', 'chị', 'chi', 'bạn',
-      'đi', 'di', 'đã', 'da', 'vừa', 'vua', 'lúc', 'luc', 'vào', 'vao',
-      'khi', 'hồi', 'hoi', 'hôm nay', 'hom nay', 'hết', 'het',
-      'ăn', 'an', 'uống', 'uong', 'mua', 'dùng', 'dung', 'chi',
-      'tiêu', 'tieu', 'trả', 'tra', 'thanh toán', 'thanh toan',
-      'nhận', 'nhan', 'đóng', 'dong', 'gửi', 'gui','lương', 'luong',
-    ];
-    for (final filler in fillers) {
-      result = result.replaceAll(
-        RegExp('(^|\\s)${RegExp.escape(filler)}(?=\\s|\$)', caseSensitive: false),
-        ' ',
-      );
+  static String _without(String text, RegExp pattern) {
+    final folded = _foldKeepingOffsets(text);
+    final matches = pattern.allMatches(folded).toList();
+    var result = text;
+    for (final match in matches.reversed) {
+      result = result.replaceRange(match.start, match.end, ' ');
     }
     return result;
   }
 
-  static String _tidyNote(String value) {
-    var note = value
-        .replaceAll(RegExp(r'^[,:;\-–—]+|[,:;\-–—]+$'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (note.isEmpty) return '';
-    return '${note[0].toUpperCase()}${note.substring(1)}';
+  static String _cleanNote(String text) {
+    final explicit = RegExp(r'(?:ghi chu|note)\s*[:：]\s*(.+)$')
+        .firstMatch(_foldKeepingOffsets(text));
+    if (explicit != null) {
+      return _tidyNote(text.substring(explicit.start +
+          explicit.group(0)!.indexOf(explicit.group(1)!)));
+    }
+    var note = text;
+    // Remove full date/time spans BEFORE amounts.
+    for (final pattern in <RegExp>[
+      RegExp(r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)'),
+      RegExp(r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)'),
+      RegExp(r'(?<![a-z0-9])ngay\s*\d{1,2}(?!\d)'),
+      _timePattern,
+      RegExp(r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])'),
+      RegExp(r'(?<![a-z0-9])(?:hom nay|hom qua|ngay mai|ngay kia|today|yesterday|tomorrow)(?![a-z0-9])'),
+      RegExp(r'\d[\d.,]*(?:\s*(?:trieu|tr|million|k|nghin|ngan|dong|d)(?![a-z0-9]))?'),
+      RegExp(r'(?<![a-z0-9])(?:o|tai|at|in)\s+[^,.;]+'),
+    ]) {
+      note = _without(note, pattern);
+    }
+    note = _without(note, RegExp(r'(?<![a-z0-9])ngay(?![a-z0-9])'));
+    note = note.replaceAll('/', ' ');
+    // Strip conversational/action prefixes only; do not delete words inside
+    // item names (for example "bánh mì", "bún bò", "cơm chiên").
+    final prefix = RegExp(
+      r'^\s*(?:toi|minh|em|anh|chi|ban|di|da|vua|co|an|uong|mua|dung|chi tieu|chi|tra|thanh toan|nhan|dong|gui)\s+',
+    );
+    while (prefix.hasMatch(_foldKeepingOffsets(note))) {
+      note = _without(note, prefix);
+    }
+    note = _without(note, RegExp(
+      r'(?<![a-z0-9])(?:het|ton|mat|gia|luc|vao|khi|hoi|ngay)(?![a-z0-9])',
+    ));
+    note = note.replaceAll('/', ' ');
+    note = _tidyNote(note);
+    if (RegExp(r'^(?:sang|trua|toi|khuya)$').hasMatch(_fold(note))) {
+      return 'ăn $note';
+    }
+    return note;
   }
 
-  static String _fold(String value) {
+  static String _tidyNote(String value) => value
+      .replaceAll(RegExp(r'^[\s,.;:/\-–—]+|[\s,.;:/\-–—]+$'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  static String _fold(String value, {bool preserveOffsets = false}) {
     var result = value.toLowerCase();
     const replacements = <String, String>{
       'à': 'a', 'á': 'a', 'ạ': 'a', 'ả': 'a', 'ã': 'a', 'â': 'a', 'ầ': 'a',
@@ -504,6 +493,7 @@ class ChatParser {
       'ỵ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'đ': 'd',
     };
     replacements.forEach((from, to) => result = result.replaceAll(from, to));
+    if (preserveOffsets) return result;
     return result.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 

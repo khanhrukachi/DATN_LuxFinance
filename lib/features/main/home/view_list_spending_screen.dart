@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
@@ -13,23 +14,14 @@ class ViewListSpendingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 2,
-        title: Text(
-          spendingList[0].type == 41
-              ? spendingList[0].typeName!
-              : AppLocalizations.of(context)
-                  .translate(listType[spendingList[0].type]["title"]!),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-        ),
-      ),
+    final first = spendingList.isEmpty ? null : spendingList.first;
+    final config = first != null && first.type >= 0 && first.type < listType.length ? listType[first.type] : null;
+    final title = first == null ? AppLocalizations.of(context).translate('spending_list')
+        : first.type == 41 || first.categoryId == 'custom' ? (first.typeName ?? '')
+        : AppLocalizations.of(context).translate(config?['title'] ?? 'other');
+    return Scaffold(backgroundColor: HomeStyle.background(context),
+      appBar: AppBar(elevation: 0, backgroundColor: HomeStyle.background(context),
+          centerTitle: false, title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
       body: ItemSpendingDay(spendingList: spendingList),
     );
   }

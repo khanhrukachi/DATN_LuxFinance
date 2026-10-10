@@ -2,13 +2,16 @@
 List<Map<String, dynamic>> buildChatCatalog(
     List<Map<String, String>> listType, String Function(String) translate) {
   return [for (var i = 0; i < listType.length; i++) {
-    'id': listType[i]['title'] ?? '',
+    'id': listType[i]['id'] ?? listType[i]['title'] ?? '',
+    'title': listType[i]['title'] ?? '',
+    'type': listType[i]['type'] ?? '',
+    'level': int.tryParse(listType[i]['level'] ?? ''),
     'index': i,
     'display_name': translate(listType[i]['title'] ?? ''),
     'parent': listType[i]['parentCategoryId'] ?? listType[i]['parent'] ??
         _parents[listType[i]['title']],
-    'isParent': const {'expense_living', 'expense_fixed', 'expense_unexpected',
-        'income', 'investment_saving', 'loan_borrow'}.contains(listType[i]['title']),
+    'isParent': listType[i]['isParent'] == 'true' || const {'expense', 'expense_living', 'expense_fixed', 'expense_unexpected',
+      'income', 'investment_saving', 'loan_borrow'}.contains(listType[i]['title']),
   }];
 }
 const _parents = <String, String>{
@@ -38,11 +41,12 @@ const _parents = <String, String>{
   'education': 'investment_saving',
   'insurance': 'investment_saving',
   'saving': 'investment_saving',
-  'borrow': 'loan_borrow',
+  'borrow': 'income',
   'loan': 'loan_borrow',
   'pay': 'loan_borrow',
   'pay_interest': 'loan_borrow',
-  'debt_collection': 'loan_borrow',
+  'debt_collection': 'income',
+  'earn_profit': 'income',
   'salary': 'income',
   'revenue': 'income',
   'other_income': 'income',

@@ -14,7 +14,17 @@ def generate():
             templates += [('category_spending', 'Tháng này tôi đã chi bao nhiêu cho {c}?'),
                           ('period_comparison', 'Chi {c} tháng này so với tháng trước thế nào?'),
                           ('budget_status', 'Ngân sách {c} tháng này còn bao nhiêu?')]
-        templates.append(('period_comparison', 'So sánh {c} tháng này với tháng trước'))
+        templates += [
+            ('category_average', '{c} trung bình tháng này bao nhiêu?'),
+            ('transaction_details', 'Liệt kê giao dịch {c} tháng này'),
+            ('category_definition', '{c} thuộc danh mục nào?'),
+            ('category_summary', '{c} tháng 8/2026 bao nhiêu?'),
+            ('category_share', '{c} chiếm tỷ trọng bao nhiêu tháng này?'),
+            ('category_summary', '{c} tháng này bao nhiêu lần?'),
+            ('period_comparison', 'So sánh {c} tháng này với tháng trước'),
+            ('period_comparison', 'So sánh {c} tháng 8/2026 với tháng 9/2026'),
+            ('period_comparison', 'So sánh {c} tuần này với tuần trước'),
+        ]
         if cid == 'income' or parent == 'income':
             templates.append(('income_period_comparison', 'So sánh thu nhập {c} tháng này với tháng trước'))
         for intent, template in templates:

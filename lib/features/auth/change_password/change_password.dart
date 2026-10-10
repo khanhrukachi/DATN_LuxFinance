@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -72,7 +73,7 @@ class _ChangePasswordState extends State<ChangePassword> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AuthSurface(child: Scaffold(
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
@@ -83,43 +84,42 @@ class _ChangePasswordState extends State<ChangePassword> {
       ),
       body: Form(
         key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
-              const SizedBox(height: 15),
-              Text(
-                AppLocalizations.of(context)
-                    .translate('you_want_change_your_password'),
-                textAlign: TextAlign.center,
-                style:
-                const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                AppLocalizations.of(context)
-                    .translate('please_enter_your_current_password'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 50),
-              InputPassword(
-                hint: AppLocalizations.of(context).translate('password'),
-                controller: _passwordController,
-                hide: hide,
-                action: () {
-                  setState(() => hide = !hide);
-                },
-              ),
-              const SizedBox(height: 30),
-              customButton(
-                action: _reauthenticateAndProceed,
-                text: AppLocalizations.of(context).translate('submit'),
-              ),
-            ],
-          ),
+        child: AuthPanel(child: Column(
+          children: [
+            const AuthEmblem(icon: Icons.lock_outline_rounded),
+            const SizedBox(height: 15),
+            Text(
+              AppLocalizations.of(context)
+                  .translate('you_want_change_your_password'),
+              textAlign: TextAlign.center,
+              style:
+              const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              AppLocalizations.of(context)
+                  .translate('please_enter_your_current_password'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, height: 1.6, color: AuthStyle.muted(context)),
+            ),
+            const SizedBox(height: 28),
+            InputPassword(
+              hint: AppLocalizations.of(context).translate('password'),
+              controller: _passwordController,
+              hide: hide,
+              action: () {
+                setState(() => hide = !hide);
+              },
+            ),
+            const SizedBox(height: 24),
+            customButton(
+              action: _reauthenticateAndProceed,
+              text: AppLocalizations.of(context).translate('submit'),
+            ),
+          ],
+        ),
         ),
       ),
-    );
+    ));
   }
 }

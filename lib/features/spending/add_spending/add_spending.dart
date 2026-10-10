@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
@@ -57,20 +57,16 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
-        elevation: 1,
-        backgroundColor: Theme.of(context).colorScheme.background,
+        elevation: 0,
+        backgroundColor: SpendingStyle.background(context),
         title: Text(AppLocalizations.of(context).translate('add_spending')),
-        centerTitle: true,
+        centerTitle: false,
         actions: [
-          TextButton(
-            onPressed: () async {
-              await addingSpending();
-            },
-            child: Text(
-              AppLocalizations.of(context).translate('save'),
-              style: AppStyles.p,
-            ),
+          SpendingSaveAction(
+            label: AppLocalizations.of(context).translate('save'),
+            onPressed: () async { await addingSpending(); },
           )
         ],
         leading: IconButton(
@@ -100,13 +96,17 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
 
   Widget addSpending() {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Card(
+        color: SpendingStyle.card(context),
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               Row(
@@ -117,6 +117,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                         : (listType[type!]["image"] ??
                         "assets/icons/question_mark.png"),
                     width: 35,
+                    errorBuilder: (_, __, ___) => Icon(Icons.category_outlined, color: SpendingStyle.accent(context), size: 35),
                   ),
                   Expanded(
                     child: InkWell(
@@ -144,17 +145,17 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                       child: Row(
                         children: [
                           const SizedBox(width: 10),
-                          Text(
+                          Expanded(child: Text(
                             type == null
                                 ? AppLocalizations.of(context).translate('type')
                                 : (categoryId == "custom"
                                 ? typeName!
                                 : AppLocalizations.of(context)
                                 .translate(listType[type!]["title"]!)),
-                            style: AppStyles.p,
-                          ),
-                          const Spacer(),
-                          const Icon(Icons.arrow_forward_ios_rounded),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          )),
+                          const SizedBox(width: 8),
+                          Icon(Icons.chevron_right_rounded, color: SpendingStyle.accent(context)),
                         ],
                       ),
                     ),
@@ -164,27 +165,27 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
               const SizedBox(height: 10),
               line(),
               itemSpending(
-                color: const Color.fromRGBO(244, 131, 27, 1),
+                color: SpendingStyle.accent(context),
                 icon: Icons.calendar_month_rounded,
                 text: DateFormat("dd/MM/yyyy").format(selectedDate),
                 action: () async {
                   var day = await selectDate(
                       context: context, initialDate: selectedDate);
-                  if (day != null && day != selectedDate) {
+                  if (mounted && day != null && day != selectedDate) {
                     setState(() => selectedDate = day);
                   }
                 },
               ),
               line(),
               itemSpending(
-                color: const Color.fromRGBO(241, 186, 5, 1),
+                color: SpendingStyle.accent(context),
                 icon: Icons.access_time_rounded,
                 text:
                 "${selectedTime.hour.toString().padLeft(2, "0")}:${selectedTime.minute.toString().padLeft(2, "0")}",
                 action: () async {
                   var time = await selectTime(
                       context: context, initialTime: selectedTime);
-                  if (time != null && time != selectedTime) {
+                  if (mounted && time != null && time != selectedTime) {
                     setState(() => selectedTime = time);
                   }
                 },
@@ -192,7 +193,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
               line(),
               inputSpending(
                 icon: Icons.edit_note_rounded,
-                color: const Color.fromRGBO(221, 96, 0, 1),
+                color: SpendingStyle.accent(context),
                 controller: _note,
                 keyboardType: TextInputType.multiline,
                 textCapitalization: TextCapitalization.sentences,
@@ -207,20 +208,24 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
 
   Widget moreFunction() {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Card(
+            color: SpendingStyle.card(context),
+            elevation: 0,
+            clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   inputSpending(
                     icon: Icons.location_on_outlined,
-                    color: const Color.fromRGBO(99, 195, 40, 1),
+                    color: SpendingStyle.accent(context),
                     controller: _location,
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.done,
@@ -248,7 +253,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           imageWidget(),
         ],
       ),
@@ -257,12 +262,16 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
 
   Widget imageWidget() {
     return Card(
+      color: SpendingStyle.card(context),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: image == null
           ? pickImageWidget(image: (file) {
-        if (file != null) {
+        if (mounted && file != null) {
           setState(() => image = file);
         }
       })
@@ -280,7 +289,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
             top: 5,
             right: 5,
             child: removeIcon(
-              background: Colors.red.withOpacity(0.8),
+              background: SpendingStyle.danger.withOpacity(0.9),
               color: Colors.white,
               action: () => setState(() => image = null),
             ),
@@ -291,8 +300,8 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
   }
 
   Widget line() {
-    return const Divider(
-      color: Colors.grey,
+    return Divider(
+      color: SpendingStyle.teal.withOpacity(.12),
       thickness: 0.5,
       endIndent: 10,
       indent: 10,

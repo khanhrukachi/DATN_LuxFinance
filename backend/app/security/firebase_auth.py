@@ -1,5 +1,6 @@
 """Firebase ID-token verification for the chat endpoint."""
 
+import os
 import logging
 import threading
 from pathlib import Path
@@ -24,17 +25,27 @@ def _firebase_app():
         except ValueError:
             pass
 
-        if not SERVICE_ACCOUNT_PATH.is_file():
-            raise RuntimeError(
-                f"Không tìm thấy khóa Firebase Admin: "
-                f"{SERVICE_ACCOUNT_PATH}"
-            )
-
-        credential = credentials.Certificate(
-            str(SERVICE_ACCOUNT_PATH)
+        from app.config import settings
+        configured = (
+            getattr(settings, "GOOGLE_APPLICATION_CREDENTIALS", None)
+            or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         )
+        if configured:
+            path = Path(configured).expanduser()
+            if not path.is_file():
+                raise RuntimeError("Firebase credential file is unavailable")
+            credential = credentials.Certificate(str(path))
+        elif SERVICE_ACCOUNT_PATH.is_file():
+            credential = credentials.Certificate(str(SERVICE_ACCOUNT_PATH))
+        else:
+            credential = credentials.ApplicationDefault()
+        project_id = (
+            getattr(settings, "FIREBASE_PROJECT_ID", None)
+            or os.getenv("FIREBASE_PROJECT_ID")
+        )
+        options = {"projectId": project_id} if project_id else None
+        return firebase_admin.initialize_app(credential, options=options)
 
-        return firebase_admin.initialize_app(credential)
 
 
 def _verify(token: str) -> str:

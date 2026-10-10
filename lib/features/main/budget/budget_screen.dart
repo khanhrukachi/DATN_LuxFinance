@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/edit_budget/edit_budget_screen.dart';
@@ -76,13 +77,16 @@ class BudgetPageState extends State<BudgetPage>
     final double limitTotal =
     budgetItems.fold(0.0, (p, e) => p + e["limit"]);
     final double progress =
-    limitTotal == 0 ? 0 : (spentTotal / limitTotal).clamp(0.0, 1.0);
+    limitTotal == 0 ? 0 : (spentTotal / limitTotal);
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+      backgroundColor: BudgetStyle.background(context),
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).translate('budget')),
-        centerTitle: true,
+        backgroundColor: BudgetStyle.background(context),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -133,7 +137,7 @@ class BudgetPageState extends State<BudgetPage>
       itemBuilder: (context, index) {
         final item = budgetItems[index];
         final progress =
-        (item["spent"] / item["limit"]).clamp(0.0, 1.0);
+        (item["spent"] / item["limit"]);
 
         return BudgetItemFuture(
           budget: item["budget"],
@@ -168,7 +172,7 @@ class BudgetPageState extends State<BudgetPage>
             Icon(
               Icons.account_balance_wallet_outlined,
               size: 60,
-              color: Colors.grey.shade400,
+              color: BudgetStyle.accent(context),
             ),
             const SizedBox(height: 16),
             Text(
@@ -178,23 +182,16 @@ class BudgetPageState extends State<BudgetPage>
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
+                color: BudgetStyle.muted(context),
               ),
             ),
             const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(20),
-                  backgroundColor:
-                  isDark ? Colors.green.shade600 : Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+              child: BudgetActionButton(
+                icon: Icons.add_rounded,
+                label: AppLocalizations.of(context).translate('add_budget'),
                 onPressed: () async {
                   final result = await Navigator.push(
                     context,
@@ -204,14 +201,6 @@ class BudgetPageState extends State<BudgetPage>
                   );
                   if (result == true) fetchBudgets();
                 },
-                child: Text(
-                  AppLocalizations.of(context)
-                      .translate('add_budget'),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
@@ -19,13 +20,13 @@ class ItemSpendingDay extends StatefulWidget {
 }
 
 class _ItemSpendingDayState extends State<ItemSpendingDay> {
-  final NumberFormat numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: "₫");
 
   @override
   Widget build(BuildContext context) {
-    widget.spendingList.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+    final sortedSpendings = List<Spending>.from(widget.spendingList)
+      ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
 
-    final dates = widget.spendingList
+    final dates = sortedSpendings
         .map((e) => DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day))
         .toSet()
         .toList();
@@ -47,7 +48,7 @@ class _ItemSpendingDayState extends State<ItemSpendingDay> {
           itemBuilder: (context, index) {
             final date = dates[index];
 
-            final list = widget.spendingList
+            final list = sortedSpendings
                 .where((e) => isSameDay(e.dateTime, date))
                 .toList();
 
@@ -60,129 +61,55 @@ class _ItemSpendingDayState extends State<ItemSpendingDay> {
     );
   }
 
-  Widget _dayCard(DateTime date, int total, List<Spending> list, String lang) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? Color(0xFF1E1E1E) : Colors.white;
-    final textPrimary = isDark ? Colors.white : Color(0xFF1C1C1C);
-    final textSecondary = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
-    final accent = total >= 0 ? Color(0xFF2FBF71) : Color(0xFFE5533D);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            if (!isDark)
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  _dateCircle(date, accent),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat.EEEE(lang).format(date),
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600, color: textPrimary),
-                        ),
-                        Text(
-                          DateFormat.yMMMM(lang).format(date),
-                          style: TextStyle(fontSize: 14, color: textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    numberFormat.format(total),
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: accent),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Items
-            ...list.map(_itemRow).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dateCircle(DateTime date, Color accent) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [accent.withOpacity(0.35), accent.withOpacity(0.1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          DateFormat("dd").format(date),
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: accent),
-        ),
-      ),
-    );
-  }
+  Widget _dayCard(DateTime date, int total, List<Spending> list, String lang) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    child: Material(color: HomeStyle.card(context),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: HomeStyle.teal.withOpacity(.16))),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        Padding(padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Container(width: 46, height: 46, alignment: Alignment.center,
+                  decoration: BoxDecoration(gradient: HomeStyle.gradient, borderRadius: BorderRadius.circular(14)),
+                  child: Text(DateFormat('dd').format(date),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: HomeStyle.ink))),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(DateFormat.EEEE(lang).format(date), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                Text(DateFormat.yMMMM(lang).format(date), style: TextStyle(fontSize: 12, color: HomeStyle.muted(context))),
+                const SizedBox(height: 4),
+                Text(HomeStyle.money(context, total), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                    color: total < 0 ? HomeStyle.danger : HomeStyle.accent(context))),
+              ])),
+            ])),
+        Divider(height: 1, color: HomeStyle.teal.withOpacity(.12)),
+        ...list.map(_itemRow),
+      ]),
+    ),
+  );
 
   Widget _itemRow(Spending spending) {
-    final typeConfig = listType[spending.type];
-    final imagePath = typeConfig?["image"];
-    final titleKey = typeConfig?["title"];
-
-    return InkWell(
-      onTap: () => _onTapItem(spending),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            imagePath != null
-                ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(imagePath, width: 40, height: 40, fit: BoxFit.cover),
-            )
-                : Icon(Icons.money_rounded, size: 40, color: Colors.grey.shade500),
+    final config = spending.type >= 0 && spending.type < listType.length ? listType[spending.type] : null;
+    return InkWell(onTap: () => _onTapItem(spending),
+      child: Padding(padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Container(width: 40, height: 40, padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: HomeStyle.teal.withOpacity(.08), borderRadius: BorderRadius.circular(12)),
+                child: config?['image'] == null ? Icon(Icons.label_outline_rounded, color: HomeStyle.accent(context))
+                    : Image.asset(config!['image']!, errorBuilder: (_, __, ___) => Icon(Icons.label_outline_rounded, color: HomeStyle.accent(context)))),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                spending.type == 41
-                    ? (spending.typeName ?? '')
-                    : AppLocalizations.of(context).translate(titleKey ?? ''),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
-            Text(
-              numberFormat.format(spending.money),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: spending.money < 0 ? Color(0xFFE5533D) : Color(0xFF2FBF71),
-              ),
-            ),
-          ],
-        ),
-      ),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(spending.type == 41 || spending.categoryId == 'custom' ? (spending.typeName ?? '')
+                  : AppLocalizations.of(context).translate(config?['title'] ?? 'other'),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(HomeStyle.money(context, spending.money), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                  color: spending.money < 0 ? HomeStyle.danger : HomeStyle.accent(context))),
+            ])),
+            const SizedBox(width: 8),
+            Text(DateFormat('HH:mm').format(spending.dateTime), style: TextStyle(fontSize: 12, color: HomeStyle.muted(context))),
+          ])),
     );
   }
 

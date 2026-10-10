@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
@@ -38,11 +38,11 @@ class _ChooseTypeState extends State<ChooseType>
   };
 
   final expenseColors = <String, Color>{
-    'expense_living': const Color(0xff4F7CFF),
-    'expense_unexpected': const Color(0xffFF8A4C),
-    'expense_fixed': const Color(0xff9B6BFF),
-    'investment_saving': const Color(0xff13B981),
-    'loan_borrow': const Color(0xffEF596F),
+    'expense_living': SpendingStyle.teal,
+    'expense_unexpected': SpendingStyle.teal,
+    'expense_fixed': SpendingStyle.teal,
+    'investment_saving': SpendingStyle.teal,
+    'loan_borrow': SpendingStyle.teal,
   };
 
   @override
@@ -65,10 +65,12 @@ class _ChooseTypeState extends State<ChooseType>
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
         elevation: 0,
+        backgroundColor: SpendingStyle.background(context),
         title: Text(_tr('choose_category')),
-        centerTitle: true,
+        centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(122),
           child: Column(
@@ -77,7 +79,7 @@ class _ChooseTypeState extends State<ChooseType>
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: dark ? Colors.white10 : Colors.black.withOpacity(.06),
+                  color: SpendingStyle.card(context),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: TabBar(
@@ -85,12 +87,10 @@ class _ChooseTypeState extends State<ChooseType>
                   dividerColor: Colors.transparent,
                   indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
-                    color: selectedTab == 0
-                        ? const Color(0xff4F7CFF)
-                        : const Color(0xff13B981),
+                    gradient: SpendingStyle.gradient,
                     borderRadius: BorderRadius.circular(11),
                   ),
-                  labelColor: Colors.white,
+                  labelColor: SpendingStyle.ink,
                   unselectedLabelColor: dark ? Colors.white70 : Colors.black54,
                   tabs: [
                     Tab(text: _tr('expense')),
@@ -116,7 +116,7 @@ class _ChooseTypeState extends State<ChooseType>
                     ),
                     hintText: _tr('search_category'),
                     filled: true,
-                    fillColor: dark ? Colors.white10 : Colors.black.withOpacity(.05),
+                    fillColor: SpendingStyle.card(context),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide.none,
@@ -162,21 +162,11 @@ class _ChooseTypeState extends State<ChooseType>
           _matchesSearch(e, keyword);
     }).toList();
     if (children.isEmpty) return const SizedBox.shrink();
-    final color = expenseColors[group['id']] ?? const Color(0xff4F7CFF);
+    final color = expenseColors[group['id']] ?? SpendingStyle.teal;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-      decoration: BoxDecoration(
-        color: dark ? const Color(0xff20232D) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(dark ? .18 : .07),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
+      decoration: SpendingStyle.decoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -218,47 +208,33 @@ class _ChooseTypeState extends State<ChooseType>
   }
 
   Widget _incomeCard(Map<String, String> item, bool dark) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => _select(item, 1),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: dark ? const Color(0xff202B2A) : const Color(0xffF0FBF7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xff13B981).withOpacity(.22)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _iconBox(item['image'], const Color(0xff13B981), size: 48),
-            const SizedBox(height: 10),
-            Text(_title(item), textAlign: TextAlign.center, style: AppStyles.p),
-          ],
-        ),
+    return Material(color: SpendingStyle.card(context),
+      borderRadius: BorderRadius.circular(20), clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: () => _select(item, 1),
+        child: Padding(padding: const EdgeInsets.all(14),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              _iconBox(item['image'], SpendingStyle.accent(context), size: 48),
+              const SizedBox(height: 10),
+              Flexible(child: Text(_title(item), textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+            ])),
       ),
     );
   }
 
   Widget _childChip(Map<String, String> item, Color color, bool dark) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () => _select(item, -1),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: dark ? Colors.white.withOpacity(.07) : color.withOpacity(.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (item['image'] != null)
-              Image.asset(item['image']!, width: 25, height: 25),
-            const SizedBox(width: 6),
-            Text(_title(item), style: const TextStyle(fontSize: 13)),
-          ],
-        ),
+    return Material(color: SpendingStyle.teal.withOpacity(.08),
+      borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: () => _select(item, -1),
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (item['image'] != null) ...[
+                Image.asset(item['image']!, width: 25, height: 25,
+                    errorBuilder: (_, __, ___) => Icon(Icons.label_outline_rounded, size: 25, color: color)),
+                const SizedBox(width: 8),
+              ],
+              Flexible(child: Text(_title(item), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+            ])),
       ),
     );
   }
@@ -269,12 +245,13 @@ class _ChooseTypeState extends State<ChooseType>
       height: size,
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
-        color: color.withOpacity(.13),
+        color: SpendingStyle.teal.withOpacity(.10),
         borderRadius: BorderRadius.circular(15),
       ),
       child: path == null
           ? Icon(Icons.category_outlined, color: color)
-          : Image.asset(path, fit: BoxFit.contain),
+          : Image.asset(path, fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Icon(Icons.category_outlined, color: color)),
     );
   }
 

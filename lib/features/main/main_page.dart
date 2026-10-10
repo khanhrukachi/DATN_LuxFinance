@@ -1,11 +1,11 @@
+import 'package:personal_financial_management/features/financial_chat/widget/chat_catalog.dart';
+import 'package:personal_financial_management/features/main/widget/main_style.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 
-import 'package:personal_financial_management/features/ai_insights/ai_insights_screen.dart';
-import 'package:personal_financial_management/features/financial_chat/chat_catalog.dart';
 import 'package:personal_financial_management/features/financial_chat/financial_chat_screen.dart';
 import 'package:personal_financial_management/features/notification/notification_page.dart';
 
@@ -154,6 +154,7 @@ class _MainPageState extends State<MainPage>
     return WillPopScope(
       onWillPop: _handleBack,
       child: Scaffold(
+        backgroundColor: MainStyle.background(context),
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -194,14 +195,12 @@ class _MainPageState extends State<MainPage>
         ),
         floatingActionButton: FloatingActionButton(
           heroTag: 'main_add_transaction',
-          elevation: 6,
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
+          elevation: 2,
+          backgroundColor: MainStyle.cyan,
+          foregroundColor: MainStyle.ink,
           shape: CircleBorder(
             side: BorderSide(
-              color: isDark
-                  ? const Color(0xFFCFD8DC)
-                  : theme.colorScheme.primary.withOpacity(0.45),
+              color: MainStyle.teal.withOpacity(.5),
               width: 1.5,
             ),
           ),
@@ -209,15 +208,20 @@ class _MainPageState extends State<MainPage>
               ? _t('Thêm ngân sách', 'Add budget')
               : _t('Thêm giao dịch', 'Add transaction'),
           onPressed: _addItem,
-          child: const Icon(Icons.add_rounded),
+          child: Ink(width: 56, height: 56,
+              decoration: const BoxDecoration(gradient: MainStyle.gradient, shape: BoxShape.circle),
+              child: const Icon(Icons.add_rounded, color: MainStyle.ink, size: 28)),
         ),
         floatingActionButtonLocation:
         FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: BottomAppBar(
-          color: isDark ? const Color(0xFF3E3E3E) : Colors.white,
-          elevation: 8,
+          color: MainStyle.card(context),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           shape: const CircularNotchedRectangle(),
-          notchMargin: 12,
+          notchMargin: 8,
           child: SizedBox(
             height: 60,
             child: Row(
@@ -251,54 +255,23 @@ class _MainPageState extends State<MainPage>
     );
   }
 
-  Widget _tabItem({
-    required int index,
-    required String text,
-    required Widget icon,
-  }) {
-    final theme = Theme.of(context);
+  Widget _tabItem({required int index, required String text, required Widget icon}) {
     final selected = currentTab == index;
-
-    final iconColor = selected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurface.withOpacity(0.55);
-
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          _closeMenu();
-          setState(() => currentTab = index);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 60,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconTheme(
-                data: IconThemeData(
-                  color: iconColor,
-                  size: 20,
-                ),
-                child: icon,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.w400,
-                  color: iconColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final color = selected ? MainStyle.accent(context) : MainStyle.muted(context);
+    return Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Semantics(selected: selected, button: true,
+            child: Material(color: selected ? MainStyle.accent(context).withOpacity(.1) : MainStyle.card(context),
+              borderRadius: BorderRadius.circular(16), clipBehavior: Clip.antiAlias,
+              child: InkWell(onTap: () { _closeMenu(); setState(() => currentTab = index); },
+                  child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                        IconTheme(data: IconThemeData(color: color, size: 20), child: icon),
+                        const SizedBox(height: 5),
+                        Text(text, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 10, color: color,
+                                fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                      ]))),
+            ))));
   }
 
   Widget _buildQuickMenu() {
@@ -331,10 +304,7 @@ class _MainPageState extends State<MainPage>
                         _menuAction(
                           label: _t('Thông báo', 'Notifications'),
                           icon: Icons.notifications_rounded,
-                          colors: const [
-                            Color(0xFF299BFF),
-                            Color(0xFF1565C0),
-                          ],
+                          colors: const [MainStyle.cyan, MainStyle.teal],
                           badge: unreadNotification,
                           onTap: () {
                             setState(() => unreadNotification = 0);
@@ -345,10 +315,7 @@ class _MainPageState extends State<MainPage>
                         _menuAction(
                           label: _t('Hỏi đáp tài chính', 'Financial chat'),
                           icon: Icons.chat_bubble_outline_rounded,
-                          colors: const [
-                            Color(0xFF8E2DE2),
-                            Color(0xFF4A00E0),
-                          ],
+                          colors: const [MainStyle.cyan, MainStyle.teal],
                           onTap: () {
                             final catalog = buildChatCatalog(
                               listType,
@@ -367,10 +334,7 @@ class _MainPageState extends State<MainPage>
                             'Finance assistant',
                           ),
                           icon: Icons.smart_toy_rounded,
-                          colors: const [
-                            Color(0xFF00BFA6),
-                            Color(0xFF0072FF),
-                          ],
+                          colors: const [MainStyle.cyan, MainStyle.teal],
                           onTap: () {
                             _openPage(
                               ChatBox(
@@ -404,8 +368,8 @@ class _MainPageState extends State<MainPage>
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF00BFA6),
-                  Color(0xFF1976D2),
+                  MainStyle.cyan,
+                  MainStyle.teal,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -436,7 +400,7 @@ class _MainPageState extends State<MainPage>
                         ? Icons.close_rounded
                         : Icons.widgets_rounded,
                     key: ValueKey<bool>(_isMenuOpen),
-                    color: Colors.white,
+                    color: MainStyle.ink,
                     size: 27,
                   ),
                 ),
@@ -462,10 +426,10 @@ class _MainPageState extends State<MainPage>
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: isDark ? const Color(0xFF252D3A) : Colors.white,
+          color: MainStyle.card(context),
           elevation: 2,
           shadowColor: Colors.black26,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
@@ -483,9 +447,7 @@ class _MainPageState extends State<MainPage>
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isDark
-                        ? Colors.white
-                        : const Color(0xFF263238),
+                    color: MainStyle.text(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -521,7 +483,7 @@ class _MainPageState extends State<MainPage>
                   onPressed: onTap,
                   icon: Icon(
                     icon,
-                    color: Colors.white,
+                    color: MainStyle.ink,
                     size: 25,
                   ),
                 ),

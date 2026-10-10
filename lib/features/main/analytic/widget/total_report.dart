@@ -1,129 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
-
 class TotalReport extends StatelessWidget {
   const TotalReport({Key? key, required this.list}) : super(key: key);
   final List<Spending> list;
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final numberFormat = NumberFormat.currency(locale: "vi_VI",symbol: 'đ',);
-
-    final spending = list
-        .where((e) => e.money < 0)
-        .fold<int>(0, (sum, e) => sum + e.money);
-
-    final income = list
-        .where((e) => e.money > 0)
-        .fold<int>(0, (sum, e) => sum + e.money);
-
+    final income = list.where((e) => e.money > 0).fold<int>(0, (s, e) => s + e.money);
+    final spending = list.where((e) => e.money < 0).fold<int>(0, (s, e) => s + e.money);
     final revenue = income + spending;
-
-    return Card(
-      elevation: isDark ? 0 : 4,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: isDark ? Colors.white12 : Colors.grey.shade200,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _reportItem(
-                  context,
-                  title: AppLocalizations.of(context).translate('income'),
-                  amount: income,
-                  color: Colors.green,
-                  icon: Icons.arrow_downward_rounded,
-                  numberFormat: numberFormat,
-                ),
-                const SizedBox(width: 12),
-                _reportItem(
-                  context,
-                  title: AppLocalizations.of(context).translate('spending'),
-                  amount: spending,
-                  color: Colors.red,
-                  icon: Icons.arrow_upward_rounded,
-                  numberFormat: numberFormat,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _reportItem(
-              context,
-              title: AppLocalizations.of(context)
-                  .translate('revenue_expenditure'),
-              amount: revenue,
-              color: revenue >= 0 ? Colors.blue : Colors.orange,
-              icon: Icons.account_balance_wallet_rounded,
-              numberFormat: numberFormat,
-              fullWidth: true,
-            ),
-          ],
-        ),
-      ),
+    final tr = AppLocalizations.of(context);
+    return Container(margin: const EdgeInsets.symmetric(vertical: 8), padding: const EdgeInsets.all(14),
+      decoration: AnalyticStyle.decoration(context, hero: true),
+      child: Column(children: [
+        _item(context, tr.translate('revenue_expenditure'), revenue,
+            Icons.account_balance_wallet_outlined, revenue < 0 ? AnalyticStyle.danger : AnalyticStyle.accent(context)),
+        const SizedBox(height: 10),
+        LayoutBuilder(builder: (context, constraints) {
+          final a = _item(context, tr.translate('income'), income, Icons.south_west_rounded, AnalyticStyle.accent(context));
+          final b = _item(context, tr.translate('spending'), spending, Icons.north_east_rounded, AnalyticStyle.danger);
+          if (constraints.maxWidth < 240 || MediaQuery.of(context).textScaleFactor > 1.4)
+            return Column(children: [a, const SizedBox(height: 8), b]);
+          return Row(crossAxisAlignment: CrossAxisAlignment.start,
+              children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
+        }),
+      ]),
     );
   }
-
-  Widget _reportItem(
-      BuildContext context, {
-        required String title,
-        required int amount,
-        required Color color,
-        required IconData icon,
-        required NumberFormat numberFormat,
-        bool fullWidth = false,
-      }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final content = Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: isDark ? Colors.white10 : color.withOpacity(0.08),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            numberFormat.format(amount),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return fullWidth ? content : Expanded(child: content);
-  }
+  Widget _item(BuildContext context, String title, int amount, IconData icon, Color color) => Container(
+    width: double.infinity, padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+    decoration: BoxDecoration(color: AnalyticStyle.card(context).withOpacity(.65),
+        borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(.12))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [Icon(icon, size: 16, color: color), const SizedBox(width: 6),
+        Expanded(child: Text(title, style: TextStyle(fontSize: 12, color: AnalyticStyle.muted(context))))]),
+      const SizedBox(height: 5),
+      SizedBox(width: double.infinity, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+          child: Text(AnalyticStyle.money(context, amount), style: TextStyle(fontSize: 17,
+              fontWeight: FontWeight.w700, color: color)))),
+    ]),
+  );
 }

@@ -6,11 +6,15 @@
     },
     {
       "category_id": "borrow",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
     },
     {
       "category_id": "debt_collection",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
+    },
+    {
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
     },
     {
       "category_id": "eating",
@@ -23,6 +27,10 @@
     {
       "category_id": "electricity_bill",
       "parent_category_id": "expense_fixed"
+    },
+    {
+      "category_id": "expense",
+      "parent_category_id": null
     },
     {
       "category_id": "expense_fixed",

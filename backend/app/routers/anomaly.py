@@ -1,3 +1,5 @@
+from fastapi import Depends
+from app.security.ownership import owned_request
 from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from app.schemas.spending import AnomalyRequest
@@ -6,7 +8,7 @@ from app.services.kmeans_service import _normalize_transactions
 
 router = APIRouter(prefix='/detect', tags=['Anomaly Detection'])
 
-@router.post('/anomaly')
+@router.post('/anomaly', dependencies=[Depends(owned_request)])
 async def detect_anomaly(request: AnomalyRequest, raw_request: Request):
     try:
         body=await raw_request.json()
@@ -25,7 +27,7 @@ async def detect_anomaly(request: AnomalyRequest, raw_request: Request):
     except (ValueError,TypeError) as exc:
         raise HTTPException(status_code=400,detail=str(exc))
 
-@router.post('/anomaly/quick')
+@router.post('/anomaly/quick', dependencies=[Depends(owned_request)])
 async def quick_detect(user_id: str, raw_request: Request, sensitivity: float = 0.1,
                        year: int | None = None, month: int | None = None):
     try:
@@ -50,7 +52,7 @@ async def get_severity_levels():
                       {'level':'medium','name':'Trung bình','color':'#FFAA00'},
                       {'level':'low','name':'Thấp','color':'#44AA44'}]}
 
-@router.post('/check-single')
+@router.post('/check-single', dependencies=[Depends(owned_request)])
 async def check_single_transaction(user_id: str, raw_request: Request):
     body = await raw_request.json()
     if not isinstance(body, dict):

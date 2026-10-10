@@ -10,5 +10,7 @@ class Settings(BaseSettings):
     LSTM_MAX_HISTORY_DAYS: int = 365
     KMEANS_N_CLUSTERS: int = 4
     ISOLATION_FOREST_CONTAMINATION: float = 0.1
+    FIREBASE_PROJECT_ID: str | None = None
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = None
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 settings = Settings()

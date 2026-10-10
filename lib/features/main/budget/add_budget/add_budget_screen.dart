@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 
 import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_card.dart';
@@ -41,7 +42,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     }
 
     final limit =
-        int.tryParse(_limitController.text.replaceAll(',', '')) ?? 0;
+        int.tryParse(_limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ?? 0;
 
     if (limit <= 0) {
       _showSnack('budget_limit_must_be_greater_than_zero');
@@ -108,7 +109,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       builder: (_) => BudgetTypeSelector(selectedType: selectedType),
     );
 
-    if (index != null) {
+    if (mounted && index != null) {
       setState(() => selectedType = index);
     }
   }
@@ -139,10 +140,10 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+      backgroundColor: BudgetStyle.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[100],
+        backgroundColor: BudgetStyle.background(context),
         iconTheme: IconThemeData(
           color: isDark ? Colors.white : Colors.black,
         ),
@@ -151,10 +152,10 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 18,
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
       ),
 
       body: Stack(
@@ -163,50 +164,17 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey.shade800 : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withOpacity(0.3)
-                            : Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: BudgetCard(
-                    selectedType: selectedType,
-                    limitController: _limitController,
-                    onTypeTap: _openTypeSelector,
-                  ),
+                BudgetCard(
+                  selectedType: selectedType,
+                  limitController: _limitController,
+                  onTypeTap: isLoading ? () {} : _openTypeSelector,
                 ),
                 const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
+                  child: BudgetActionButton(
                     onPressed: isLoading ? null : _saveBudget,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)
-                          .translate('save_budget'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    label: AppLocalizations.of(context).translate('save_budget'),
                   ),
                 ),
               ],

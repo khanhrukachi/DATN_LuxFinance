@@ -1,122 +1,56 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/spending.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 
-Widget shimmerAnimation() {
-  return Shimmer.fromColors(
-    baseColor: Colors.grey[300]!,
-    highlightColor: Colors.grey[100]!,
-    child: Container(
-      height: 25,
-      width: Random().nextInt(30) + 90,
-      decoration: BoxDecoration(
-        color: Colors.grey,
-        borderRadius: BorderRadius.circular(5),
-      ),
-    ),
-  );
-}
+// Retain the existing top-level helper signature for callers.
+Widget shimmerAnimation() => Shimmer.fromColors(
+  baseColor: const Color(0xFF25434B), highlightColor: const Color(0xFF3B6269),
+  child: Container(height: 20, width: 90, decoration: BoxDecoration(
+      color: Colors.white, borderRadius: BorderRadius.circular(6))),
+);
 
 class TotalSpending extends StatelessWidget {
   const TotalSpending({Key? key, this.list}) : super(key: key);
   final List<Spending>? list;
-
   @override
   Widget build(BuildContext context) {
-    final numberFormat = NumberFormat.currency(locale: "vi_VI");
-
-    int income = 0;
-    int spending = 0;
-
-    if (list != null) {
-      List<Spending> incomeList =
-      list!.where((element) => element.money > 0).toList();
-      if (incomeList.isNotEmpty) {
-        income = incomeList
-            .map((e) => e.money)
-            .reduce((value, element) => value + element);
-      }
-      List<Spending> spendingList =
-      list!.where((element) => element.money < 0).toList();
-      if (spendingList.isNotEmpty) {
-        spending = spendingList
-            .map((e) => e.money)
-            .reduce((value, element) => value + element);
-      }
+    var income = 0;
+    var expense = 0;
+    for (final item in list ?? <Spending>[]) {
+      if (item.money > 0) income += item.money;
+      if (item.money < 0) expense += item.money;
     }
-
-    return Card(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                children: [
-                  Text(AppLocalizations.of(context).translate('income')),
-                  const SizedBox(height: 5),
-                  list != null
-                      ? Text(
-                    numberFormat.format(income),
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  )
-                      : shimmerAnimation()
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  Text(AppLocalizations.of(context).translate('spending')),
-                  const SizedBox(height: 5),
-                  list != null
-                      ? Text(
-                    list!.isNotEmpty
-                        ? numberFormat.format(spending)
-                        : "0",
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
-                  )
-                      : shimmerAnimation()
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  Text(AppLocalizations.of(context).translate('total')),
-                  const SizedBox(height: 5),
-                  list != null
-                      ? Text(
-                    list!.isNotEmpty
-                        ? numberFormat.format(income + spending)
-                        : "0",
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  )
-                      : shimmerAnimation()
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    final tr = AppLocalizations.of(context);
+    final format = NumberFormat.currency(
+        locale: Localizations.localeOf(context).languageCode == 'vi' ? 'vi_VN' : 'en_US',
+        symbol: '₫', decimalDigits: 0);
+    Widget metric(String key, int value, Color color, IconData icon) => Expanded(
+      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Column(children: [
+            Icon(icon, size: 21, color: color),
+            const SizedBox(height: 8),
+            Text(tr.translate(key), textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: BudgetStyle.muted(context))),
+            const SizedBox(height: 6),
+            if (list == null)
+              Shimmer.fromColors(baseColor: BudgetStyle.card(context),
+                  highlightColor: BudgetStyle.dark(context) ? const Color(0xFF25434B) : const Color(0xFFE1F7F4),
+                  child: Container(height: 18, width: 70, color: Colors.white))
+            else Text(format.format(value), textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+          ])),
+    );
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8), padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+      decoration: BudgetStyle.decoration(context),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        metric('income', income, BudgetStyle.accent(context), Icons.south_west_rounded),
+        metric('spending', expense, BudgetStyle.danger, Icons.north_east_rounded),
+        metric('total', income + expense, BudgetStyle.text(context), Icons.account_balance_wallet_outlined),
+      ]),
     );
   }
 }

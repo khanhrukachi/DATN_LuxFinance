@@ -1,3 +1,5 @@
+from fastapi import Depends
+from app.security.ownership import owned_request
 """Drop-in prediction router. Existing URLs and request schema stay intact."""
 from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
@@ -21,7 +23,7 @@ def _context(body):
             result[key] = body[key]
     return result
 
-@router.post('/trend', response_model=TrendPredictionResponse)
+@router.post('/trend', response_model=TrendPredictionResponse, dependencies=[Depends(owned_request)])
 async def predict_trend(request: PredictionRequest, raw_request: Request):
     try:
         body = await raw_request.json()
@@ -36,7 +38,7 @@ async def predict_trend(request: PredictionRequest, raw_request: Request):
     except (ValueError,TypeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-@router.post('/trend/quick')
+@router.post('/trend/quick', dependencies=[Depends(owned_request)])
 async def quick_predict(user_id: str, raw_request: Request, days: int = 7):
     # Original quick contract is retained: user_id/days query, list JSON body.
     if not 1 <= days <= 30:

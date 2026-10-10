@@ -1,12 +1,11 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/add_friend.dart';
@@ -56,7 +55,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   void initState() {
     super.initState();
 
-    _money.text = NumberFormat.currency(locale: "vi_VI")
+    _money.text = NumberFormat.currency(locale: "vi_VN", symbol: '', decimalDigits: 0)
         .format(widget.spending.money.abs());
 
     _note.text = widget.spending.note ?? '';
@@ -73,16 +72,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
     coefficient = widget.spending.money < 0 ? -1 : 1;
 
     friends = List<String>.from(widget.spending.friends);
-    colors = friends
-        .map(
-          (_) => Color.fromRGBO(
-        Random().nextInt(255),
-        Random().nextInt(255),
-        Random().nextInt(255),
-        1,
-      ),
-    )
-        .toList();
+    colors = List<Color>.filled(friends.length, SpendingStyle.teal);
   }
 
   @override
@@ -96,22 +86,20 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.background,
+        backgroundColor: SpendingStyle.background(context),
         title: Text(AppLocalizations.of(context).translate('edit_spending')),
-        centerTitle: true,
+        centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.close_outlined),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          TextButton(
+          SpendingSaveAction(
+            label: AppLocalizations.of(context).translate('save'),
             onPressed: updateSpending,
-            child: Text(
-              AppLocalizations.of(context).translate('save'),
-              style: AppStyles.p,
-            ),
           )
         ],
         bottom: PreferredSize(
@@ -139,29 +127,33 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
 
   Widget buildMainCard() {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        color: SpendingStyle.card(context),
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+            side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               itemSpending(
                 icon: Icons.calendar_month,
-                color: Colors.orange,
+                color: SpendingStyle.accent(context),
                 text: DateFormat("dd/MM/yyyy").format(selectedDate),
                 action: () async {
                   final day = await selectDate(
                     context: context,
                     initialDate: selectedDate,
                   );
-                  if (day != null) setState(() => selectedDate = day);
+                  if (mounted && day != null) setState(() => selectedDate = day);
                 },
               ),
               line(),
               itemSpending(
                 icon: Icons.access_time,
-                color: Colors.amber,
+                color: SpendingStyle.accent(context),
                 text:
                 "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}",
                 action: () async {
@@ -169,13 +161,13 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
                     context: context,
                     initialTime: selectedTime,
                   );
-                  if (time != null) setState(() => selectedTime = time);
+                  if (mounted && time != null) setState(() => selectedTime = time);
                 },
               ),
               line(),
               inputSpending(
                 icon: Icons.edit_note,
-                color: Colors.deepOrange,
+                color: SpendingStyle.accent(context),
                 controller: _note,
                 hintText:
                 AppLocalizations.of(context).translate('note'),
@@ -189,14 +181,17 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
 
   Widget buildMore() {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Card(
+            color: SpendingStyle.card(context),
+            elevation: 0,
+            clipBehavior: Clip.antiAlias,
             shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            RoundedRectangleBorder(side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
             child: Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(16),
               child: AddFriend(
                 friends: friends,
                 colors: colors,
@@ -211,7 +206,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           buildImage(),
         ],
       ),
@@ -220,10 +215,14 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
 
   Widget buildImage() {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      color: SpendingStyle.card(context),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+          side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
       child: image == null && (widget.spending.image == null || checkPickImage)
           ? pickImageWidget(
-        image: (file) => setState(() => image = file),
+        image: (file) { if (mounted && file != null) setState(() => image = file); },
       )
           : showImage(),
     );
@@ -242,14 +241,14 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
           top: 5,
           right: 5,
           child: removeIcon(
-            action: () => setState(() => checkPickImage = true),
+            action: () => setState(() { image = null; checkPickImage = true; }),
           ),
         ),
       ],
     );
   }
 
-  Widget line() => const Divider(thickness: 0.5);
+  Widget line() => Divider(color: SpendingStyle.teal.withOpacity(.12), thickness: .5);
 
   Future<void> updateSpending() async {
     final moneyRaw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');

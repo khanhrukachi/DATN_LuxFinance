@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/features/auth/login/widget/custom_button.dart';
@@ -15,49 +16,43 @@ class _SuccessPageState extends State<SuccessPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AuthSurface(child: Scaffold(
       body: WillPopScope(
         onWillPop: () => onWillPop(
           action: (now) => currentBackPressTime = now,
           currentBackPressTime: currentBackPressTime,
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-            child: Column(
-              children: [
-                Text(
-                  AppLocalizations.of(context).translate('success'),
-                  style: const TextStyle(
-                    fontSize: 25,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
+          child: AuthPanel(child: Column(
+            children: [
+              const AuthEmblem(icon: Icons.mark_email_read_outlined),
+              Text(
+                AppLocalizations.of(context).translate('success'),
+                style: const TextStyle(
+                  fontSize: 23,
+
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  textAlign: TextAlign.center,
-                  AppLocalizations.of(context)
-                      .translate('check_your_email_make_password_change'),
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 20),
-                Image.asset(
-                  'assets/images/gmail.png',
-                  width: 120,
-                ),
-                const SizedBox(height: 20),
-                customButton(
-                  text: AppLocalizations.of(context).translate('go_to_login'),
-                  action: () {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                )
-              ],
-            ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                textAlign: TextAlign.center,
+                AppLocalizations.of(context)
+                    .translate('check_your_email_make_password_change'),
+                style: TextStyle(fontSize: 14, height: 1.6, color: AuthStyle.muted(context)),
+              ),
+              const SizedBox(height: 28),
+              customButton(
+                text: AppLocalizations.of(context).translate('go_to_login'),
+                action: () {
+                  Navigator.pushReplacementNamed(context, '/login');
+                },
+              )
+            ],
+          ),
           ),
         ),
       ),
-    );
+    ));
   }
 }

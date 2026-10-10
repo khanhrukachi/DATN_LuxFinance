@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +49,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   }
 
 
+  @override
+  void dispose() {
+    nameCtrl.dispose(); birthdayCtrl.dispose(); avatarCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserData() async {
     loadingAnimation(context);
 
@@ -55,6 +62,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       final uid = FirebaseAuth.instance.currentUser!.uid;
       final doc = await FirebaseFirestore.instance.collection("info").doc(uid).get();
 
+      if (!mounted) return;
       if (doc.exists) {
         final data = doc.data()!;
         nameCtrl.text = data['name'] ?? '';
@@ -97,12 +105,15 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error loading data: $e")),
       );
     } finally {
-      Navigator.of(context).pop();
-      setState(() {});
+      if (mounted) {
+        Navigator.of(context).pop();
+        setState(() {});
+      }
     }
   }
 
@@ -112,7 +123,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
 
     return WillPopScope(
       onWillPop: () async => false,
-      child: Scaffold(
+      child: AuthSurface(child: Scaffold(
         appBar: AppBar(
           title: Text(t.translate("update_profile")),
           centerTitle: true,
@@ -182,321 +193,159 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 _buildHobbySelector(t),
               ]),
               const SizedBox(height: 28),
-              ElevatedButton(
-                onPressed: _submit,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text(
-                  t.translate("confirm"),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+              AuthButton(text: t.translate('confirm'), onPressed: _submit),
               const SizedBox(height: 16),
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 
-  // ================= UI Helpers =================
   Widget _section(String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-    ),
+    padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
+    child: Row(children: [
+      Container(width: 4, height: 18, decoration: BoxDecoration(
+          gradient: AuthStyle.gradient, borderRadius: BorderRadius.circular(3))),
+      const SizedBox(width: 10),
+      Expanded(child: Text(text, style: TextStyle(fontSize: 16,
+          fontWeight: FontWeight.w700, color: AuthStyle.text(context)))),
+    ]),
   );
 
-  Widget _card(List<Widget> children) => Card(
-    elevation: 3,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-    ),
+  Widget _card(List<Widget> children) => Container(
+    decoration: AuthStyle.decoration(context), padding: const EdgeInsets.all(18),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
   );
 
   Widget _input(TextEditingController ctrl, String label, AppLocalizations t,
-      {bool required = true, String? hint}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: ctrl,
-            validator: (v) => required && (v == null || v.isEmpty)
-                ? t.translate("required_field")
-                : null,
-            decoration: InputDecoration(
-              hintText: hint,
-              border: const OutlineInputBorder(),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      {bool required = true, String? hint}) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextFormField(controller: ctrl,
+        validator: (v) => required && (v == null || v.trim().isEmpty)
+            ? t.translate('required_field') : null,
+        decoration: AuthStyle.input(context, hint ?? label, icon: Icons.person_outline_rounded)
+            .copyWith(labelText: label)),
+  );
 
-  Widget _buildHobbySelector(AppLocalizations t) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            t.translate("hobbies"),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => _showHobbyDialog(t),
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: selectedHobbies.isEmpty
-                        ? Text(
-                      t.translate("choose_hobbies"),
-                      style: TextStyle(color: Colors.grey.shade900),
-                      overflow: TextOverflow.ellipsis,
-                    )
-                        : Text(
-                      selectedHobbies.join(", "),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_drop_down,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+  Widget _selection(String label, String value, VoidCallback onTap,
+      {IconData icon = Icons.expand_more_rounded}) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(fontSize: 13, color: AuthStyle.muted(context), fontWeight: FontWeight.w600)),
+      const SizedBox(height: 8),
+      Material(color: AuthStyle.background(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AuthStyle.teal.withOpacity(.2))), clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap,
+            child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: Row(children: [
+                  Expanded(child: Text(value, style: TextStyle(fontSize: 14, color: AuthStyle.text(context)))),
+                  const SizedBox(width: 8), Icon(icon, color: AuthStyle.accent(context), size: 22),
+                ]))),
       ),
-    );
-  }
+    ]),
+  );
+
+  Widget _buildHobbySelector(AppLocalizations t) => _selection(
+      t.translate('hobbies'), selectedHobbies.isEmpty ? t.translate('choose_hobbies') : selectedHobbies.join(', '),
+          () => _showHobbyDialog(t), icon: Icons.interests_outlined);
+
+  Widget _dialog(String title, Widget list, {Widget? footer}) => Dialog(
+    backgroundColor: AuthStyle.card(context), surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    clipBehavior: Clip.antiAlias, insetPadding: const EdgeInsets.all(20),
+    child: SizedBox(width: 440, height: MediaQuery.of(context).size.height * .6,
+        child: Padding(padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AuthStyle.text(context))),
+              const SizedBox(height: 12),
+              Expanded(child: list),
+              if (footer != null) ...[const SizedBox(height: 12), footer],
+            ]))),
+  );
 
   void _showHobbyDialog(AppLocalizations t) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withOpacity(0.3),
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.6,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      t.translate("choose_hobbies"),
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: SurveyData.hobbies.length,
-                        itemBuilder: (_, index) {
-                          final hobby = SurveyData.hobbies[index];
-                          final selected = selectedHobbies.contains(hobby);
-
-                          return CheckboxListTile(
-                            value: selected,
-                            title: Text(hobby),
-                            onChanged: (checked) {
-                              if (checked == true &&
-                                  selectedHobbies.length >= 5) return;
-
-                              setDialogState(() {
-                                if (checked == true) {
-                                  selectedHobbies.add(hobby);
-                                } else {
-                                  selectedHobbies.remove(hobby);
-                                }
-                              });
-
-                              setState(() {});
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(t.translate("confirm")),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+    showDialog<void>(context: context,
+      builder: (_) => StatefulBuilder(builder: (dialogContext, setDialogState) => _dialog(
+        t.translate('choose_hobbies'),
+        ListView.separated(itemCount: SurveyData.hobbies.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            itemBuilder: (_, index) {
+              final hobby = SurveyData.hobbies[index];
+              final selected = selectedHobbies.contains(hobby);
+              return CheckboxListTile(value: selected, title: Text(hobby),
+                  activeColor: AuthStyle.accent(context), controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onChanged: !selected && selectedHobbies.length >= 5 ? null : (checked) {
+                    setDialogState(() {
+                      if (checked == true) { selectedHobbies.add(hobby); }
+                      else { selectedHobbies.remove(hobby); }
+                    });
+                    setState(() {});
+                  });
+            }),
+        footer: AuthButton(text: t.translate('confirm'), onPressed: () => Navigator.pop(dialogContext)),
+      )),
     );
   }
 
-  Widget _genderPicker(AppLocalizations t) {
-    return Row(
-      children: [
-        Text("${t.translate("gender")}: "),
-        const SizedBox(width: 12),
-        Radio(
-          value: true,
-          groupValue: gender,
-          onChanged: (_) => setState(() => gender = true),
-        ),
-        Text(t.translate("male")),
-        const SizedBox(width: 16),
-        Radio(
-          value: false,
-          groupValue: gender,
-          onChanged: (_) => setState(() => gender = false),
-        ),
-        Text(t.translate("female")),
-      ],
-    );
-  }
+  Widget _genderPicker(AppLocalizations t) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(t.translate('gender'), style: TextStyle(fontSize: 13, color: AuthStyle.muted(context))),
+      const SizedBox(height: 8),
+      Wrap(spacing: 10, runSpacing: 8, children: [
+        for (final value in [true, false])
+          ChoiceChip(label: Text(t.translate(value ? 'male' : 'female')),
+              selected: gender == value, selectedColor: AuthStyle.accent(context).withOpacity(.16),
+              backgroundColor: AuthStyle.background(context),
+              side: BorderSide(color: gender == value ? AuthStyle.accent(context) : AuthStyle.teal.withOpacity(.2)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onSelected: (_) => setState(() => gender = value)),
+      ]),
+    ]),
+  );
 
-  Widget _datePicker(AppLocalizations t) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: birthdayCtrl,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: t.translate("birthday"),
-          border: const OutlineInputBorder(),
-        ),
-        validator: (v) =>
-        (v == null || v.isEmpty) ? t.translate("choose_birthday") : null,
+  Widget _datePicker(AppLocalizations t) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextFormField(controller: birthdayCtrl, readOnly: true,
+        decoration: AuthStyle.input(context, t.translate('birthday'), icon: Icons.calendar_month_outlined)
+            .copyWith(labelText: t.translate('birthday')),
+        validator: (v) => (v == null || v.isEmpty) ? t.translate('choose_birthday') : null,
         onTap: () async {
-          final date = await showDatePicker(
-            context: context,
-            firstDate: DateTime(1950),
-            lastDate: DateTime.now(),
-            initialDate: birthdayCtrl.text.isNotEmpty
-                ? DateFormat("dd/MM/yyyy").parse(birthdayCtrl.text)
-                : DateTime(2000),
-          );
-          if (date != null) {
-            birthdayCtrl.text = DateFormat("dd/MM/yyyy").format(date);
-          }
-        },
-      ),
-    );
-  }
+          DateTime initialDate = DateTime(2000);
+          try { initialDate = DateFormat('dd/MM/yyyy').parseStrict(birthdayCtrl.text); } catch (_) {}
+          final now = DateTime.now();
+          if (initialDate.isBefore(DateTime(1950)) || initialDate.isAfter(now)) initialDate = DateTime(2000);
+          final date = await showDatePicker(context: context, builder: (_, child) => AuthSurface(child: child!), firstDate: DateTime(1950),
+              lastDate: now, initialDate: initialDate);
+          if (mounted && date != null) birthdayCtrl.text = DateFormat('dd/MM/yyyy').format(date);
+        }),
+  );
 
-  Widget buildDropdown(
-      AppLocalizations t,
-      String label,
-      String value,
-      List<String> options,
-      Function(String) onChanged, {
-        bool translateValues = false,
-      }) {
-    final safeValue = options.contains(value) ? value : options.first;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
-          GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                barrierColor: Colors.black.withOpacity(0.3),
-                builder: (_) => Center(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.9,
-                      height: MediaQuery.of(context).size.height * 0.5,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Text("${t.translate("choose")} $label",
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          const Divider(),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: options.length,
-                              itemBuilder: (_, index) {
-                                final item = options[index];
-                                return ListTile(
-                                  title: Text(
-                                      translateValues ? t.translate(item) : item),
-                                  trailing: item == safeValue
-                                      ? const Icon(Icons.check, color: Colors.blue)
-                                      : null,
-                                  onTap: () {
-                                    onChanged(item);
-                                    Navigator.pop(context);
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                      child: Text(translateValues
-                          ? t.translate(safeValue)
-                          : safeValue)),
-                  const Icon(Icons.arrow_drop_down),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget buildDropdown(AppLocalizations t, String label, String value,
+      List<String> options, Function(String) onChanged, {bool translateValues = false}) {
+    final safeValue = options.contains(value) ? value : (options.isEmpty ? '' : options.first);
+    return _selection(label, translateValues ? t.translate(safeValue) : safeValue, () {
+      showDialog<void>(context: context,
+        builder: (dialogContext) => _dialog('${t.translate('choose')} $label',
+            ListView.separated(itemCount: options.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemBuilder: (_, index) {
+                  final item = options[index];
+                  final selected = item == safeValue;
+                  return Material(color: selected ? AuthStyle.accent(context).withOpacity(.1) : AuthStyle.card(context),
+                      borderRadius: BorderRadius.circular(12), clipBehavior: Clip.antiAlias,
+                      child: ListTile(selected: selected,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          title: Text(translateValues ? t.translate(item) : item),
+                          trailing: selected ? Icon(Icons.check_circle_outline_rounded, color: AuthStyle.accent(context)) : null,
+                          onTap: () { onChanged(item); Navigator.pop(dialogContext); }));
+                })),
+      );
+    });
   }
 
   Future<void> _submit() async {
@@ -539,6 +388,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
             (route) => false,
       );
     } catch (e) {
+      if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),

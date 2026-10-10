@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
@@ -15,11 +16,14 @@ class AboutPage extends StatelessWidget {
   }) {
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: ProfileStyle.teal.withOpacity(.16)),
       ),
-      elevation: 3,
+      elevation: 0,
+      color: ProfileStyle.card(context), surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         onTap: () async {
           if (await canLaunchUrlString(url)) {
             await launchUrlString(
@@ -36,10 +40,10 @@ class AboutPage extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: color,
+                backgroundColor: ProfileStyle.accent(context).withOpacity(.12),
                 child: FaIcon(
                   icon,
-                  color: Colors.white,
+                  color: ProfileStyle.accent(context),
                   size: 20,
                 ),
               ),
@@ -48,7 +52,7 @@ class AboutPage extends StatelessWidget {
                 child: Text(
                   "${AppLocalizations.of(context).translate('contact_me_via')} $label",
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -67,9 +71,8 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
-    return Scaffold(
+    return ProfileSurface(child: Scaffold(
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -94,40 +97,23 @@ class AboutPage extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Image.asset(
-              "assets/logo/logo.png",
-              width: 120,
-            ),
-
-            const SizedBox(height: 12),
-
-            const Text(
-              "LuxFinance",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            Text(
-              "${AppLocalizations.of(context).translate('version')} 1.0.0",
-              style: TextStyle(
-                color: theme.textTheme.bodySmall?.color,
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            Text(
-              "${AppLocalizations.of(context).translate('developed_by')} Rukachi Team",
-              style: TextStyle(
-                color: theme.textTheme.bodySmall?.color,
-              ),
-            ),
-
-            const SizedBox(height: 24),
+            Container(width: double.infinity, padding: const EdgeInsets.all(24),
+                decoration: ProfileStyle.decoration(context),
+                child: Column(children: [
+                  Container(width: 64, height: 64, padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(gradient: ProfileStyle.gradient, borderRadius: BorderRadius.circular(20)),
+                      child: Image.asset('assets/logo/logo.png')),
+                  const SizedBox(height: 16),
+                  Text('LuxFinance', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700,
+                      color: ProfileStyle.text(context))),
+                  const SizedBox(height: 8),
+                  Text('${AppLocalizations.of(context).translate('version')} 1.0.0',
+                      style: TextStyle(fontSize: 12, color: ProfileStyle.muted(context))),
+                  const SizedBox(height: 6),
+                  Text('${AppLocalizations.of(context).translate('developed_by')} Rukachi Team',
+                      textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: ProfileStyle.muted(context))),
+                ])),
+            const SizedBox(height: 20),
 
             // Facebook
             _buildContactButton(
@@ -170,6 +156,6 @@ class AboutPage extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }

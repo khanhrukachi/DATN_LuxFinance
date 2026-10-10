@@ -6,10 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
-import 'package:personal_financial_management/features/ai_insights/ai_insights_screen.dart';
 import 'package:personal_financial_management/features/auth/change_password/change_password.dart';
 import 'package:personal_financial_management/features/main/profile/export_csv.dart';
 import 'package:personal_financial_management/features/main/profile/language_selector.dart';
@@ -35,12 +33,12 @@ class _ProfilePageState extends State<ProfilePage> {
   int language = 0;
   bool darkMode = false;
   bool loginMethod = false;
-  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: "₫");
 
   @override
   void initState() {
     super.initState();
     SharedPreferences.getInstance().then((value) {
+      if (!mounted) return;
       setState(() {
         language = value.getInt('language') ?? (Platform.localeName.split('_')[0] == "vi" ? 0 : 1);
         darkMode = value.getBool("isDark") ?? false;
@@ -51,20 +49,22 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    bool isDarkMode = darkMode;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.grey[100],
+      backgroundColor: _background(isDarkMode),
       body: SafeArea(
         child: Column(
           children: [
             StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
+              stream: FirebaseAuth.instance.currentUser == null
+                  ? null
+                  : FirebaseFirestore.instance
                   .collection("info")
                   .doc(FirebaseAuth.instance.currentUser!.uid)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasData) {
+                if (snapshot.hasData && snapshot.data!.exists) {
                   myuser.User user = myuser.User.fromFirebase(snapshot.requireData);
                   return _buildAvatarCard(user, isDarkMode);
                 }
@@ -80,7 +80,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildCard(
                       text: AppLocalizations.of(context).translate('account'),
                       icon: FontAwesomeIcons.solidUser,
-                      color: Colors.blue,
+
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
                         screen: const UserProfilePage(),
@@ -92,7 +92,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       _buildCard(
                         text: AppLocalizations.of(context).translate('change_password'),
                         icon: FontAwesomeIcons.lock,
-                        color: Colors.deepOrange,
+
                         isDarkMode: isDarkMode,
                         action: () => Navigator.of(context).push(createRoute(
                           screen: const ChangePassword(),
@@ -104,7 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildCard(
                       text: AppLocalizations.of(context).translate('language'),
                       icon: FontAwesomeIcons.language,
-                      color: Colors.amber,
+
                       isDarkMode: isDarkMode,
                       action: _showBottomSheet,
                     ),
@@ -112,7 +112,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildSwitchCard(
                       text: AppLocalizations.of(context).translate('dark_mode'),
                       icon: FontAwesomeIcons.solidMoon,
-                      value: darkMode,
+                      value: isDarkMode,
                       isDarkMode: isDarkMode,
                       onToggle: (val) async {
                         BlocProvider.of<SettingCubit>(context).changeTheme();
@@ -125,7 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildCard(
                       text: AppLocalizations.of(context).translate('history'),
                       icon: FontAwesomeIcons.clockRotateLeft,
-                      color: Colors.green,
+
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
                         screen: const HistoryPage(),
@@ -134,20 +134,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 12),
                     _buildCard(
-                      text: AppLocalizations.of(context).translate('ai_insights'),
-                      icon: FontAwesomeIcons.wandMagicSparkles,
-                      color: Colors.purple,
-                      isDarkMode: isDarkMode,
-                      action: () => Navigator.of(context).push(createRoute(
-                        screen: AiInsightsScreen(),
-                        begin: const Offset(1, 0),
-                      )),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildCard(
                       text: "${AppLocalizations.of(context).translate('export')} CSV",
                       icon: FontAwesomeIcons.fileExport,
-                      color: Colors.lightBlue,
+
                       isDarkMode: isDarkMode,
                       action: () async {
                         loadingAnimation(context);
@@ -160,7 +149,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     _buildCard(
                       text: AppLocalizations.of(context).translate('about'),
                       icon: FontAwesomeIcons.circleInfo,
-                      color: Colors.teal,
+
                       isDarkMode: isDarkMode,
                       action: () => Navigator.of(context).push(createRoute(
                         screen: const AboutPage(),
@@ -180,111 +169,166 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  static const _cyan = Color(0xFF00D2FF);
+  static const _teal = Color(0xFF2DD8C6);
+  static const _gradient = LinearGradient(
+    colors: [_cyan, _teal],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  Color _background(bool dark) =>
+      dark ? const Color(0xFF0E1C22) : const Color(0xFFF3F9FA);
+  Color _card(bool dark) => dark ? const Color(0xFF172A30) : Colors.white;
+  Color _accent(bool dark) => dark ? _teal : const Color(0xFF14988F);
+
   Widget _buildAvatarCard(myuser.User? user, bool isDarkMode) {
+    final colors = Theme.of(context).colorScheme;
+    final avatar = user?.avatar.trim() ?? '';
+    final formatter = NumberFormat.currency(
+      locale: Localizations.localeOf(context).languageCode == 'vi'
+          ? 'vi_VN' : 'en_US',
+      symbol: '₫',
+      decimalDigits: 0,
+    );
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: isDarkMode ? Colors.black.withOpacity(0.4) : Colors.grey.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: LinearGradient(
+          colors: isDarkMode
+              ? [const Color(0xFF163A46), const Color(0xFF16463F)]
+              : [const Color(0xFFE1F7FF), const Color(0xFFDCF9F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _teal.withOpacity(.18)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: user != null ? NetworkImage(user.avatar) : null,
-            backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade200,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            user?.name ?? "User",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: const BoxDecoration(
+              gradient: _gradient,
+              shape: BoxShape.circle,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            user?.money != null ? numberFormat.format(user!.money) : "0 ₫",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.amberAccent : Colors.blue,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCard({
-    required String text,
-    required FaIconData icon, // sửa IconData -> FaIconData
-    required Color color,
-    required VoidCallback action,
-    required bool isDarkMode,
-  }) {
-    return GestureDetector(
-      onTap: action,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.grey.shade800 : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: isDarkMode
-                  ? Colors.black.withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: color.withOpacity(0.2),
-              child: FaIcon( // sửa Icon -> FaIcon
-                icon,
-                color: color,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : Colors.black,
+            child: ClipOval(
+              child: SizedBox(
+                width: 90,
+                height: 90,
+                child: avatar.isEmpty
+                    ? _avatarPlaceholder(isDarkMode)
+                    : Image.network(
+                  avatar,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      _avatarPlaceholder(isDarkMode),
                 ),
               ),
             ),
-
-            // Cái này là Material Icon nên giữ nguyên
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user?.name ?? FirebaseAuth.instance.currentUser?.displayName ?? '—',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+              color: colors.onSurface,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: _card(isDarkMode).withOpacity(.65),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _teal.withOpacity(.14)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.account_balance_wallet_outlined,
+                    size: 20, color: _accent(isDarkMode)),
+                const SizedBox(width: 9),
+                Flexible(
+                  child: Text(
+                    user?.money == null ? '—' : formatter.format(user!.money),
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: _accent(isDarkMode),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _avatarPlaceholder(bool dark) => ColoredBox(
+    color: _card(dark),
+    child: Icon(Icons.person_outline_rounded, size: 44, color: _accent(dark)),
+  );
+
+  Widget _menuIcon(FaIconData icon, bool dark) => Container(
+    width: 44,
+    height: 44,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: _teal.withOpacity(.10),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: FaIcon(icon, color: _accent(dark), size: 21),
+  );
+
+  Widget _menuSurface({
+    required bool dark,
+    required Widget child,
+    VoidCallback? onTap,
+  }) => Material(
+    color: _card(dark),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: _teal.withOpacity(.16)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      splashColor: _teal.withOpacity(.14),
+      highlightColor: _teal.withOpacity(.06),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
+    ),
+  );
+
+  Widget _buildCard({
+    required String text,
+    required FaIconData icon,
+    required VoidCallback action,
+    required bool isDarkMode,
+  }) => _menuSurface(
+    dark: isDarkMode,
+    onTap: action,
+    child: Row(
+      children: [
+        _menuIcon(icon, isDarkMode),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(text, style: TextStyle(
+            fontSize: 14, height: 1.45, fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface,
+          )),
+        ),
+        const SizedBox(width: 8),
+        Icon(Icons.chevron_right_rounded, size: 22, color: _accent(isDarkMode)),
+      ],
+    ),
+  );
 
   Widget _buildSwitchCard({
     required String text,
@@ -292,96 +336,77 @@ class _ProfilePageState extends State<ProfilePage> {
     required bool value,
     required Function(bool) onToggle,
     required bool isDarkMode,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey.shade800 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: isDarkMode
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.black12,
-            child: FaIcon(
-              icon,
-              color: isDarkMode ? Colors.white70 : Colors.black87,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-          FlutterSwitch(
-            height: 30,
-            width: 60,
-            value: value,
-            onToggle: onToggle,
-          ),
-        ],
-      ),
-    );
-  }
+  }) => _menuSurface(
+    dark: isDarkMode,
+    child: Row(
+      children: [
+        _menuIcon(icon, isDarkMode),
+        const SizedBox(width: 14),
+        Expanded(child: Text(text, style: TextStyle(
+          fontSize: 14, height: 1.45, fontWeight: FontWeight.w500,
+          color: Theme.of(context).colorScheme.onSurface,
+        ))),
+        const SizedBox(width: 10),
+        FlutterSwitch(
+          height: 28,
+          width: 50,
+          toggleSize: 20,
+          padding: 4,
+          value: value,
+          activeColor: _teal,
+          activeToggleColor: const Color(0xFF073D43),
+          inactiveColor: Theme.of(context).colorScheme.onSurface.withOpacity(.15),
+          inactiveToggleColor: _card(isDarkMode),
+          onToggle: onToggle,
+        ),
+      ],
+    ),
+  );
 
-  Widget _buildLogoutButton(bool isDarkMode) {
-    return GestureDetector(
-      onTap: () async {
-        await NotificationService().clearSession();
-        await FirebaseAuth.instance.signOut();
-        await GoogleSignIn().signOut();
-        await FacebookAuth.instance.logOut();
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.buttonLogin,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          AppLocalizations.of(context).translate('logout'),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+  Widget _buildLogoutButton(bool isDarkMode) => Material(
+    color: Colors.transparent,
+
+    borderRadius: BorderRadius.circular(20),
+    clipBehavior: Clip.antiAlias,
+    child: Ink(
+      decoration: BoxDecoration(
+        gradient: _gradient,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: InkWell(
+        onTap: () async {
+          await NotificationService().clearSession();
+          await FirebaseAuth.instance.signOut();
+          await GoogleSignIn().signOut();
+          await FacebookAuth.instance.logOut();
+          if (!mounted) return;
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.logout_rounded, color: Color(0xFF073D43), size: 21),
+              const SizedBox(width: 10),
+              Flexible(child: Text(
+                AppLocalizations.of(context).translate('logout'),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                    color: Color(0xFF073D43)),
+              )),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 
   void _showBottomSheet() {
     showModalBottomSheet(
+      backgroundColor: _card(Theme.of(context).brightness == Brightness.dark),
+      clipBehavior: Clip.antiAlias,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       context: context,
       builder: (context) {

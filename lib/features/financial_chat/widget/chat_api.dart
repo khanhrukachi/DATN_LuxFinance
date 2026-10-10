@@ -6,11 +6,13 @@ import 'package:http/http.dart' as http;
 import 'chat_data_source.dart';
 
 class ChatApiException implements Exception {
-  const ChatApiException(this.key, {this.statusCode});
+  const ChatApiException(this.key, {this.statusCode, this.requestId, this.serverCode});
   final String key;
   final int? statusCode;
+  final String? requestId;
+  final String? serverCode;
   @override
-  String toString() => 'ChatApiException($key, HTTP $statusCode)';
+  String toString() => 'ChatApiException($key, HTTP $statusCode, code=$serverCode, request=$requestId)';
 }
 class ChatReply {
   const ChatReply(
@@ -18,12 +20,18 @@ class ChatReply {
       this.intent,
       this.warnings, {
         this.evidence = const {},
+        this.needsInput = const [],
+        this.supportedExamples = const [],
+        this.requestId,
       });
 
   final String answer;
   final String intent;
   final List<String> warnings;
   final Map<String, dynamic> evidence;
+  final List<String> needsInput;
+  final List<String> supportedExamples;
+  final String? requestId;
 
   factory ChatReply.fromJson(Map<String, dynamic> json) {
     return ChatReply(
@@ -35,6 +43,9 @@ class ChatReply {
           .map((value) => value.toString())
           .toSet()
           .toList(),
+      needsInput: json['needsInput'] is List ? (json['needsInput'] as List).map((v) => '$v').toList() : const [],
+      supportedExamples: json['supportedExamples'] is List ? (json['supportedExamples'] as List).map((v) => '$v').take(4).toList() : const [],
+      requestId: json['requestId']?.toString(),
       evidence: json['evidence'] is Map
           ? Map<String, dynamic>.from(json['evidence'] as Map)
           : const {},
@@ -69,7 +80,7 @@ class ChatApi {
         throw ChatApiException('chat_health_error', statusCode: response.statusCode);
       }
       final data = jsonDecode(utf8.decode(response.bodyBytes));
-      if (data is! Map || data['status'] != 'healthy') {
+      if (data is! Map || !const ['healthy', 'ok'].contains(data['status'])) {
         throw const ChatApiException('chat_invalid_response');
       }
     } on FormatException {
@@ -79,7 +90,9 @@ class ChatApi {
     }
   }
   Future<ChatReply> ask({required String uid, required String question,
-      required ChatSnapshot snapshot, required List<Map<String, dynamic>> catalog}) async {
+    required ChatSnapshot snapshot, required List<Map<String, dynamic>> catalog,
+    List<Map<String, String>> history = const [],
+    Map<String, dynamic> additionalContext = const {}}) async {
     final uri = _uri('/api/v1/chat/ask');
     final user = _auth.currentUser;
     if (user == null || user.uid != uid) throw const ChatApiException('chat_session');
@@ -88,7 +101,8 @@ class ChatApi {
       body = jsonEncode({
         'question': question, 'user_id': uid,
         'transactions': snapshot.transactions,
-        'category_catalog': catalog, 'advisor_context': snapshot.context,
+        'category_catalog': catalog, 'advisor_context': {...snapshot.context, ...additionalContext},
+        'history': history.length > 6 ? history.sublist(history.length - 6) : history,
       });
     } catch (_) {
       throw const ChatApiException('chat_payload_error');
@@ -116,9 +130,20 @@ class ChatApi {
       final key = switch (response.statusCode) {
         401 => 'chat_login', 403 => 'chat_forbidden',
         404 => 'chat_endpoint_missing', 422 => 'chat_request_invalid',
-        503 => 'chat_auth_server', _ => 'chat_server',
+        503 => 'chat_service_unavailable', _ => 'chat_server',
       };
-      throw ChatApiException(key, statusCode: response.statusCode);
+      String? requestId;
+      String? serverCode;
+      try {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map && decoded['detail'] is Map) {
+          final detail = decoded['detail'] as Map;
+          requestId = detail['requestId']?.toString();
+          serverCode = detail['code']?.toString();
+        }
+      } catch (_) { /* An HTML/plain-text error is still an HTTP error. */ }
+      throw ChatApiException(key, statusCode: response.statusCode,
+          requestId: requestId, serverCode: serverCode);
     }
     try {
       final json = jsonDecode(utf8.decode(response.bodyBytes));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/core/constants/function/get_data_spending.dart';
@@ -28,7 +29,6 @@ class ShowListSpendingColumn extends StatefulWidget {
 }
 
 class _ShowListSpendingColumnState extends State<ShowListSpendingColumn> {
-  final numberFormat = NumberFormat.currency(locale: "vi_VI", symbol: 'đ',);
 
   @override
   Widget build(BuildContext context) {
@@ -71,187 +71,50 @@ class _ShowListSpendingColumnState extends State<ShowListSpendingColumn> {
 
         final totalMoney = list.fold<double>(0, (sum, e) => sum + e.money);
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            shadowColor: Colors.black26,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.blue.shade100,
-                        child: Text(
-                          widget.index == 0
-                              ? DateFormat("dd").format(listDate[index])
-                              : (index + 1).toString().padLeft(2, '0'),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.blue),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.index == 0
-                                  ? DateFormat.EEEE(lang)
-                                  .format(listDate[index])
-                                  : "${AppLocalizations.of(context).translate(widget.index == 1 ? "week" : "month")} ${index + 1}",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge!
-                                    .color,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat.yMMMM(lang).format(listDate[index]),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        numberFormat.format(totalMoney),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
-                  _buildItem(list, totalMoney),
-                ],
-              ),
-            ),
-          ),
+        return Container(margin: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.all(14), decoration: AnalyticStyle.decoration(context),
+          child: Column(children: [
+            Row(children: [
+              Container(width: 42, height: 42, alignment: Alignment.center,
+                  decoration: BoxDecoration(gradient: AnalyticStyle.gradient, borderRadius: BorderRadius.circular(13)),
+                  child: Text(widget.index == 0 ? DateFormat('dd').format(listDate[index])
+                      : '${index + 1}'.padLeft(2, '0'),
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: AnalyticStyle.ink))),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.index == 0 ? DateFormat.EEEE(lang).format(listDate[index])
+                    : '${AppLocalizations.of(context).translate(widget.index == 1 ? 'week' : 'month')} ${index + 1}',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                Text(DateFormat.yMMMM(lang).format(listDate[index]),
+                    style: TextStyle(fontSize: 12, color: AnalyticStyle.muted(context))),
+                const SizedBox(height: 4),
+                Text(AnalyticStyle.money(context, totalMoney), style: TextStyle(fontWeight: FontWeight.w600,
+                    color: totalMoney < 0 ? AnalyticStyle.danger : AnalyticStyle.accent(context))),
+              ])),
+            ]),
+            const SizedBox(height: 12),
+            _buildItem(list, totalMoney),
+          ]),
         );
       },
     );
   }
 
-  Widget _buildItem(List<Spending> listSpending, double totalMoney) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      children: List.generate(listType.length, (index) {
-        final list =
-        listSpending.where((e) => e.type == index).toList();
-        if (list.isEmpty) return const SizedBox.shrink();
-
-        final typeMoney = list.fold<double>(0, (sum, e) => sum + e.money);
-        final progress = totalMoney == 0 ? 0.0 : (typeMoney / totalMoney);
-
-        final Map<String, dynamic> typeItem = listType[index];
-        final String titleKey = typeItem['title'] ?? 'other';
-        final String? imagePath = typeItem['image'];
-        Color mainColor;
-        if (typeMoney > 0) {
-          mainColor = Colors.green.shade400;
-        } else if (typeMoney < 0) {
-          mainColor = Colors.red.shade400;
-        } else {
-          mainColor = Colors.grey;
-        }
-        final Color textPrimary = isDark ? Colors.white : Colors.black87;
-        final Color textSecondary = Colors.grey.shade700;
-        return InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            if (list.isEmpty) return;
-            Navigator.of(context).push(
-              createRoute(
-                screen: ViewListSpendingPage(spendingList: list),
-                begin: const Offset(1, 0),
-              ),
-            );
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: mainColor.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            mainColor.withOpacity(0.3),
-                            mainColor.withOpacity(0.08),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: imagePath != null
-                          ? Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Image.asset(imagePath),
-                      )
-                          : Icon(Icons.category, color: mainColor, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        AppLocalizations.of(context).translate(titleKey),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      numberFormat.format(typeMoney),
-                      style: TextStyle(fontSize: 14, color: textSecondary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress.clamp(0.0, 1.0),
-                    minHeight: 8,
-                    backgroundColor:
-                    isDark ? Colors.white12 : Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(mainColor),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
-  }
+  Widget _buildItem(List<Spending> listSpending, double totalMoney) => Column(
+    children: List.generate(listType.length, (index) {
+      final items = listSpending.where((e) => e.type == index).toList();
+      if (items.isEmpty) return const SizedBox.shrink();
+      final amount = items.fold<int>(0, (s, e) => s + e.money);
+      return Padding(padding: const EdgeInsets.only(bottom: 8),
+        child: AnalyticCategoryRow(
+          title: AppLocalizations.of(context).translate(listType[index]['title'] ?? 'other'),
+          image: listType[index]['image'], amount: amount,
+          share: totalMoney == 0 ? 0.0 : amount / totalMoney,
+          color: AnalyticStyle.accent(context),
+          onTap: () => Navigator.of(context).push(createRoute(
+              screen: ViewListSpendingPage(spendingList: items), begin: const Offset(1, 0))),
+        ),
+      );
+    }),
+  );
 }

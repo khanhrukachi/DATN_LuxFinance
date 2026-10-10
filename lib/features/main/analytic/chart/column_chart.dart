@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/features/main/analytic/function/render_list_money.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
@@ -29,17 +30,7 @@ class ColumnChartState extends State<ColumnChart>
   List<int> money = [];
   List<String> weekOfMonth = [];
 
-  final List<Color> paletteColors = const [
-    Color(0xff4e79a7),
-    Color(0xfff28e2b),
-    Color(0xffe15759),
-    Color(0xff76b7b2),
-    Color(0xff59a14f),
-    Color(0xffff9da7),
-    Color(0xff9c755f),
-    Color(0xffbab0ac),
-    Color(0xffedc948),
-  ];
+  final List<Color> paletteColors = AnalyticStyle.palette;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +50,6 @@ class ColumnChartState extends State<ColumnChart>
 
     final chartMax = max * 1.3;
     final width = widget.index == 0 ? 520.0 : 1000.0;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -71,10 +61,10 @@ class ColumnChartState extends State<ColumnChart>
             width: width,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white10 : Colors.grey.shade50,
+              color: AnalyticStyle.background(context),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? Colors.white12 : Colors.grey.shade200,
+                color: AnalyticStyle.teal.withOpacity(.12),
               ),
             ),
             child: BarChart(
@@ -95,7 +85,7 @@ class ColumnChartState extends State<ColumnChart>
       double chartMax, {
         bool isTouched = false,
       }) {
-    final color = paletteColors[x % paletteColors.length];
+    final color = AnalyticStyle.teal;
 
     return BarChartGroupData(
       x: x,
@@ -109,14 +99,14 @@ class ColumnChartState extends State<ColumnChart>
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              color.withOpacity(isTouched ? 0.85 : 0.6),
-              color.withOpacity(isTouched ? 1.0 : 0.8),
+              AnalyticStyle.cyan.withOpacity(isTouched ? 1 : .8),
+              color.withOpacity(isTouched ? 1 : .8),
             ],
           ),
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: chartMax,
-            color: Colors.grey.withOpacity(0.15),
+            color: AnalyticStyle.teal.withOpacity(.08),
           ),
         ),
       ],
@@ -161,7 +151,7 @@ class ColumnChartState extends State<ColumnChart>
             }
 
             return BarTooltipItem(
-              "$label\n💰 ${rod.toY.toStringAsFixed(0)}",
+              "$label\n${AnalyticStyle.money(context, rod.toY)}",
               const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
@@ -206,7 +196,7 @@ class ColumnChartState extends State<ColumnChart>
         drawVerticalLine: false,
         horizontalInterval: chartMax / 4,
         getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey.withOpacity(0.15),
+          color: AnalyticStyle.teal.withOpacity(.08),
           strokeWidth: 1,
         ),
       ),
@@ -221,10 +211,10 @@ class ColumnChartState extends State<ColumnChart>
       axisSide: meta.axisSide,
       child: Text(
         "${(value / 1000).toStringAsFixed(0)}K",
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: Colors.grey,
+          color: AnalyticStyle.muted(context),
         ),
       ),
     );

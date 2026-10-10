@@ -1,5 +1,5 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class InputText extends StatelessWidget {
@@ -24,34 +24,25 @@ class InputText extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      style: AppStyles.p,
+      style: TextStyle(fontSize: 15, color: AuthStyle.text(context)),
       keyboardType: inputType,
       textCapitalization: textCapitalization,
       validator: (value) {
         if (validator == 0 &&
-            (value!.isEmpty ||
+            ((value ?? '').trim().isEmpty ||
                 !RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                    .hasMatch(value))) {
+                    .hasMatch(value ?? ''))) {
           return AppLocalizations.of(context).translate('enter_valid_email');
-        } else if (validator == 1 && value!.isEmpty) {
+        } else if (validator == 1 && (value ?? '').trim().isEmpty) {
           return AppLocalizations.of(context).translate('enter_valid_name');
-        } else if (validator == 2 && value!.isEmpty) {
+        } else if (validator == 2 && (value ?? '').trim().isEmpty) {
           return AppLocalizations.of(context).translate('enter_valid_OTP');
         }
         return null;
       },
-      decoration: InputDecoration(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: const BorderSide(width: 0, style: BorderStyle.none),
-        ),
-        hintStyle: AppStyles.p,
-        filled: true,
-        errorText: error,
-        fillColor: Theme.of(context).colorScheme.background,
-        hintText: hint,
-        contentPadding: const EdgeInsets.all(20),
-      ),
+      decoration: AuthStyle.input(context, hint, error: error,
+          icon: inputType == TextInputType.emailAddress ? Icons.alternate_email_rounded
+              : validator == 1 ? Icons.person_outline_rounded : Icons.edit_outlined),
     );
   }
 }

@@ -1,8 +1,6 @@
-import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
@@ -11,9 +9,10 @@ import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class ItemParentIdWidget extends StatefulWidget {
-  const ItemParentIdWidget({Key? key, this.spendingList}) : super(key: key);
+  const ItemParentIdWidget({Key? key, this.spendingList, this.embedded = false}) : super(key: key);
 
   final List<Spending>? spendingList;
+  final bool embedded;
 
   @override
   State<ItemParentIdWidget> createState() => _ItemParentIdWidgetState();
@@ -30,6 +29,8 @@ class _ItemParentIdWidgetState extends State<ItemParentIdWidget> {
     final groups = _buildParentGroups(spendings);
 
     return ListView.builder(
+      shrinkWrap: widget.embedded,
+      physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       itemCount: groups.length,
       itemBuilder: (context, index) {
@@ -62,7 +63,7 @@ class _ItemParentIdWidgetState extends State<ItemParentIdWidget> {
                   ? Column(
                 children: group.children.map((child) {
                   return Padding(
-                    padding: const EdgeInsets.only(left: 24),
+                    padding: const EdgeInsets.only(left: 18),
                     child: _categoryCard(
                       context: context,
                       categoryIndex: child.categoryIndex,
@@ -138,116 +139,14 @@ class _ItemParentIdWidgetState extends State<ItemParentIdWidget> {
     return groups;
   }
 
-  Widget _categoryCard({
-    required BuildContext context,
-    required int categoryIndex,
-    required List<Spending> spendings,
-    required bool isParent,
-    required bool isExpanded,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final numberFormat = NumberFormat.decimalPattern('vi');
-    final Map<String, dynamic> typeItem = listType[categoryIndex];
-
-    final String titleKey = typeItem['title'] as String;
-    final String? imagePath = typeItem['image'] as String?;
-    final Color baseColor =
-        typeItem['color'] as Color? ?? const Color(0xFF5B7CFA);
-
-    final int totalMoney =
-    spendings.fold<int>(0, (sum, item) => sum + item.money);
-    final bool isExpense = totalMoney < 0;
-
-    final Color surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
-    final Color textPrimary =
-    isDark ? Colors.white : const Color(0xFF1C1C1C);
-    final Color accent = isExpense
-        ? const Color(0xFFE5533D)
-        : const Color(0xFF2FBF71);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isParent ? 18 : 14,
-            vertical: isParent ? 16 : 12,
-          ),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: accent.withOpacity(isDark ? 0.25 : 0.12),
-            ),
-            boxShadow: [
-              if (!isDark)
-                BoxShadow(
-                  color: accent.withOpacity(isParent ? 0.15 : 0.08),
-                  blurRadius: isParent ? 16 : 10,
-                  offset: const Offset(0, 6),
-                ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: isParent ? 54 : 42,
-                height: isParent ? 54 : 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      baseColor.withOpacity(0.30),
-                      baseColor.withOpacity(0.08),
-                    ],
-                  ),
-                ),
-                child: imagePath != null
-                    ? Padding(
-                  padding: EdgeInsets.all(isParent ? 12 : 9),
-                  child: Image.asset(imagePath),
-                )
-                    : Icon(Icons.category, color: baseColor),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  AppLocalizations.of(context).translate(titleKey),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: isParent ? 15 : 14,
-                    fontWeight: isParent ? FontWeight.w600 : FontWeight.w500,
-                    color: textPrimary,
-                  ),
-                ),
-              ),
-              Text(
-                '${isExpense ? "-" : "+"}'
-                    '${numberFormat.format(totalMoney.abs())} đ',
-                style: TextStyle(
-                  fontSize: isParent ? 15 : 14,
-                  fontWeight: FontWeight.bold,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                isParent
-                    ? (isExpanded
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down)
-                    : Icons.chevron_right,
-                color: accent,
-                size: 26,
-              ),
-            ],
-          ),
-        ),
-      ),
+  Widget _categoryCard({required BuildContext context, required int categoryIndex,
+    required List<Spending> spendings, required bool isParent,
+    required bool isExpanded, required VoidCallback onTap}) {
+    final item = listType[categoryIndex];
+    return HomeCategoryTile(
+      title: AppLocalizations.of(context).translate(item['title'] ?? 'other'),
+      image: item['image'], money: spendings.fold<int>(0, (s, e) => s + e.money),
+      isParent: isParent, isExpanded: isExpanded, onTap: onTap,
     );
   }
 
@@ -260,80 +159,7 @@ class _ItemParentIdWidgetState extends State<ItemParentIdWidget> {
     );
   }
 
-  Widget _loading(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? const Color(0xFF1F1F1F) : Colors.white;
-    final baseShimmer = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
-    final highlightShimmer =
-    isDark ? Colors.grey.shade700 : Colors.grey.shade100;
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      itemCount: 5,
-      itemBuilder: (_, __) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: [
-                Shimmer.fromColors(
-                  baseColor: baseShimmer,
-                  highlightColor: highlightShimmer,
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: baseShimmer,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _textLoading(
-                    Random().nextInt(80) + 80,
-                    baseShimmer: baseShimmer,
-                    highlightShimmer: highlightShimmer,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                _textLoading(
-                  Random().nextInt(50) + 60,
-                  baseShimmer: baseShimmer,
-                  highlightShimmer: highlightShimmer,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _textLoading(
-      int width, {
-        int height = 16,
-        required Color baseShimmer,
-        required Color highlightShimmer,
-      }) {
-    return Shimmer.fromColors(
-      baseColor: baseShimmer,
-      highlightColor: highlightShimmer,
-      child: Container(
-        height: height.toDouble(),
-        width: width.toDouble(),
-        decoration: BoxDecoration(
-          color: baseShimmer,
-          borderRadius: BorderRadius.circular(6),
-        ),
-      ),
-    );
-  }
+  Widget _loading(BuildContext context) => HomeLoadingList(embedded: widget.embedded);
 }
 
 class _ParentSpendingGroup {

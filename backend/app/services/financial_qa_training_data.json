@@ -1,7 +1,7 @@
 {
   "schemaVersion": "financial_chat_examples_v1",
   "datasetType": "parser_test_examples_not_trained_model",
-  "questionCount": 170,
+  "questionCount": 521,
   "examples": [
     {
       "question": "Tháng này tổng dòng tiền của beautify là bao nhiêu?",
@@ -28,7 +28,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "beautify trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch beautify tháng này",
+      "intent": "transaction_details",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "beautify thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "beautify tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "beautify chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "beautify tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh beautify tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh beautify tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "beautify",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh beautify tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "beautify",
       "parent_category_id": "expense_unexpected"
@@ -37,25 +85,199 @@
       "question": "Tháng này tổng dòng tiền của borrow là bao nhiêu?",
       "intent": "category_cashflow",
       "category_id": "borrow",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
+    },
+    {
+      "question": "borrow trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch borrow tháng này",
+      "intent": "transaction_details",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "borrow thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "borrow tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "borrow chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "borrow tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "borrow",
+      "parent_category_id": "income"
     },
     {
       "question": "So sánh borrow tháng này với tháng trước",
       "intent": "period_comparison",
       "category_id": "borrow",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh borrow tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh borrow tuần này với tuần trước",
+      "intent": "period_comparison",
+      "category_id": "borrow",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập borrow tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "borrow",
+      "parent_category_id": "income"
     },
     {
       "question": "Tháng này tổng dòng tiền của debt_collection là bao nhiêu?",
       "intent": "category_cashflow",
       "category_id": "debt_collection",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
+    },
+    {
+      "question": "debt_collection trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch debt_collection tháng này",
+      "intent": "transaction_details",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "debt_collection thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "debt_collection tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "debt_collection chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "debt_collection tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
     },
     {
       "question": "So sánh debt_collection tháng này với tháng trước",
       "intent": "period_comparison",
       "category_id": "debt_collection",
-      "parent_category_id": "loan_borrow"
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh debt_collection tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh debt_collection tuần này với tuần trước",
+      "intent": "period_comparison",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập debt_collection tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "debt_collection",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của earn_profit là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "earn_profit trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch earn_profit tháng này",
+      "intent": "transaction_details",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "earn_profit thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "earn_profit tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "earn_profit chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "earn_profit tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh earn_profit tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh earn_profit tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh earn_profit tuần này với tuần trước",
+      "intent": "period_comparison",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh thu nhập earn_profit tháng này với tháng trước",
+      "intent": "income_period_comparison",
+      "category_id": "earn_profit",
+      "parent_category_id": "income"
     },
     {
       "question": "Tháng này tổng dòng tiền của eating là bao nhiêu?",
@@ -82,7 +304,55 @@
       "parent_category_id": "expense_living"
     },
     {
+      "question": "eating trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Liệt kê giao dịch eating tháng này",
+      "intent": "transaction_details",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "eating thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "eating tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "eating chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "eating tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
       "question": "So sánh eating tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh eating tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "eating",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh eating tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "eating",
       "parent_category_id": "expense_living"
@@ -94,7 +364,55 @@
       "parent_category_id": "investment_saving"
     },
     {
+      "question": "education trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Liệt kê giao dịch education tháng này",
+      "intent": "transaction_details",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "education thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "education tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "education chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "education tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
       "question": "So sánh education tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh education tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "education",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh education tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "education",
       "parent_category_id": "investment_saving"
@@ -124,10 +442,118 @@
       "parent_category_id": "expense_fixed"
     },
     {
+      "question": "electricity_bill trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Liệt kê giao dịch electricity_bill tháng này",
+      "intent": "transaction_details",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "electricity_bill thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "electricity_bill tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "electricity_bill chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "electricity_bill tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
       "question": "So sánh electricity_bill tháng này với tháng trước",
       "intent": "period_comparison",
       "category_id": "electricity_bill",
       "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh electricity_bill tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh electricity_bill tuần này với tuần trước",
+      "intent": "period_comparison",
+      "category_id": "electricity_bill",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Tháng này tổng dòng tiền của expense là bao nhiêu?",
+      "intent": "category_cashflow",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch expense tháng này",
+      "intent": "transaction_details",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "expense",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense tuần này với tuần trước",
+      "intent": "period_comparison",
+      "category_id": "expense",
+      "parent_category_id": null
     },
     {
       "question": "Tháng này tổng dòng tiền của expense_fixed là bao nhiêu?",
@@ -154,7 +580,55 @@
       "parent_category_id": null
     },
     {
+      "question": "expense_fixed trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch expense_fixed tháng này",
+      "intent": "transaction_details",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_fixed thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_fixed tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_fixed chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_fixed tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh expense_fixed tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_fixed tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "expense_fixed",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_fixed tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "expense_fixed",
       "parent_category_id": null
@@ -184,7 +658,55 @@
       "parent_category_id": null
     },
     {
+      "question": "expense_living trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch expense_living tháng này",
+      "intent": "transaction_details",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_living thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_living tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_living chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_living tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh expense_living tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_living tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "expense_living",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_living tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "expense_living",
       "parent_category_id": null
@@ -214,7 +736,55 @@
       "parent_category_id": null
     },
     {
+      "question": "expense_unexpected trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch expense_unexpected tháng này",
+      "intent": "transaction_details",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_unexpected thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_unexpected tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_unexpected chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "expense_unexpected tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh expense_unexpected tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_unexpected tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "expense_unexpected",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh expense_unexpected tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "expense_unexpected",
       "parent_category_id": null
@@ -244,7 +814,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "fun_play trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch fun_play tháng này",
+      "intent": "transaction_details",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "fun_play thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "fun_play tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "fun_play chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "fun_play tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh fun_play tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh fun_play tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "fun_play",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh fun_play tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "fun_play",
       "parent_category_id": "expense_unexpected"
@@ -274,7 +892,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "gas_money trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch gas_money tháng này",
+      "intent": "transaction_details",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gas_money thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gas_money tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gas_money chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gas_money tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh gas_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gas_money tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "gas_money",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gas_money tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "gas_money",
       "parent_category_id": "expense_unexpected"
@@ -304,7 +970,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "gifts_donations trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch gifts_donations tháng này",
+      "intent": "transaction_details",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gifts_donations thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gifts_donations tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gifts_donations chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "gifts_donations tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh gifts_donations tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gifts_donations tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "gifts_donations",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh gifts_donations tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "gifts_donations",
       "parent_category_id": "expense_unexpected"
@@ -334,7 +1048,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "housewares trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch housewares tháng này",
+      "intent": "transaction_details",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "housewares thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "housewares tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "housewares chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "housewares tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh housewares tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh housewares tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "housewares",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh housewares tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "housewares",
       "parent_category_id": "expense_unexpected"
@@ -346,7 +1108,55 @@
       "parent_category_id": null
     },
     {
+      "question": "income trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch income tháng này",
+      "intent": "transaction_details",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "income thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "income tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "income chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "income tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh income tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh income tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "income",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh income tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "income",
       "parent_category_id": null
@@ -364,7 +1174,55 @@
       "parent_category_id": "investment_saving"
     },
     {
+      "question": "insurance trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Liệt kê giao dịch insurance tháng này",
+      "intent": "transaction_details",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "insurance thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "insurance tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "insurance chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "insurance tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
       "question": "So sánh insurance tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh insurance tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "insurance",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh insurance tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "insurance",
       "parent_category_id": "investment_saving"
@@ -394,7 +1252,55 @@
       "parent_category_id": "expense_fixed"
     },
     {
+      "question": "internet_money trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Liệt kê giao dịch internet_money tháng này",
+      "intent": "transaction_details",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "internet_money thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "internet_money tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "internet_money chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "internet_money tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
       "question": "So sánh internet_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh internet_money tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "internet_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh internet_money tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "internet_money",
       "parent_category_id": "expense_fixed"
@@ -406,7 +1312,55 @@
       "parent_category_id": "investment_saving"
     },
     {
+      "question": "invest trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Liệt kê giao dịch invest tháng này",
+      "intent": "transaction_details",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "invest thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "invest tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "invest chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "invest tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
       "question": "So sánh invest tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh invest tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "invest",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh invest tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "invest",
       "parent_category_id": "investment_saving"
@@ -418,7 +1372,55 @@
       "parent_category_id": null
     },
     {
+      "question": "investment_saving trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch investment_saving tháng này",
+      "intent": "transaction_details",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "investment_saving thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "investment_saving tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "investment_saving chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "investment_saving tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh investment_saving tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh investment_saving tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "investment_saving",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh investment_saving tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "investment_saving",
       "parent_category_id": null
@@ -430,7 +1432,55 @@
       "parent_category_id": "loan_borrow"
     },
     {
+      "question": "loan trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Liệt kê giao dịch loan tháng này",
+      "intent": "transaction_details",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "loan thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "loan tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "loan chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "loan tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
       "question": "So sánh loan tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh loan tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "loan",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh loan tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "loan",
       "parent_category_id": "loan_borrow"
@@ -442,7 +1492,55 @@
       "parent_category_id": null
     },
     {
+      "question": "loan_borrow trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "Liệt kê giao dịch loan_borrow tháng này",
+      "intent": "transaction_details",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "loan_borrow thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "loan_borrow tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "loan_borrow chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "loan_borrow tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
       "question": "So sánh loan_borrow tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh loan_borrow tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "loan_borrow",
+      "parent_category_id": null
+    },
+    {
+      "question": "So sánh loan_borrow tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "loan_borrow",
       "parent_category_id": null
@@ -472,7 +1570,55 @@
       "parent_category_id": "expense_living"
     },
     {
+      "question": "market trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Liệt kê giao dịch market tháng này",
+      "intent": "transaction_details",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "market thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "market tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "market chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "market tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
       "question": "So sánh market tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh market tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "market",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh market tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "market",
       "parent_category_id": "expense_living"
@@ -484,7 +1630,55 @@
       "parent_category_id": "income"
     },
     {
+      "question": "money_transferred_to trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch money_transferred_to tháng này",
+      "intent": "transaction_details",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "money_transferred_to thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "money_transferred_to tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "money_transferred_to chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "money_transferred_to tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
       "question": "So sánh money_transferred_to tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh money_transferred_to tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "money_transferred_to",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh money_transferred_to tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "money_transferred_to",
       "parent_category_id": "income"
@@ -520,7 +1714,55 @@
       "parent_category_id": "expense_living"
     },
     {
+      "question": "move trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Liệt kê giao dịch move tháng này",
+      "intent": "transaction_details",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "move thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "move tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "move chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "move tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
       "question": "So sánh move tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh move tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "move",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh move tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "move",
       "parent_category_id": "expense_living"
@@ -550,7 +1792,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "online_services trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch online_services tháng này",
+      "intent": "transaction_details",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "online_services thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "online_services tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "online_services chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "online_services tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh online_services tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh online_services tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "online_services",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh online_services tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "online_services",
       "parent_category_id": "expense_unexpected"
@@ -580,7 +1870,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "other_costs trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch other_costs tháng này",
+      "intent": "transaction_details",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "other_costs thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "other_costs tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "other_costs chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "other_costs tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh other_costs tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh other_costs tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "other_costs",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh other_costs tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "other_costs",
       "parent_category_id": "expense_unexpected"
@@ -592,7 +1930,55 @@
       "parent_category_id": "income"
     },
     {
+      "question": "other_income trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch other_income tháng này",
+      "intent": "transaction_details",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "other_income thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "other_income tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "other_income chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "other_income tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
       "question": "So sánh other_income tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh other_income tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "other_income",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh other_income tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "other_income",
       "parent_category_id": "income"
@@ -610,7 +1996,55 @@
       "parent_category_id": "loan_borrow"
     },
     {
+      "question": "pay trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Liệt kê giao dịch pay tháng này",
+      "intent": "transaction_details",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
       "question": "So sánh pay tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "pay",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "pay",
       "parent_category_id": "loan_borrow"
@@ -622,7 +2056,55 @@
       "parent_category_id": "loan_borrow"
     },
     {
+      "question": "pay_interest trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "Liệt kê giao dịch pay_interest tháng này",
+      "intent": "transaction_details",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay_interest thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay_interest tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay_interest chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "pay_interest tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
       "question": "So sánh pay_interest tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay_interest tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "pay_interest",
+      "parent_category_id": "loan_borrow"
+    },
+    {
+      "question": "So sánh pay_interest tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "pay_interest",
       "parent_category_id": "loan_borrow"
@@ -652,7 +2134,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "personal_belongings trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch personal_belongings tháng này",
+      "intent": "transaction_details",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "personal_belongings thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "personal_belongings tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "personal_belongings chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "personal_belongings tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh personal_belongings tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh personal_belongings tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "personal_belongings",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh personal_belongings tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "personal_belongings",
       "parent_category_id": "expense_unexpected"
@@ -682,7 +2212,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "pet trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch pet tháng này",
+      "intent": "transaction_details",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "pet thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "pet tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "pet chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "pet tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh pet tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh pet tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "pet",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh pet tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "pet",
       "parent_category_id": "expense_unexpected"
@@ -712,7 +2290,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "physical_examination trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch physical_examination tháng này",
+      "intent": "transaction_details",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "physical_examination thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "physical_examination tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "physical_examination chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "physical_examination tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh physical_examination tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh physical_examination tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "physical_examination",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh physical_examination tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "physical_examination",
       "parent_category_id": "expense_unexpected"
@@ -742,7 +2368,55 @@
       "parent_category_id": "expense_fixed"
     },
     {
+      "question": "rent_house trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Liệt kê giao dịch rent_house tháng này",
+      "intent": "transaction_details",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "rent_house thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "rent_house tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "rent_house chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "rent_house tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
       "question": "So sánh rent_house tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh rent_house tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "rent_house",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh rent_house tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "rent_house",
       "parent_category_id": "expense_fixed"
@@ -772,7 +2446,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "repair_and_decorate_the_house trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch repair_and_decorate_the_house tháng này",
+      "intent": "transaction_details",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "repair_and_decorate_the_house thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "repair_and_decorate_the_house tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "repair_and_decorate_the_house chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "repair_and_decorate_the_house tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh repair_and_decorate_the_house tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh repair_and_decorate_the_house tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "repair_and_decorate_the_house",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh repair_and_decorate_the_house tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "repair_and_decorate_the_house",
       "parent_category_id": "expense_unexpected"
@@ -784,7 +2506,55 @@
       "parent_category_id": "income"
     },
     {
+      "question": "revenue trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch revenue tháng này",
+      "intent": "transaction_details",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "revenue thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "revenue tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "revenue chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "revenue tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
       "question": "So sánh revenue tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh revenue tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "revenue",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh revenue tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "revenue",
       "parent_category_id": "income"
@@ -802,7 +2572,55 @@
       "parent_category_id": "income"
     },
     {
+      "question": "salary trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "Liệt kê giao dịch salary tháng này",
+      "intent": "transaction_details",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "salary thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "salary tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "salary chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "salary tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
       "question": "So sánh salary tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh salary tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "salary",
+      "parent_category_id": "income"
+    },
+    {
+      "question": "So sánh salary tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "salary",
       "parent_category_id": "income"
@@ -820,7 +2638,55 @@
       "parent_category_id": "investment_saving"
     },
     {
+      "question": "saving trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "Liệt kê giao dịch saving tháng này",
+      "intent": "transaction_details",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "saving thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "saving tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "saving chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "saving tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
       "question": "So sánh saving tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh saving tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "saving",
+      "parent_category_id": "investment_saving"
+    },
+    {
+      "question": "So sánh saving tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "saving",
       "parent_category_id": "investment_saving"
@@ -850,7 +2716,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "sport trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch sport tháng này",
+      "intent": "transaction_details",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "sport thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "sport tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "sport chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "sport tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh sport tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh sport tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "sport",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh sport tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "sport",
       "parent_category_id": "expense_unexpected"
@@ -880,7 +2794,55 @@
       "parent_category_id": "expense_living"
     },
     {
+      "question": "telephone_fee trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "Liệt kê giao dịch telephone_fee tháng này",
+      "intent": "transaction_details",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "telephone_fee thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "telephone_fee tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "telephone_fee chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "telephone_fee tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
       "question": "So sánh telephone_fee tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh telephone_fee tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "telephone_fee",
+      "parent_category_id": "expense_living"
+    },
+    {
+      "question": "So sánh telephone_fee tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "telephone_fee",
       "parent_category_id": "expense_living"
@@ -910,7 +2872,55 @@
       "parent_category_id": "expense_fixed"
     },
     {
+      "question": "tv_money trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Liệt kê giao dịch tv_money tháng này",
+      "intent": "transaction_details",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "tv_money thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "tv_money tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "tv_money chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "tv_money tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
       "question": "So sánh tv_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh tv_money tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "tv_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh tv_money tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "tv_money",
       "parent_category_id": "expense_fixed"
@@ -940,7 +2950,55 @@
       "parent_category_id": "expense_unexpected"
     },
     {
+      "question": "vehicle_maintenance trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "Liệt kê giao dịch vehicle_maintenance tháng này",
+      "intent": "transaction_details",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "vehicle_maintenance thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "vehicle_maintenance tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "vehicle_maintenance chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "vehicle_maintenance tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
       "question": "So sánh vehicle_maintenance tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh vehicle_maintenance tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "vehicle_maintenance",
+      "parent_category_id": "expense_unexpected"
+    },
+    {
+      "question": "So sánh vehicle_maintenance tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "vehicle_maintenance",
       "parent_category_id": "expense_unexpected"
@@ -970,7 +3028,55 @@
       "parent_category_id": "expense_fixed"
     },
     {
+      "question": "water_money trung bình tháng này bao nhiêu?",
+      "intent": "category_average",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "Liệt kê giao dịch water_money tháng này",
+      "intent": "transaction_details",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "water_money thuộc danh mục nào?",
+      "intent": "category_definition",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "water_money tháng 8/2026 bao nhiêu?",
+      "intent": "category_summary",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "water_money chiếm tỷ trọng bao nhiêu tháng này?",
+      "intent": "category_share",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "water_money tháng này bao nhiêu lần?",
+      "intent": "category_summary",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
       "question": "So sánh water_money tháng này với tháng trước",
+      "intent": "period_comparison",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh water_money tháng 8/2026 với tháng 9/2026",
+      "intent": "period_comparison",
+      "category_id": "water_money",
+      "parent_category_id": "expense_fixed"
+    },
+    {
+      "question": "So sánh water_money tuần này với tuần trước",
       "intent": "period_comparison",
       "category_id": "water_money",
       "parent_category_id": "expense_fixed"

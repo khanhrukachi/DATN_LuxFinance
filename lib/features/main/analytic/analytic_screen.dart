@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/analytic_page_loading.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -13,7 +13,7 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/column_chart.dart';
 import 'package:personal_financial_management/features/main/analytic/chart/pie_chart.dart';
-import 'package:personal_financial_management/features/main/profile/search_screen.dart';
+import 'package:personal_financial_management/features/main/analytic/search/search_screen.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/custom_tabbar.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/show_date.dart';
 import 'package:personal_financial_management/features/main/analytic/widget/show_list_spending_column.dart';
@@ -101,51 +101,28 @@ class _AnalyticPageState extends State<AnalyticPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AnalyticStyle.background(context),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        centerTitle: true,
+        backgroundColor: AnalyticStyle.background(context),
+        centerTitle: false,
         automaticallyImplyLeading: false,
         title: Text(
           AppLocalizations.of(context).translate('spending'),
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(90),
-              onTap: () {
-                Navigator.of(context).push(
-                  createRoute(
-                    screen: const SearchPage(),
-                    begin: const Offset(1, 0),
-                  ),
-                );
-              },
-              child: Material(
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(90),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(90),
-                  ),
-                  child: const FaIcon(
-                    FontAwesomeIcons.magnifyingGlass,
-                    size: 20,
-                    color: Color.fromRGBO(180, 190, 190, 1),
-                  ),
-                ),
-              ),
+          Padding(padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+            child: Material(color: AnalyticStyle.teal.withOpacity(.10),
+              borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
+              child: IconButton(icon: Icon(Icons.search_rounded, color: AnalyticStyle.accent(context)),
+                  onPressed: () => Navigator.of(context).push(createRoute(
+                      screen: const SearchPage(), begin: const Offset(1, 0)))),
             ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
+          preferredSize: const Size.fromHeight(56),
           child: CustomTabBar(controller: _tabController),
         ),
       ),
@@ -154,12 +131,16 @@ class _AnalyticPageState extends State<AnalyticPage>
   }
 
   Widget _body() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Center(child: Text(AppLocalizations.of(context).translate('no_data')));
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection("data")
-          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) return Center(child: Text(
+            AppLocalizations.of(context).translate('something_went_wrong')));
         if (!snapshot.hasData) {
           return const AnalyticPageLoading(itemCount: 6);
         }
@@ -178,6 +159,8 @@ class _AnalyticPageState extends State<AnalyticPage>
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection("spending").snapshots(),
           builder: (context, snapshot) {
+            if (snapshot.hasError) return Center(child: Text(
+                AppLocalizations.of(context).translate('something_went_wrong')));
             if (!snapshot.hasData) {
               return const AnalyticPageLoading(itemCount: 6);
             }
@@ -195,7 +178,7 @@ class _AnalyticPageState extends State<AnalyticPage>
             }).toList();
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: Column(
                 children: [
                   _showChart(classify),
@@ -217,13 +200,14 @@ class _AnalyticPageState extends State<AnalyticPage>
   }
 
   Widget _showChart(List<Spending> list) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Card(
-      elevation: 1,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      color: isDark ? Colors.white10 : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      surfaceTintColor: Colors.transparent,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      color: AnalyticStyle.card(context),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AnalyticStyle.teal.withOpacity(.16))),
       child: Column(
         children: [
           const SizedBox(height: 12),
@@ -260,7 +244,6 @@ class _AnalyticPageState extends State<AnalyticPage>
 
   Widget _emptyChart() {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return SizedBox(
       height: 295,
@@ -270,13 +253,13 @@ class _AnalyticPageState extends State<AnalyticPage>
           Icon(
             Icons.insert_chart_outlined,
             size: 40,
-            color: isDark ? Colors.white38 : Colors.grey,
+            color: AnalyticStyle.accent(context),
           ),
           const SizedBox(height: 8),
           Text(
             AppLocalizations.of(context).translate('no_data'),
             style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? Colors.white54 : Colors.grey[600],
+              color: AnalyticStyle.muted(context),
             ),
           ),
         ],

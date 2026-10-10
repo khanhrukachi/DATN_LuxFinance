@@ -1,3 +1,5 @@
+from fastapi import Depends
+from app.security.ownership import owned_request
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
@@ -6,7 +8,7 @@ from app.services.kmeans_service import kmeans_service
 
 router = APIRouter(prefix='/cluster', tags=['Clustering'])
 
-@router.post('/behavior')
+@router.post('/behavior', dependencies=[Depends(owned_request)])
 async def cluster_behavior(request: ClusteringRequest, raw_request: Request):
     try:
         body = await raw_request.json()
@@ -26,7 +28,7 @@ async def cluster_behavior(request: ClusteringRequest, raw_request: Request):
     except (ValueError,TypeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-@router.post('/behavior/quick')
+@router.post('/behavior/quick', dependencies=[Depends(owned_request)])
 async def quick_cluster(user_id: str, raw_request: Request, n_clusters: Optional[int] = None,
                         year: Optional[int] = None, month: Optional[int] = None):
     try:

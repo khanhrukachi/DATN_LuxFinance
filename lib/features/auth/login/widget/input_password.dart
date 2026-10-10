@@ -1,6 +1,5 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class InputPassword extends StatelessWidget {
@@ -26,43 +25,30 @@ class InputPassword extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: hide,
-      style: AppStyles.p,
+      style: TextStyle(fontSize: 15, color: AuthStyle.text(context)),
       validator: (value) {
         if (password != null &&
-                password!.text.toString() != controller.text.toString() ||
-            password != null && value!.isEmpty) {
+            password!.text.toString() != controller.text.toString() ||
+            password != null && (value ?? '').isEmpty) {
           return AppLocalizations.of(context)
               .translate('enter_valid_confirm_password');
         }
 
-        if (value!.isEmpty && password == null) {
+        if ((value ?? '').isEmpty && password == null) {
           return AppLocalizations.of(context).translate('enter_valid_password');
         }
 
         return null;
       },
-      decoration: InputDecoration(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: const BorderSide(width: 0, style: BorderStyle.none),
-        ),
-        hintStyle: AppStyles.p,
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.background,
-        hintText: hint,
-        errorText: error,
-        suffixIcon: IconButton(
-          onPressed: () {
-            action();
-          },
-          splashColor: Colors.transparent,
-          icon: FaIcon(
-            hide ? FontAwesomeIcons.eyeSlash : FontAwesomeIcons.eye,
-            size: 20,
-          ),
-        ),
-        contentPadding: const EdgeInsets.all(20),
-      ),
+      enableSuggestions: false,
+      autocorrect: false,
+      decoration: AuthStyle.input(context, hint, error: error,
+          icon: Icons.lock_outline_rounded,
+          suffix: IconButton(
+            onPressed: () { action(); },
+            color: AuthStyle.accent(context),
+            icon: Icon(hide ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 21),
+          )),
     );
   }
 }

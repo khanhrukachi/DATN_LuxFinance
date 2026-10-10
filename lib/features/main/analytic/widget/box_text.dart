@@ -1,47 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
-Widget boxText({
-  required String text,
-  required int number,
-  Color? color,
-}) {
-  final numberFormat = NumberFormat.currency(
-    locale: "vi_VI",
-    symbol: "₫",
-  );
-
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: Colors.black12,
-      ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          numberFormat.format(number),
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color ?? Colors.black,
-          ),
-        ),
-      ],
-    ),
-  );
-}
+import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
+Widget boxText({required String text, required int number, Color? color}) => Builder(
+  builder: (context) => Container(width: double.infinity, padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: AnalyticStyle.background(context),
+          borderRadius: BorderRadius.circular(14), border: Border.all(color: AnalyticStyle.teal.withOpacity(.12))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(text, style: TextStyle(fontSize: 12, color: AnalyticStyle.muted(context))),
+        const SizedBox(height: 5),
+        Text(AnalyticStyle.money(context, number), style: TextStyle(fontSize: 16,
+            fontWeight: FontWeight.w700, color: color ?? AnalyticStyle.text(context))),
+      ])),
+);

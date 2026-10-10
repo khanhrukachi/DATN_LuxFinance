@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
@@ -16,7 +17,7 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AuthSurface(child: Scaffold(
       body: WillPopScope(
         onWillPop: () => onWillPop(
           action: (now) => currentBackPressTime = now,
@@ -29,6 +30,6 @@ class _SignupPageState extends State<SignupPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }

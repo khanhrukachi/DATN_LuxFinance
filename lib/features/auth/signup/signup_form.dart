@@ -1,9 +1,9 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/features/auth/login/login_page.dart';
@@ -31,7 +31,7 @@ class _SignupFormState extends State<SignupForm> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  TextEditingController();
   final _formKey = GlobalKey<FormState>();
   DateTime birthday = DateTime.now();
   bool hide = true;
@@ -74,67 +74,52 @@ class _SignupFormState extends State<SignupForm> {
 
         return Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-              child: Column(
-                children: [
-                  Text(
-                    AppLocalizations.of(context).translate('hello_new_user'),
-                    style: const TextStyle(
-                        fontSize: 25, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    AppLocalizations.of(context).translate('welcome_to_app'),
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                  const SizedBox(height: 50),
-                  InputText(
-                    hint: AppLocalizations.of(context).translate('full_name'),
-                    validator: 1,
-                    controller: _nameController,
-                    inputType: TextInputType.name,
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 20),
-                  InputText(
-                    hint: "Email",
-                    validator: 0,
-                    controller: _userController,
-                    inputType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      const Spacer(),
-                      GenderWidget(
-                          currentGender: gender,
-                          gender: true,
-                          action: () {
-                            if (!gender) {
-                              check = false;
-                              setState(() => gender = true);
-                            }
-                          }),
-                      const Spacer(),
-                      GenderWidget(
-                          currentGender: gender,
-                          gender: false,
-                          action: () {
-                            if (gender) {
-                              check = false;
-                              setState(() => gender = false);
-                            }
-                          }),
-                      const Spacer(),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  InkWell(
+          child: AuthPanel(child: Column(
+            children: [
+              const AuthEmblem(icon: Icons.person_add_alt_1_rounded),
+              Text(
+                AppLocalizations.of(context).translate('hello_new_user'),
+                style: const TextStyle(
+                    fontSize: 23, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                AppLocalizations.of(context).translate('welcome_to_app'),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, height: 1.6, color: AuthStyle.muted(context)),
+              ),
+              const SizedBox(height: 28),
+              InputText(
+                hint: AppLocalizations.of(context).translate('full_name'),
+                validator: 1,
+                controller: _nameController,
+                inputType: TextInputType.name,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 20),
+              InputText(
+                hint: "Email",
+                validator: 0,
+                controller: _userController,
+                inputType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: GenderWidget(currentGender: gender, gender: true,
+                    action: () { check = false; setState(() => gender = true); })),
+                const SizedBox(width: 12),
+                Expanded(child: GenderWidget(currentGender: gender, gender: false,
+                    action: () { check = false; setState(() => gender = false); })),
+              ]),
+              const SizedBox(height: 20),
+              Material(color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16), clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () async {
                       final DateTime? picked = await showDatePicker(
                         context: context,
+                        builder: (_, child) => AuthSurface(child: child!),
                         initialDate: birthday,
                         firstDate: DateTime(1900),
                         lastDate: DateTime.now(),
@@ -144,101 +129,101 @@ class _SignupFormState extends State<SignupForm> {
                         setState(() => birthday = picked);
                       }
                     },
-                    child: Container(
+                    child: Ink(
                       padding: const EdgeInsets.only(right: 10, left: 20),
-                      alignment: Alignment.centerLeft,
                       width: double.infinity,
                       height: 57,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.background,
-                        borderRadius: BorderRadius.circular(10),
+                        color: AuthStyle.background(context),
+                        border: Border.all(color: AuthStyle.teal.withOpacity(.2)),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         children: [
                           Text(
                             DateFormat("dd/MM/yyyy").format(birthday),
-                            style: AppStyles.p,
+                            style: TextStyle(fontSize: 14, color: AuthStyle.text(context)),
                           ),
                           const Spacer(),
-                          const Icon(
+                          Icon(
                             Icons.calendar_month_rounded,
-                            size: 25,
-                            color: Colors.grey,
+                            size: 22,
+                            color: AuthStyle.accent(context),
                           )
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  InputPassword(
-                    action: () {
-                      check = false;
-                      setState(() => hide = !hide);
-                    },
-                    hint: AppLocalizations.of(context).translate('password'),
-                    controller: _passwordController,
-                    hide: hide,
-                  ),
-                  const SizedBox(height: 20),
-                  InputPassword(
-                    action: () {
-                      check = false;
-                      setState(() => hide = !hide);
-                    },
-                    hint: AppLocalizations.of(context)
-                        .translate('confirm_password'),
-                    controller: _confirmPasswordController,
-                    password: _passwordController,
-                    hide: hide,
-                  ),
-                  const SizedBox(height: 20),
-                  customButton(
-                    action: () {
-                      if (_formKey.currentState!.validate()) {
-                        loadingAnimation(context);
-                        BlocProvider.of<SignupBloc>(context).add(
-                          SignupEmailPasswordEvent(
-                            email: _userController.text.trim(),
-                            password: _passwordController.text,
-                            user: User(
-                              name: _nameController.text.trim(),
-                              money: 0,
-                              birthday:
-                                  DateFormat("dd/MM/yyyy").format(birthday),
-                              gender: gender,
-                              avatar: "",
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                    },
-                    text: AppLocalizations.of(context).translate('sign_up'),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context).translate('have_account'),
-                        style: AppStyles.p,
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pushReplacement(
-                            createRoute(screen: const LoginPage()),
-                          );
-                        },
-                        child: Text(
-                          AppLocalizations.of(context).translate('login_now'),
-                          style: AppStyles.p,
+                  )),
+              const SizedBox(height: 20),
+              InputPassword(
+                action: () {
+                  check = false;
+                  setState(() => hide = !hide);
+                },
+                hint: AppLocalizations.of(context).translate('password'),
+                controller: _passwordController,
+                hide: hide,
+              ),
+              const SizedBox(height: 20),
+              InputPassword(
+                action: () {
+                  check = false;
+                  setState(() => hide = !hide);
+                },
+                hint: AppLocalizations.of(context)
+                    .translate('confirm_password'),
+                controller: _confirmPasswordController,
+                password: _passwordController,
+                hide: hide,
+              ),
+              const SizedBox(height: 20),
+              customButton(
+                action: () {
+                  if (_formKey.currentState!.validate()) {
+                    loadingAnimation(context);
+                    BlocProvider.of<SignupBloc>(context).add(
+                      SignupEmailPasswordEvent(
+                        email: _userController.text.trim(),
+                        password: _passwordController.text,
+                        user: User(
+                          name: _nameController.text.trim(),
+                          money: 0,
+                          birthday:
+                          DateFormat("dd/MM/yyyy").format(birthday),
+                          gender: gender,
+                          avatar: "",
                         ),
-                      )
-                    ],
+                      ),
+                    );
+                    return;
+                  }
+                },
+                text: AppLocalizations.of(context).translate('sign_up'),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    AppLocalizations.of(context).translate('have_account'),
+                    style: TextStyle(fontSize: 14, color: AuthStyle.text(context)),
                   ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        createRoute(screen: const LoginPage()),
+                      );
+                    },
+                    child: Text(
+                      AppLocalizations.of(context).translate('login_now'),
+                      style: TextStyle(fontSize: 14, color: AuthStyle.text(context)),
+                    ),
+                  )
                 ],
               ),
-            ),
+            ],
+          ),
           ),
         );
       },

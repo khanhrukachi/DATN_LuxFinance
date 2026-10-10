@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import math
 import threading
 import unicodedata
 from datetime import date, datetime
@@ -16,13 +17,28 @@ def folded(value: Any) -> str:
 
 
 def plain(value: Any) -> Any:
+    """Serialize Pydantic v1/v2, numpy scalars and dates without invalid JSON."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
     if hasattr(value, 'model_dump'):
         return plain(value.model_dump(by_alias=False))
+    if hasattr(value, 'dict') and callable(value.dict):
+        return plain(value.dict())
     if isinstance(value, dict):
         return {str(k): plain(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple, set)):
         return [plain(v) for v in value]
-    return value
+    if hasattr(value, 'tolist'):
+        return plain(value.tolist())
+    if hasattr(value, 'item'):
+        return plain(value.item())
+    if hasattr(value, '__dict__'):
+        return plain(vars(value))
+    raise TypeError(f'Unsupported response value: {type(value).__name__}')
 
 
 class ChatAIService:
@@ -40,6 +56,8 @@ class ChatAIService:
         self.finance, self.anomaly = finance, anomaly
         self.labels, self.parents = category_labels, parent_categories
         self._lock = threading.RLock()
+        from .chat_query_engine import ChatQueryEngine
+        self.query_engine = ChatQueryEngine(finance)
 
     def canonical_question(self, question: str, catalog: list[dict]) -> str:
         """Translate canonical display labels to IDs; retain parent/child structure.
@@ -97,22 +115,69 @@ class ChatAIService:
             text = text[:start] + cid + text[end:]
         return text
 
-    def answer(self, *, user_id: str, question: str, transactions: list,
+    def answer(self, **kwargs) -> dict:
+        try:
+            result = self._answer(**kwargs)
+        except ValueError as exc:
+            result = dict(success=True, intent='clarification',
+                          answer=f'Bạn kiểm tra lại dữ liệu hoặc khoảng thời gian: {exc}',
+                          needsInput=['valid_query'], evidence={}, warnings=[])
+        result = plain(result)
+        result.setdefault('warnings', [])
+        result.setdefault('needsInput', [])
+        result.setdefault('evidence', {})
+        result['warnings'] = list(dict.fromkeys(str(w) for w in result['warnings'] if w))
+        result['serviceRevision'] = 'finance_category_chat_v4'
+        return result
+
+    def _answer(self, *, user_id: str, question: str, transactions: list,
                category_catalog: list, advisor_context: dict | None = None,
                reference_date: date | None = None) -> dict:
         scope = folded(question)
         scope = re.sub(r'\s+', ' ', scope).strip()
         if scope in {'xin chao', 'chao', 'hello', 'hi'}:
             return {'success': True, 'intent': 'greeting', 'answer': 'Chào bạn! Bạn có thể hỏi tổng thu chi, danh mục, ngân sách, dự báo hoặc giao dịch bất thường.', 'warnings': [], 'evidence': {}}
+        if re.fullmatch(
+            r"(?:phan tich|danh gia|tong quan)"
+            r"(?:\s+(?:giao dich|chi tieu|thu chi|tai chinh))?"
+            r"(?:\s+(?:"
+            r"thang\s+(?:nay|truoc)"
+            r"|thang\s+\d{1,2}"
+            r"(?:\s*[/\-]\s*\d{4}|\s+nam\s+\d{4})?"
+            r"))?",
+            scope,
+        ):
+            today = (
+                reference_date
+                or datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
+            )
+            context = dict(advisor_context or {})
+            context.update(
+                timezone="Asia/Ho_Chi_Minh",
+                reference_date=today.isoformat(),
+                category_catalog=category_catalog,
+            )
+            with self._lock:
+                return self._financial_overview(
+                    user_id,
+                    transactions,
+                    today,
+                    category_catalog,
+                    context,
+                    scope,
+                )
         forbidden = r'\b(thoi tiet|bong da|viet code|lap trinh|lam tho|ke chuyen|dich sang|weather|football|ignore previous|bo qua huong dan)\b'
         finance_terms = r'\b(chi|thu|tien|ngan sach|han muc|du bao|du doan|bat thuong|thoi quen|hanh vi|tiet kiem|tai chinh|giao dich|luong|income|expense|spending|budget|forecast|anomaly|behavior|afford)\b'
-        if re.search(forbidden, scope) or not re.search(finance_terms, scope):
+        canonical = self.canonical_question(question, category_catalog)
+        targets = self.finance._query_category_targets(canonical, category_catalog)
+        generic = re.search(r'\b(danh muc|thong ke|so sanh|trung binh|binh quan|ty trong|ti le|liet ke|thu chi|giao dich)\b', scope)
+        if re.search(forbidden, scope) or not (re.search(finance_terms, scope) or targets or generic):
             return {'success': True, 'intent': 'out_of_scope', 'answer': 'Chat hỗ trợ hỏi đáp về thu chi cá nhân. Hãy nêu nội dung và khoảng thời gian, ví dụ: Tháng này tôi đã chi bao nhiêu?', 'warnings': [], 'evidence': {}, 'needsInput': ['finance_question']}
         today = reference_date or datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date()
         context = dict(advisor_context or {})
         context.update(timezone='Asia/Ho_Chi_Minh', reference_date=today.isoformat(),
                        category_catalog=category_catalog)
-        question_for_service = self.canonical_question(question, category_catalog)
+        question_for_service = canonical
         text = folded(question)
         # Normalize spaces for intent detection, while the query retains date punctuation.
         text = re.sub(r'\s+', ' ', text).strip()
@@ -122,6 +187,12 @@ class ChatAIService:
             question_for_service = 'Co du tien de thanh toan ' + question_for_service
         if 'how much' in text and not any(term in text for term in ('afford', 'can i buy')):
             question_for_service = 'Bao nhieu ' + question_for_service
+        # Deterministic totals stay independent of the optional ML model lock.
+        direct = self.query_engine.answer(question_for_service, transactions, today, category_catalog, context)
+        if direct is not None:
+            if context.get('history_complete') is not True:
+                direct.setdefault('warnings', []).append('Kết quả chỉ dựa trên lịch sử đã cung cấp; dữ liệu có thể chưa đầy đủ.')
+            return direct
         with self._lock:
             is_comparison = any(w in text for w in ('so sanh', 'so voi', 'tang hay giam', 'compare', 'comparison'))
             overview_request = bool(re.search(r'\b(phan tich|tong quan|danh gia|bao cao|overview|analysis|analyse|analyze)\b', text) and re.search(r'\b(chi tieu|thu chi|thu nhap|tai chinh|tong chi|tong thu|spending|expense|income|finance|financial)\b', text))
@@ -134,7 +205,7 @@ class ChatAIService:
             elif any(w in text for w in ('bat thuong', 'anomaly', 'anomalies', 'giao dich la')):
                 result = self._anomalies(user_id, transactions, question_for_service, today, category_catalog)
             elif any(w in text for w in ('du bao', 'du doan', 'forecast', 'predict')):
-                result = self._forecast(user_id, transactions, text, today, context)
+                result = self._forecast(user_id, transactions, question_for_service, today, context)
             elif any(w in text for w in ('thoi quen', 'hanh vi', 'phan cum', 'behavior', 'behaviour', 'cluster')):
                 result = self._behavior(user_id, transactions, question_for_service, today, category_catalog)
             elif any(w in text for w in ('goi y', 'tu van', 'nen tiet kiem', 'recommendation', 'advise')):
@@ -178,7 +249,7 @@ class ChatAIService:
                 return dict(success=True, intent='period_clarification', answer='Tháng phải từ 1 đến 12 và năm phải hợp lệ.', evidence={}, needsInput=['valid_month'])
             start = date(year, month, 1)
         else:
-            start, _, _ = self.finance._select_period_from_question(question, today)
+            start, _, _ = self.query_engine.period(question, today)
             start = start.replace(day=1)
         if start > actual_today:
             return dict(success=True, intent='period_clarification', answer='Tháng này chưa diễn ra; chưa có thu chi thực tế để phân tích. Bạn có thể hỏi dự báo riêng.', evidence={}, needsInput=['recorded_month'])
@@ -240,9 +311,12 @@ class ChatAIService:
                               'Tháng đang diễn ra so sánh cùng số ngày; tháng đã kết thúc so sánh cả tháng.'])
 
     def _behavior(self, uid, txs, question, today, catalog):
-        start, end, _ = self.finance._select_period_from_question(question, today)
+        start, end, _ = self.query_engine.period(question, today)
         normalized, _ = self.finance._normalized(txs, today, catalog)
         selected = self.finance._within(normalized, start, end)
+        targets = self.finance._query_category_targets(question, catalog)
+        if targets:
+            selected = [t for t in selected if self.finance._category_query_match(question, t, catalog, targets)]
         data = plain(self.finance.kmeans.cluster_spending(
             uid, selected, reference_date=today, category_catalog=catalog))
         clusters = data.get('clusters', [])
@@ -261,7 +335,7 @@ class ChatAIService:
                     warnings=['Cụm mô tả các giao dịch; không tự kết luận bạn chi tiêu lãng phí.'])
 
     def _anomalies(self, uid, txs, question, today, catalog):
-        start, end, period = self.finance._select_period_from_question(question, today)
+        start, end, period = self.query_engine.period(question, today)
         if period != 'month':
             return dict(success=True, intent='anomaly_period_clarification',
                         answer='Phát hiện bất thường hiện phân tích theo tháng. Hãy nêu tháng cần xem, ví dụ: “Chi tiêu tháng này có bất thường không?”.',
@@ -270,6 +344,11 @@ class ChatAIService:
             user_id=uid, transactions=txs, year=start.year, month=start.month,
             reference_date=today, category_catalog=catalog))
         rows = data.get('anomalies', [])
+        targets = self.finance._query_category_targets(question, catalog)
+        if targets:
+            normalized, _ = self.finance._normalized(txs, today, catalog)
+            ids = {t.id for t in normalized if self.finance._category_query_match(question, t, catalog, targets)}
+            rows = [r for r in rows if str(r.get('transaction_id', r.get('transactionId', r.get('id', '')))) in ids]
         ready = data.get('statistics', {}).get('modelReady', False)
         if not data.get('success'):
             answer = '; '.join(data.get('alerts') or [data.get('message') or 'Chưa đủ dữ liệu để phân tích.'])
@@ -293,15 +372,36 @@ class ChatAIService:
         days = int(days_match.group(1)) if days_match else 7
         if not 1 <= days <= 30:
             raise ValueError('Số ngày dự báo phải nằm trong 1..30.')
-        # Do not silently forecast a different month or a retrospective period.
-        incompatible = ('thang sau', 'next month', 'thang truoc', 'last month', 'hom qua',
-                        'tuan truoc', 'last week', 'nam ngoai', 'last year')
-        if any(term in text for term in incompatible) or re.search(r'\b(?:thang|nam|month|year)\s+\d', text):
-            return dict(success=True, intent='forecast_period_clarification',
-                        answer='Trong chat, dự báo hiện hỗ trợ 1–30 ngày tới. Để dự báo theo tháng được chọn, hãy dùng màn hình Dự báo.',
-                        needsInput=['forecast_horizon'], evidence={})
-        data = plain(self.finance.lstm.predict_trend(uid, txs, prediction_days=days,
-                                                   advisor_context=context, forecast_mode='rolling'))
+        forecast_year = forecast_month = None
+        mode = 'rolling'
+        month_match = re.search(r'\b(?:thang|month)\s+(\d{1,2})(?:\s*[/\-]\s*(\d{4})|\s+(?:nam|year)\s+(\d{4}))?', text)
+        if 'thang sau' in text or 'next month' in text:
+            forecast_month = today.month % 12 + 1
+            forecast_year = today.year + (today.month == 12)
+            mode = 'month'
+        elif month_match:
+            forecast_month = int(month_match.group(1))
+            forecast_year = int(month_match.group(2) or month_match.group(3) or today.year)
+            mode = 'month'
+        elif 'thang nay' in text or 'this month' in text:
+            forecast_year, forecast_month = today.year, today.month
+            mode = 'month'
+        elif any(term in text for term in ('thang truoc','last month','hom qua','tuan truoc','nam ngoai')):
+            return dict(success=True, intent='forecast_period_clarification', answer='Kỳ này đã diễn ra. Hãy hỏi tổng chi thực tế hoặc chọn kỳ dự báo tương lai.', evidence={}, needsInput=['future_period'])
+        if mode == 'month':
+            import calendar
+            first = date(forecast_year, forecast_month, 1)
+            last = date(forecast_year, forecast_month, calendar.monthrange(forecast_year,forecast_month)[1])
+            if last <= today:
+                return dict(success=True,intent='forecast_period_clarification',answer='Tháng này đã kết thúc; hãy xem thống kê thực tế.',evidence={},needsInput=['future_period'])
+            if not days_match:
+                days = min(30,(last-max(first,today)).days + (1 if first>today else 0))
+        normalized, _ = self.finance._normalized(txs, today, context.get('category_catalog'))
+        targets = self.finance._query_category_targets(text, context.get('category_catalog'))
+        if targets:
+            normalized = [t for t in normalized if self.finance._category_query_match(text, t, context.get('category_catalog'), targets)]
+        data = plain(self.finance.lstm.predict_trend(uid, normalized, prediction_days=days,
+                                                   year=forecast_year, month=forecast_month, advisor_context=context, forecast_mode=mode))
         rows = data.get('predictions', [])
         if not data.get('success') or not rows or data.get('summary', {}).get('forecastAvailable') is False:
             return dict(success=True, intent='spending_forecast',
@@ -312,11 +412,13 @@ class ChatAIService:
         summary = data.get('summary', {})
         method = summary.get('forecastMethod') or summary.get('method') or summary.get('model') or 'lstm_or_baseline'
         return dict(success=True, intent='spending_forecast',
-                    answer=f'Trong {len(rows)} ngày tới, chi ra ước tính {expense:,.0f}đ, thu vào ước tính {income:,.0f}đ.',
+                    answer=f'Trong khoảng dự báo gồm {len(rows)} ngày, chi ra ước tính {expense:,.0f}đ, thu vào ước tính {income:,.0f}đ.',
                     evidence={'predictedExpense': round(expense), 'predictedIncome': round(income),
-                              'forecastDays': len(rows), 'forecastMethod': method, 'daily': rows},
+                              'matchedCategories': targets, 'forecastDays': len(rows), 'forecastMethod': method, 'daily': rows, 'forecastMode': mode,
+                              'analysisMonth': f'{forecast_month:02d}/{forecast_year}' if mode == 'month' else None},
                     warnings=['Đây là số dự báo từ lịch sử cá nhân; không tính là giao dịch hoặc thu nhập đã xác nhận.',
-                              *summary.get('warnings', [])])
+                              *summary.get('warnings', []),
+                              *(['Dự báo tháng giới hạn 30 ngày; xem từng ngày để biết chính xác khoảng được dự báo.'] if mode == 'month' else [])])
 
     def _recommendations(self, uid, txs, today, catalog, context):
         data = plain(self.finance.build_recommendations(

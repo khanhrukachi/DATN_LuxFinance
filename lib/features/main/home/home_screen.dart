@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 import 'package:intl/intl.dart';
 
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/extension.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_parent_widget.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_spending_widget.dart';
@@ -46,19 +46,29 @@ class _HomePageState extends State<HomePage>
   }
 
   @override
+  void dispose() { _monthController.dispose(); super.dispose(); }
+
+  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Scaffold(backgroundColor: HomeStyle.background(context),
+        body: Center(child: Text(AppLocalizations.of(context).translate('no_data'))));
     return Scaffold(
+      backgroundColor: HomeStyle.background(context),
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection("spending")
               .where(
             "userId",
-            isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+            isEqualTo: user.uid,
           )
               .orderBy("date", descending: true)
               .snapshots(),
           builder: (context, snapshot) {
+            if (snapshot.hasError) return Center(child: Text(
+                AppLocalizations.of(context).translate('something_went_wrong'),
+                style: TextStyle(color: HomeStyle.muted(context))));
             if (!snapshot.hasData) {
               return _loading();
             }
@@ -96,21 +106,26 @@ class _HomePageState extends State<HomePage>
   }) {
     return CustomScrollView(
       slivers: [
-        const SliverToBoxAdapter(child: SizedBox(height: 10)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         SliverToBoxAdapter(
-          child: SizedBox(
-            height: 40,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(4),
+            decoration: HomeStyle.decoration(context),
+            height: 52,
             child: TabBar(
               controller: _monthController,
               isScrollable: true,
-              labelColor: const Color.fromRGBO(0, 210, 255, 1),
-              unselectedLabelColor:
-              const Color.fromRGBO(45, 216, 198, 1),
+              splashBorderRadius: BorderRadius.circular(16),
+              labelColor: HomeStyle.ink,
+              unselectedLabelColor: HomeStyle.muted(context),
               labelStyle: const TextStyle(
                   fontWeight: FontWeight.bold, fontSize: 16),
-              unselectedLabelStyle: AppStyles.p,
-              indicatorColor: Colors.green,
+              unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(gradient: HomeStyle.gradient, borderRadius: BorderRadius.circular(16)),
               tabs: List.generate(19, (index) {
                 return SizedBox(
                   width: MediaQuery.of(context).size.width / 4,
@@ -145,27 +160,24 @@ class _HomePageState extends State<HomePage>
 
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text(
               AppLocalizations.of(context)
                   .translate('spending_list'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
+              textAlign: TextAlign.start,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: HomeStyle.text(context)),
             ),
           ),
         ),
 
         monthSpendingList.isNotEmpty
-            ? SliverFillRemaining(
+            ? SliverToBoxAdapter(
           child: ItemParentIdWidget(
-            spendingList: monthSpendingList,
+            spendingList: monthSpendingList, embedded: true,
           ),
         )
             : SliverFillRemaining(
+          hasScrollBody: false,
           child: Center(
             child: Text(
               AppLocalizations.of(context)
@@ -189,10 +201,10 @@ class _HomePageState extends State<HomePage>
         SliverToBoxAdapter(
           child: SummarySpending(
             monthSpendingList: [],
-            allSpendingList: [],
+            allSpendingList: [], isLoading: true,
           ),
         ),
-        SliverFillRemaining(child: ItemSpendingWidget()),
+        SliverToBoxAdapter(child: ItemSpendingWidget(embedded: true)),
       ],
     );
   }

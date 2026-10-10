@@ -1,55 +1,31 @@
-import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/app_colors.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class GenderWidget extends StatelessWidget {
-  const GenderWidget({
-    Key? key,
-    required this.action,
-    required this.gender,
-    required this.currentGender,
-  }) : super(key: key);
+  const GenderWidget({Key? key, required this.action, required this.gender,
+    required this.currentGender}) : super(key: key);
   final bool currentGender;
   final bool gender;
   final Function action;
-
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      splashColor: Colors.transparent,
-      onTap: () {
-        action();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: gender == currentGender
-              ? Colors.white24
-              : AppColors.whisperBackground,
-          border: Border.all(
-            color: gender == currentGender
-                ? Colors.black12
-                : AppColors.whisperBackground,
-          ),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Text(
-              gender
-                  ? AppLocalizations.of(context).translate('male')
-                  : AppLocalizations.of(context).translate('female'),
-              style: AppStyles.p,
-            ),
-            const SizedBox(height: 10),
-            Image.asset(
-              gender ? 'assets/images/male.png' : 'assets/images/female.png',
-              width: 100,
-            ),
-          ],
-        ),
-      ),
-    );
+    final selected = gender == currentGender;
+    return Semantics(selected: selected, button: true,
+        child: Material(color: selected ? AuthStyle.accent(context).withOpacity(.12) : AuthStyle.background(context),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: selected ? AuthStyle.accent(context) : AuthStyle.teal.withOpacity(.2))),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(onTap: () { action(); },
+              child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  child: Column(children: [
+                    Icon(gender ? Icons.male_rounded : Icons.female_rounded, size: 24, color: AuthStyle.accent(context)),
+                    const SizedBox(height: 6),
+                    Text(AppLocalizations.of(context).translate(gender ? 'male' : 'female'),
+                        textAlign: TextAlign.center, style: TextStyle(fontSize: 14,
+                            color: selected ? AuthStyle.accent(context) : AuthStyle.text(context),
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                  ]))),
+        ));
   }
 }

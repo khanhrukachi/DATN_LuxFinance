@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
@@ -91,59 +92,60 @@ class _BudgetTypeSelectorState extends State<BudgetTypeSelector> {
     }
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
+      height: MediaQuery.of(context).size.height * 0.82,
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        color: BudgetStyle.background(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey[400],
-              borderRadius: BorderRadius.circular(4),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: BudgetStyle.text(context).withOpacity(.18),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            localizations.translate('select_category'),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              _isEnglish(context)
-                  ? 'Choose an overall, parent, or subcategory budget.'
-                  : 'Chọn ngân sách tổng, theo danh mục cha hoặc danh mục con.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+            const SizedBox(height: 16),
+            Text(
+              localizations.translate('select_category'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-              children: [
-                _categoryTile(
-                  context,
-                  index: 0,
-                  selectedType: widget.selectedType,
-                  isParent: false,
-                  isOverall: true,
-                ),
-                const Divider(height: 1),
-                for (final index in parentIndexes) ...[
-                  _parentTile(context, index, widget.selectedType),
-                  const Divider(height: 1),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                localizations.translate('budget_choose_scope'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                children: [
+                  _categoryTile(
+                    context,
+                    index: 0,
+                    selectedType: widget.selectedType,
+                    isParent: false,
+                    isOverall: true,
+                  ),
+                  Divider(height: 8, color: BudgetStyle.teal.withOpacity(.08)),
+                  for (final index in parentIndexes) ...[
+                    _parentTile(context, index, widget.selectedType),
+                    Divider(height: 8, color: BudgetStyle.teal.withOpacity(.08)),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -172,7 +174,8 @@ class _BudgetTypeSelectorState extends State<BudgetTypeSelector> {
               ),
             ),
             IconButton(
-              tooltip: expanded ? 'Collapse subcategories' : 'Show subcategories',
+              tooltip: AppLocalizations.of(context).translate(expanded ? 'budget_collapse_children' : 'budget_show_children'),
+              color: BudgetStyle.accent(context),
               onPressed: () => setState(() {
                 if (expanded) {
                   _expandedCategories.remove(id);
@@ -187,7 +190,7 @@ class _BudgetTypeSelectorState extends State<BudgetTypeSelector> {
         if (expanded)
           for (final childIndex in children)
             Padding(
-              padding: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.only(left: 14),
               child: _categoryTile(
                 context,
                 index: childIndex,
@@ -199,45 +202,57 @@ class _BudgetTypeSelectorState extends State<BudgetTypeSelector> {
     );
   }
 
-  Widget _categoryTile(
-      BuildContext context, {
-        required int index,
-        required int? selectedType,
-        required bool isParent,
-        bool isOverall = false,
-      }) {
+  Widget _categoryTile(BuildContext context, {
+    required int index,
+    required int? selectedType,
+    required bool isParent,
+    bool isOverall = false,
+  }) {
     final item = listType[index];
-    final titleKey = item['title']?.toString() ?? 'other';
-    final imagePath = item['image']?.toString();
-    final title = AppLocalizations.of(context).translate(titleKey);
+    final title = AppLocalizations.of(context).translate(item['title']?.toString() ?? 'other');
+    final image = item['image']?.toString();
     final selected = selectedType == index;
-    final color = selected ? Colors.blueAccent : Colors.blueGrey;
-
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: isParent ? 8 : 12),
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withOpacity(0.12),
-        ),
-        padding: const EdgeInsets.all(9),
-        child: imagePath == null
-            ? Icon(Icons.category_outlined, color: color)
-            : Image.asset(
-          imagePath,
-          errorBuilder: (_, __, ___) => Icon(Icons.category_outlined, color: color),
+    final prominent = isParent || isOverall;
+    final accent = BudgetStyle.accent(context);
+    final tr = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Material(
+        color: selected
+            ? (BudgetStyle.dark(context) ? const Color(0xFF16463F) : const Color(0xFFDCF9F1))
+            : BudgetStyle.card(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: BudgetStyle.teal.withOpacity(selected ? .5 : .16))),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: () => Navigator.pop(context, index),
+          splashColor: BudgetStyle.teal.withOpacity(.14),
+          child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+            Container(width: 42, height: 42, padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                    color: prominent ? null : BudgetStyle.teal.withOpacity(.10),
+                    gradient: prominent ? BudgetStyle.gradient : null,
+                    borderRadius: BorderRadius.circular(14)),
+                child: image == null || image.isEmpty
+                    ? Icon(isOverall ? Icons.account_balance_wallet_outlined
+                    : isParent ? Icons.folder_rounded : Icons.label_outline_rounded,
+                    color: prominent ? BudgetStyle.ink : accent, size: 22)
+                    : Image.asset(image, errorBuilder: (_, __, ___) => Icon(Icons.category_outlined,
+                    color: prominent ? BudgetStyle.ink : accent))),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: TextStyle(fontSize: 14, height: 1.4,
+                  fontWeight: prominent ? FontWeight.w700 : FontWeight.w500,
+                  color: BudgetStyle.text(context))),
+              if (isOverall || isParent) ...[
+                const SizedBox(height: 4),
+                Text(tr.translate(isOverall ? 'budget_scope_overall' : 'budget_scope_parent'),
+                    style: TextStyle(fontSize: 11, height: 1.4, color: BudgetStyle.muted(context))),
+              ],
+            ])),
+            if (selected) ...[const SizedBox(width: 8), Icon(Icons.check_circle_rounded, color: accent, size: 22)],
+          ])),
         ),
       ),
-      title: Text(title, style: TextStyle(fontWeight: isParent ? FontWeight.w600 : FontWeight.normal)),
-      subtitle: isOverall
-          ? Text(_isEnglish(context) ? 'Includes every expense category' : 'Bao gồm tất cả danh mục chi tiêu')
-          : isParent
-          ? Text(_isEnglish(context) ? 'Includes this group and its subcategories' : 'Bao gồm nhóm này và các danh mục con')
-          : null,
-      trailing: selected ? const Icon(Icons.check_circle, color: Colors.blueAccent) : null,
-      onTap: () => Navigator.pop(context, index),
     );
   }
 

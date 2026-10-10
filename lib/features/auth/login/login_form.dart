@@ -1,10 +1,10 @@
+import 'package:personal_financial_management/features/auth/widget/auth_style.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:personal_financial_management/core/constants/app_styles.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/features/auth/forgot/forgot_screen.dart';
@@ -80,132 +80,130 @@ class _LoginFormState extends State<LoginForm> {
   Widget _buildForm(BuildContext context) {
     return Form(
       key: _formKey,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          child: Column(
+      child: AuthPanel(child: Column(
+        children: [
+          const AuthEmblem(icon: Icons.account_balance_wallet_outlined),
+          Text(
+            AppLocalizations.of(context).translate('hello_again'),
+            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            AppLocalizations.of(context)
+                .translate('welcome_back_you_been_missed'),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, height: 1.6, color: AuthStyle.muted(context)),
+          ),
+          const SizedBox(height: 28),
+
+          InputText(
+            hint: "Email",
+            validator: 0,
+            controller: _userController,
+            inputType: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 20),
+
+          InputPassword(
+            action: () => setState(() => hide = !hide),
+            hint: AppLocalizations.of(context).translate('password'),
+            controller: _passwordController,
+            hide: hide,
+          ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
-                AppLocalizations.of(context).translate('hello_again'),
-                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                AppLocalizations.of(context)
-                    .translate('welcome_back_you_been_missed'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20),
-              ),
-              const SizedBox(height: 50),
-
-              InputText(
-                hint: "Email",
-                validator: 0,
-                controller: _userController,
-                inputType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-
-              InputPassword(
-                action: () => setState(() => hide = !hide),
-                hint: AppLocalizations.of(context).translate('password'),
-                controller: _passwordController,
-                hide: hide,
-              ),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        createRoute(
-                          screen: const ForgotPage(),
-                          begin: const Offset(1, 0),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      AppLocalizations.of(context)
-                          .translate('forgot_password'),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    createRoute(
+                      screen: const ForgotPage(),
+                      begin: const Offset(1, 0),
                     ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              customButton(
-                action: () {
-                  if (_formKey.currentState!.validate()) {
-                    loadingAnimation(context);
-                    context.read<LoginBloc>().add(
-                      LoginWithEmailPasswordEvent(
-                        email: _userController.text.trim(),
-                        password: _passwordController.text.trim(),
-                      ),
-                    );
-                  }
+                  );
                 },
-                text: AppLocalizations.of(context).translate('sign_in'),
-              ),
-
-              const SizedBox(height: 30),
-              const TextContinue(),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                height: 50,
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    loadingAnimation(context);
-                    context.read<LoginBloc>().add(LoginWithGoogleEvent());
-                  },
-                  icon: Image.asset(
-                    "assets/logo/google_logo.png",
-                    width: 20,
-                  ),
-                  label: const Text(
-                    "Google",
-                    style: TextStyle(color: Color.fromRGBO(125, 125, 125, 1)),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+                child: Text(
+                  AppLocalizations.of(context)
+                      .translate('forgot_password'),
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)
-                        .translate('do_not_have_account'),
-                    style: AppStyles.p,
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        createRoute(screen: const SignupPage()),
-                      );
-                    },
-                    child: Text(
-                      AppLocalizations.of(context)
-                          .translate('register_now'),
-                      style: AppStyles.p,
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
+
+          const SizedBox(height: 20),
+
+          customButton(
+            action: () {
+              if (_formKey.currentState!.validate()) {
+                loadingAnimation(context);
+                context.read<LoginBloc>().add(
+                  LoginWithEmailPasswordEvent(
+                    email: _userController.text.trim(),
+                    password: _passwordController.text.trim(),
+                  ),
+                );
+              }
+            },
+            text: AppLocalizations.of(context).translate('sign_in'),
+          ),
+
+          const SizedBox(height: 24),
+          const TextContinue(),
+          const SizedBox(height: 20),
+
+          SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                loadingAnimation(context);
+                context.read<LoginBloc>().add(LoginWithGoogleEvent());
+              },
+              icon: Image.asset(
+                "assets/logo/google_logo.png",
+                width: 20,
+              ),
+              label: Text("Google", style: TextStyle(color: AuthStyle.text(context), fontWeight: FontWeight.w600)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AuthStyle.background(context),
+                foregroundColor: AuthStyle.text(context),
+                elevation: 0,
+                side: BorderSide(color: AuthStyle.teal.withOpacity(.2)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                AppLocalizations.of(context)
+                    .translate('do_not_have_account'),
+                style: TextStyle(fontSize: 14, color: AuthStyle.text(context)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    createRoute(screen: const SignupPage()),
+                  );
+                },
+                child: Text(
+                  AppLocalizations.of(context)
+                      .translate('register_now'),
+                  style: TextStyle(fontSize: 14, color: AuthStyle.text(context)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       ),
     );
   }

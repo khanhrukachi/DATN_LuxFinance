@@ -14,10 +14,9 @@ class CategoryMatch {
 /// "đi ăn phở", "di an pho" và "pho ga" đều có thể về danh mục ăn uống.
 class CategoryMatcher {
   static const Map<String, List<String>> _aliases = {
-    'current_money': [
-      'số dư', 'so du', 'số dư hiện tại', 'tiền mặt', 'tiền trong ví',
-      'tiền đang có', 'tài khoản hiện tại', 'current money', 'current balance',
-      'cash balance', 'wallet balance', 'cash',
+    'market': [
+      'đi chợ', 'chợ', 'siêu thị', 'mua rau', 'mua thịt', 'mua cá',
+      'tạp hóa', 'bách hóa', 'groceries', 'supermarket', 'market',
     ],
 
     'eating': [
@@ -26,11 +25,12 @@ class CategoryMatcher {
       'cơm chiên', 'phở', 'phở bò', 'phở gà', 'bún', 'bún bò', 'bún chả',
       'bún thịt nướng', 'mì', 'mì gói', 'mì cay', 'hủ tiếu', 'cháo',
       'bánh mì', 'bánh bao', 'xôi', 'gỏi', 'lẩu', 'nướng', 'đồ ăn',
-      'thức ăn', 'thực phẩm', 'đi chợ', 'chợ', 'mua rau', 'mua thịt',
-      'mua cá', 'mua đồ ăn', 'đặt đồ ăn', 'giao đồ ăn', 'ship đồ ăn',
+      'thức ăn', 'thực phẩm', 'mua đồ ăn', 'đặt đồ ăn', 'giao đồ ăn', 'ship đồ ăn',
       'đi ăn', 'quán ăn', 'nhà hàng', 'canteen', 'food', 'eat', 'lunch',
       'dinner', 'breakfast', 'brunch', 'pho', 'noodle', 'restaurant',
       'food delivery', 'grabfood', 'shopeefood', 'baemin', 'doordash',
+      'nước dừa', 'dừa tươi', 'nước mía', 'nước cam', 'nước chanh',
+      'nước sâm', 'nước rau má', 'sữa đậu nành', 'sữa tươi',
       'đồ uống', 'nước uống', 'nước lọc', 'nước suối', 'trà', 'trà sữa',
       'cà phê', 'cafe', 'coffee', 'sinh tố', 'nước ép', 'bia', 'rượu',
       'nước ngọt', 'pepsi', 'coca', 'milk tea', 'drink', 'beverage',
@@ -108,11 +108,6 @@ class CategoryMatcher {
     'insurance': [
       'bảo hiểm', 'bảo hiểm y tế', 'bảo hiểm xe', 'bảo hiểm nhân thọ',
       'bảo hiểm xã hội', 'insurance', 'health insurance', 'life insurance',
-    ],
-    'family_service': [
-      'gia đình', 'bố mẹ', 'ba mẹ', 'cha mẹ', 'ông bà', 'con cái',
-      'vợ', 'chồng', 'anh chị em', 'tiền gửi về nhà', 'chu cấp',
-      'học thêm cho con', 'family', 'parents', 'child care', 'childcare',
     ],
     'pet': [
       'thú cưng', 'vật nuôi', 'động vật cảnh',
@@ -431,20 +426,6 @@ class CategoryMatcher {
       'mua linh tinh', 'chi linh tinh', 'không biết xếp vào đâu', 'khác',
       'other cost', 'other expense', 'miscellaneous', 'misc expense',
     ],
-    'money_transferred': [
-      'chuyển tiền', 'chuyển khoản', 'gửi tiền', 'chuyển tiền đi',
-      'chuyển vào tài khoản khác', 'bank transfer', 'money transfer',
-      'transfer money', 'send money', 'cash transfer',
-    ],
-    'money_transferred_to': [
-      'tiền chuyển đến', 'nhận chuyển khoản', 'nhận tiền chuyển khoản',
-      'tiền được chuyển vào', 'chuyển tiền đến', 'receive transfer',
-      'money received by transfer', 'incoming transfer', 'nhận từ',
-    ],
-    'new_group': [
-      'nhóm mới', 'tạo nhóm', 'danh mục mới', 'thêm danh mục', 'new group',
-      'new category', 'create category',
-    ],
   };
 
   // Mở rộng tự động các cụm tiếng Việt, tiếng Anh, thương hiệu và sản phẩm.
@@ -599,7 +580,7 @@ class CategoryMatcher {
     for (var index = 0; index < listType.length; index++) {
       final item = listType[index];
       final key = item['title'] ?? '';
-      if (key.isEmpty || item['image'] == null) continue;
+      if (key.isEmpty || item['isParent'] == 'true' || item['image'] == null) continue;
 
       final aliases = <String>{
         key,
@@ -614,7 +595,15 @@ class CategoryMatcher {
 
         // Cụm từ dài cụ thể hơn từ đơn. Ví dụ "tiền gas" thắng "gas".
         final length = normalizedAlias.length;
-        final score = (0.62 + (length / 80)).clamp(0.62, 0.98).toDouble();
+        // Prefer an exact accented phrase: dừa and đũa both fold to
+        // "dua", but represent very different items.
+        final exact = RegExp(
+          '(^|\\s)${RegExp.escape(alias.toLowerCase())}(?=\\s|\$)',
+        ).hasMatch(input.toLowerCase().replaceAll(
+          RegExp(r'[.,!?;:/()\[\]{}]+'), ' ',
+        ));
+        final score = (0.62 + (length / 80) + (exact ? 0.08 : 0))
+            .clamp(0.62, 0.98).toDouble();
         if (best == null || score > best.confidence ||
             (score == best.confidence && length > bestAliasLength)) {
           best = CategoryMatch(index, key, score);
@@ -626,10 +615,8 @@ class CategoryMatcher {
   }
 
   static bool _matches(String input, String alias) {
-    if (alias.length <= 2) {
-      return input.split(' ').contains(alias);
-    }
-    return input.contains(alias);
+    return RegExp('(^|\\s)${RegExp.escape(alias)}(?=\\s|\$)')
+        .hasMatch(input);
   }
 
   static String _normalize(String value) {

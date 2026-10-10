@@ -1,58 +1,25 @@
+import 'package:personal_financial_management/features/main/widget/main_style.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class CustomTabBar extends StatelessWidget {
-  const CustomTabBar({super.key});
-
+  const CustomTabBar({Key? key}) : super(key: key);
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(0),
-      margin: const EdgeInsets.all(10),
-      width: 220,
-      decoration: const BoxDecoration(
-        color: Colors.black12,
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-      ),
-      child: TabBar(
-        padding: const EdgeInsets.all(3),
-        tabs: [
-          Container(
-            padding: const EdgeInsets.all(0),
-            width: 100,
-            // color: Colors.black,
-            height: 30,
-            child: Center(
-              child: Text(AppLocalizations.of(context).translate('spending'),
-                  style: const TextStyle(fontSize: 15)),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(0),
-            width: 100,
-            height: 30,
-            child: Center(
-              child: Text(AppLocalizations.of(context).translate('incomes'),
-                  style: const TextStyle(fontSize: 15)),
-            ),
-          ),
-        ],
-        unselectedLabelColor: Colors.black54,
-        labelColor: Colors.black,
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-        indicatorSize: TabBarIndicatorSize.label,
-        indicator: BoxDecoration(
-          border: Border.all(color: Colors.grey, width: 2),
-          shape: BoxShape.rectangle,
-          borderRadius: BorderRadius.circular(50),
-          color: Colors.white,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(12),
+    child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 360),
+        child: Material(color: MainStyle.card(context), clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18),
+                side: BorderSide(color: MainStyle.teal.withOpacity(.16))),
+            child: Padding(padding: const EdgeInsets.all(4),
+                child: TabBar(dividerColor: Colors.transparent, indicatorSize: TabBarIndicatorSize.tab,
+                    splashBorderRadius: BorderRadius.circular(14),
+                    labelColor: MainStyle.ink, unselectedLabelColor: MainStyle.muted(context),
+                    labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    indicator: BoxDecoration(gradient: MainStyle.gradient, borderRadius: BorderRadius.circular(14)),
+                    tabs: [
+                      Tab(height: 44, text: AppLocalizations.of(context).translate('spending')),
+                      Tab(height: 44, text: AppLocalizations.of(context).translate('incomes')),
+                    ])))),
+  );
 }
