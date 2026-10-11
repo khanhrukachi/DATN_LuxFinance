@@ -62,15 +62,17 @@ class ChatQueryEngine:
             items = [t for t in items if self.finance._category_query_match(q, t, catalog, targets)]
         # Category scope wins over generic verbs: "thu chi lương" stays salary.
         direction = 'both'
-        if re.search(r'\b(thu chi|dong tien|cashflow|tong quan|phan tich|bao cao)\b', q):
+        if re.search(r'\b(thu chi|dong tien|cashflow)\b', q):
             direction = 'both'
-        elif re.search(r'\b(thu nhap|tong thu|tien vao|income|salary|nhan)\b', q):
+        elif re.search(r'\b(thu nhap|tong thu|khoan thu|thu vao|nguon thu|tien vao|kiem duoc|kiem tien|thu duoc|thu ve|tien thu|income|salary|earn|earned|earnings|nhan)\b', q):
             direction = 'income'
         elif re.search(r'\b(chi tieu|tong chi|da chi|chi ra|tieu|expense|spending)\b', q):
             direction = 'expense'
         elif targets:
             incoming = {'income', 'salary', 'borrow', 'debt_collection', 'earn_profit', 'other_income'}
             direction = 'income' if all(t in incoming for t in targets) else 'expense'
+        elif re.search(r'\b(tai chinh|finance|financial|tong quan|phan tich|bao cao)\b', q):
+            direction = 'both'
         else:
             direction = 'expense'
         if direction != 'both':
@@ -123,7 +125,12 @@ class ChatQueryEngine:
         scope = ', '.join(self.label(t, catalog) for t in targets) or ('thu chi' if direction == 'both' else 'thu vào' if direction == 'income' else 'chi ra')
         header = f'{scope} từ {start:%d/%m/%Y} đến {end:%d/%m/%Y}' if kind != 'all' else f'{scope} trong toàn bộ lịch sử được cung cấp'
         intent = 'category_summary'
-        lines = [f'{header}: {len(items)} giao dịch; thu vào {money(inflow)}, chi ra {money(outflow)}, chênh lệch {money(inflow-outflow)}.']
+        if direction == 'expense':
+            lines = [f'{header}: {len(items)} giao dịch; tổng chi tiêu {money(outflow)}.']
+        elif direction == 'income':
+            lines = [f'{header}: {len(items)} giao dịch; tổng thu vào {money(inflow)}.']
+        else:
+            lines = [f'{header}: {len(items)} giao dịch; thu vào {money(inflow)}, chi ra {money(outflow)}, chênh lệch {money(inflow-outflow)}.']
         if re.search(r'\b(trung binh|binh quan|average)\b', q):
             days = (end-start).days+1
             if kind == 'all':
@@ -185,10 +192,26 @@ class ChatQueryEngine:
         start,end,kind=self.period(q,today)
         if len(targets)>=2 and not re.search(r'thang truoc|tuan truoc|nam ngoai|cung ky',q) and len(periods)<2:
             rows=[]
+            scopes=[]
             for target in targets:
                 items,direction=self.select(normalized,q,catalog,[target],start,end)
+                scopes.append({id(t) for t in items})
                 rows.append(dict(categoryId=target,categoryName=self.label(target,catalog),amount=round(sum(abs(t.money) for t in items)),transactionCount=len(items)))
-            return self.reply('category_comparison','\n'.join(f'• {r["categoryName"]}: {money(r["amount"])} ({r["transactionCount"]} giao dịch).' for r in rows),dict(categories=rows,scopeMayOverlap=True),period=dict(startDate=start.isoformat(),endDate=end.isoformat()),warnings=['Danh mục cha có thể bao gồm danh mục con; các dòng so sánh không cộng dồn.'])
+            overlap=any(scopes[i].intersection(scopes[j]) for i in range(len(scopes)) for j in range(i+1,len(scopes)))
+            lines=[f'So sánh từ {start:%d/%m/%Y} đến {end:%d/%m/%Y}:']
+            lines.extend(f'• {r["categoryName"]}: {money(r["amount"])} ({r["transactionCount"]} giao dịch).' for r in rows)
+            evidence=dict(categories=rows,scopeMayOverlap=overlap)
+            if len(rows)==2:
+                first,second=rows
+                difference=first['amount']-second['amount']
+                percent=round(difference/second['amount']*100,2) if second['amount'] else None
+                evidence.update(difference=difference,comparisonPercent=percent,comparisonBaseCategoryId=second['categoryId'])
+                if difference:
+                    lines.append(f'{first["categoryName"]} {"cao hơn" if difference>0 else "thấp hơn"} {second["categoryName"]} {money(abs(difference))}' + (f' ({abs(percent)}% so với {second["categoryName"]}).' if percent is not None else '. Không tính tỷ lệ vì danh mục đối chiếu bằng 0.'))
+                else:
+                    lines.append('Hai danh mục có tổng số tiền bằng nhau.')
+            warnings=['Hai phạm vi có giao dịch trùng nhau; không cộng dồn các dòng so sánh.'] if overlap else []
+            return self.reply('category_comparison','\n'.join(lines),evidence,period=dict(startDate=start.isoformat(),endDate=end.isoformat()),warnings=warnings)
         if len(periods)>=2:
             def bounds(values):
                 mm=int(values[0]);yy=int(values[1] or values[2] or today.year)

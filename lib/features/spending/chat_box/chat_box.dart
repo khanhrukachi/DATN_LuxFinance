@@ -40,6 +40,28 @@ class _ChatBoxState extends State<ChatBox> {
 
   final List<ChatMessage> _messages = [];
 
+  final ChatConversationMemory _memory = ChatConversationMemory();
+  ChatMessage? _activeDraftMessage;
+
+  String _say(String vi, String en) =>
+      Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
+
+  bool _sameDraft(ChatTransactionDraft a, ChatTransactionDraft b) =>
+      a.amount == b.amount && a.type == b.type && a.date == b.date &&
+          a.note == b.note && a.location == b.location && a.kind == b.kind &&
+          a.hasExplicitTime == b.hasExplicitTime;
+
+  void _retireDraft() {
+    final active = _activeDraftMessage;
+    if (active == null) return;
+    final index = _messages.indexOf(active);
+    if (index >= 0) {
+      _messages[index] = ChatMessage(text: _say(
+          'Bản nháp đã được cập nhật hoặc hủy.', 'Draft updated or cancelled.'), fromUser: false);
+    }
+    _activeDraftMessage = null;
+  }
+
   bool _greetingAdded = false;
   bool _saving = false;
 
@@ -113,6 +135,8 @@ class _ChatBoxState extends State<ChatBox> {
     if (_saving) return;
 
     _controller.clear();
+    _memory.clear();
+    _activeDraftMessage = null;
 
     setState(() {
       _messages
@@ -128,40 +152,51 @@ class _ChatBoxState extends State<ChatBox> {
 
   void _send() {
     final input = _controller.text.trim();
-
     if (input.isEmpty || _saving) return;
-
-    final result = ChatParser.parse(input, context);
     _controller.clear();
-
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: input,
-          fromUser: true,
-        ),
-      );
-
-      if (result.draft != null) {
-        _messages.add(
-          ChatMessage(
-            text: _t('transaction_chat_02'),
-            fromUser: false,
-            draft: result.draft,
-          ),
-        );
+    if (ChatParser.isSave(input)) {
+      setState(() => _messages.add(ChatMessage(text: input, fromUser: true)));
+      final active = _activeDraftMessage;
+      if (active != null) {
+        _confirm(active);
       } else {
-        _messages.add(
-          ChatMessage(
-            text: result.question ??
-                result.error ??
-                _t('transaction_chat_03'),
-            fromUser: false,
-          ),
-        );
+        setState(() => _messages.add(ChatMessage(text: _say(
+            'Chưa có giao dịch đầy đủ để lưu. Bạn bổ sung thông tin nhé.',
+            'No complete transaction to save yet. Please add the missing details.'), fromUser: false)));
+      }
+      _scrollToBottom();
+      return;
+    }
+    setState(() {
+      _messages.add(ChatMessage(text: input, fromUser: true));
+      if (ChatParser.isCancel(input) || ChatParser.isNewTransaction(input)) {
+        _retireDraft();
+        _memory.clear();
+        _messages.add(ChatMessage(text: _say(
+            'Đã xóa giao dịch đang nhập. Bạn muốn ghi khoản thu/chi nào tiếp theo?',
+            'Pending transaction cleared. What would you like to record next?'), fromUser: false));
+        return;
+      }
+      final result = ChatParser.parseTurn(input, context, _memory);
+      if (result.draft != null) {
+        final previous = _activeDraftMessage?.draft;
+        if (previous != null && _sameDraft(previous, result.draft!)) {
+          _messages.add(ChatMessage(text: _say(
+              'Thông tin không thay đổi. Bạn nhấn Lưu giao dịch hoặc nhập “lưu”; muốn sửa thì nhập số tiền, danh mục, ngày/giờ mới.',
+              'Details are unchanged. Tap Save, type save, or enter corrected details.'), fromUser: false));
+          return;
+        }
+        _retireDraft();
+        final message = ChatMessage(text: _say(
+            'Mình đã ghép thông tin. Bạn kiểm tra rồi lưu nhé. Có thể nhập tiếp để sửa số tiền, danh mục hoặc ngày/giờ.',
+            'Your details are ready. Review and save, or enter a correction.'),
+            fromUser: false, draft: result.draft);
+        _activeDraftMessage = message;
+        _messages.add(message);
+      } else {
+        _messages.add(ChatMessage(text: result.question ?? result.error ?? _t('transaction_chat_03'), fromUser: false));
       }
     });
-
     _scrollToBottom();
   }
 
@@ -181,9 +216,11 @@ class _ChatBoxState extends State<ChatBox> {
     if (_saving) return;
 
     final index = _messages.indexOf(message);
-    if (index < 0) return;
+    if (index < 0 || !identical(message, _activeDraftMessage)) return;
 
     setState(() {
+      _memory.clear();
+      _activeDraftMessage = null;
       _messages[index] = ChatMessage(
         text: _t('transaction_chat_04'),
         fromUser: false,
@@ -196,7 +233,8 @@ class _ChatBoxState extends State<ChatBox> {
 
     if (_saving ||
         draft == null ||
-        !_messages.contains(message)) {
+        !_messages.contains(message) ||
+        !identical(message, _activeDraftMessage)) {
       return;
     }
 
@@ -257,10 +295,20 @@ class _ChatBoxState extends State<ChatBox> {
             text: _t('transaction_chat_05').replaceAll('{amount}', money),
             fromUser: false,
           );
+          _memory.clear();
+          _activeDraftMessage = null;
+          _messages.add(ChatMessage(text: _say(
+              'Hôm nay bạn còn chi tiêu hoặc nhận khoản tiền nào nữa không? Kể mình để ghi tiếp nhé.',
+              'Any other expenses or income today? Tell me to record the next transaction.'), fromUser: false));
         });
+        _scrollToBottom();
       }
     } catch (_) {
       if (!mounted) return;
+      setState(() => _messages.add(ChatMessage(text: _say(
+          'Chưa lưu được giao dịch. Mình vẫn giữ bản nháp; bạn kiểm tra kết nối rồi nhấn Lưu hoặc nhập “lưu” để thử lại.',
+          'Save failed. Your draft is kept; check your connection and retry Save.'), fromUser: false)));
+      _scrollToBottom();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -335,7 +383,9 @@ class _ChatBoxState extends State<ChatBox> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _t('transaction_chat_08'),
+                  _memory.isActive
+                      ? _say('Đang giữ một giao dịch chưa lưu', 'One pending transaction')
+                      : _t('transaction_chat_08'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -389,7 +439,13 @@ class _ChatBoxState extends State<ChatBox> {
   }
 
   Widget _buildSuggestions() {
-    final suggestions = ['transaction_chat_food', 'transaction_chat_taxi', 'transaction_chat_salary'].map(_t).toList();
+    final suggestions = _memory.isActive
+        ? (_activeDraftMessage != null
+        ? [_say('Lưu giao dịch', 'Save'), _say('Hủy', 'Cancel'), _say('Giao dịch mới', 'New transaction')]
+        : (_memory.amount == null
+        ? ['50k', '100k', _say('Hủy', 'Cancel')]
+        : [_say('Đi chợ', 'Groceries'), _say('Ăn uống', 'Food'), _say('Lương', 'Salary')]))
+        : [_say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'), _t('transaction_chat_taxi'), _t('transaction_chat_salary')];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

@@ -33,7 +33,7 @@ class CategoryMatcher {
       'nước sâm', 'nước rau má', 'sữa đậu nành', 'sữa tươi',
       'đồ uống', 'nước uống', 'nước lọc', 'nước suối', 'trà', 'trà sữa',
       'cà phê', 'cafe', 'coffee', 'sinh tố', 'nước ép', 'bia', 'rượu',
-      'nước ngọt', 'pepsi', 'coca', 'milk tea', 'drink', 'beverage',
+      'nước ngọt', 'pepsi', 'coca', 'milk tea', 'drink', 'beverage','nhậu',
     ],
 
     // Đi lại và phương tiện.

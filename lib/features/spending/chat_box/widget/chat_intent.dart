@@ -48,3 +48,27 @@ class ChatParseResult {
   factory ChatParseResult.error(String message) =>
       ChatParseResult._(error: message);
 }
+
+/// Temporary transaction context. Cleared only after save succeeds or cancel.
+/// Chat history is separate and remains visible for the current screen session.
+class ChatConversationMemory {
+  double? amount;
+  String? categoryKey;
+  DateTime? date;
+  DateTime? time;
+  String note = '';
+  String location = '';
+  final List<String> turns = [];
+
+  bool get isActive => turns.isNotEmpty;
+
+  void clear() {
+    amount = null;
+    categoryKey = null;
+    date = null;
+    time = null;
+    note = '';
+    location = '';
+    turns.clear();
+  }
+}

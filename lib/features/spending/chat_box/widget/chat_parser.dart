@@ -49,6 +49,117 @@ class ChatParser {
     return labels[Localizations.localeOf(context).languageCode == 'vi' ? 0 : 1];
   }
 
+  static String normalize(String value) => _fold(value);
+
+  static bool isCancel(String value) => RegExp(
+    r'^(huy|huy giao dich|bo qua|thoi|cancel|cancel transaction)$',
+  ).hasMatch(_fold(value));
+
+  static bool isNewTransaction(String value) => RegExp(
+    r'^(giao dich moi|khoan moi|bat dau lai|new transaction|start over)$',
+  ).hasMatch(_fold(value));
+
+  static bool isSave(String value) => RegExp(
+    r'^(luu|luu giao dich|xac nhan|save|confirm)$',
+  ).hasMatch(_fold(value));
+
+  /// Merge explicit fields only; an amount reply never resets date or category.
+  static ChatParseResult parseTurn(
+      String raw, BuildContext context, ChatConversationMemory memory,
+      ) {
+    final text = raw.trim();
+    final folded = _fold(text);
+    if (RegExp(r'^(chao|xin chao|hello|hi|cam on|thanks)$').hasMatch(folded)) {
+      return ChatParseResult.question(_t(context,
+          'Bạn kể khoản thu hoặc chi muốn ghi nhé. Ví dụ: hôm nay đi chợ lúc 7h30.',
+          'Tell me what you want to record, for example: groceries today at 7:30.'));
+    }
+    if (RegExp(r'\b(bao nhieu|nhu nao|the nao|thong ke|so sanh|du bao|tong quan|how much|compare|forecast)\b').hasMatch(folded)) {
+      return ChatParseResult.question(_t(context,
+          'Khung chat này giúp ghi giao dịch. Để hỏi thống kê, bạn mở Chat tài chính. Bạn muốn ghi thêm khoản nào?',
+          'This chat records transactions. Open Financial Chat for analysis. What would you like to record?'));
+    }
+    // Metadata is text, never a second transaction amount or category.
+    final metadataOnly = RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]?\s+').hasMatch(folded) ||
+        RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]').hasMatch(folded);
+    final match = metadataOnly ? null : CategoryMatcher.find(text);
+    if (match != null && (!_categoryLabels.containsKey(match.key) ||
+        !listType.any((item) => item['title'] == match.key && item['isParent'] != 'true'))) {
+      return ChatParseResult.question(_t(context,
+          'Bạn chọn một danh mục thu/chi cụ thể giúp mình nhé.',
+          'Please choose a specific income or expense category.'));
+    }
+    final parsedDate = metadataOnly ? null : _date(text);
+    final parsedTime = metadataOnly ? null : _time(text);
+    final hasDate = RegExp(r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d').hasMatch(folded);
+    final hasTime = _timePattern.hasMatch(folded) || RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
+    if (!metadataOnly && ((hasDate && parsedDate == null) || (hasTime && parsedTime == null))) {
+      return ChatParseResult.question(_t(context,
+          'Ngày hoặc giờ chưa hợp lệ. Mình vẫn giữ thông tin trước đó; bạn nhập lại ngày/giờ nhé.',
+          'Invalid date or time. Your previous details are kept; please correct it.'));
+    }
+    final amount = metadataOnly ? null : _amount(text);
+    if (!metadataOnly && (RegExp(r'(^|\s)-\s*\d').hasMatch(folded) ||
+        RegExp(r'^(?:0+(?:[.,]0+)?\s*(?:k|tr|d|dong)?)$').hasMatch(folded))) {
+      return ChatParseResult.question(_t(context,
+          'Số tiền cần lớn hơn 0. Bạn nhập lại số tiền nhé.',
+          'The amount must be greater than zero. Please enter it again.'));
+    }
+    final noteUpdate = RegExp(r'^(?:ghi chu|note)\s*[:：]?\s*(.+)$').firstMatch(folded);
+    final locationUpdate = RegExp(r'^(?:dia diem|location)\s*[:：]?\s*(.+)$').firstMatch(folded);
+    final location = _location(text);
+    if (match == null && amount == null && parsedDate == null && parsedTime == null &&
+        noteUpdate == null && locationUpdate == null && location.isEmpty) {
+      return ChatParseResult.question(_t(context,
+          memory.isActive
+              ? 'Mình đang giữ giao dịch trước. Bạn bổ sung số tiền, danh mục, ngày/giờ, hoặc nhập “hủy”.'
+              : 'Bạn muốn ghi khoản gì? Ví dụ: đi chợ, ăn uống, taxi hoặc nhận lương.',
+          'Please enter an amount, category, date/time, or type cancel.'));
+    }
+    // Freeze the default day on the first accepted turn (including midnight).
+    memory.date ??= DateTime.now();
+    if (match != null) memory.categoryKey = match.key;
+    if (amount != null) memory.amount = amount;
+    if (parsedDate != null) memory.date = parsedDate;
+    if (parsedTime != null) memory.time = parsedTime;
+    if (locationUpdate != null) {
+      final prefix = RegExp(r'^(?:dia diem|location)\s*[:：]?\s*').firstMatch(_foldKeepingOffsets(text))!;
+      memory.location = text.substring(prefix.end).trim();
+    } else if (location.isNotEmpty) {
+      memory.location = location;
+    }
+    if (noteUpdate != null) {
+      final prefix = RegExp(r'^(?:ghi chu|note)\s*[:：]?\s*').firstMatch(_foldKeepingOffsets(text))!;
+      memory.note = text.substring(prefix.end).trim();
+    } else if (match != null && memory.note.isEmpty) {
+      memory.note = _cleanNote(text);
+    }
+    memory.turns.add(text);
+    if (memory.turns.length > 20) memory.turns.removeAt(0);
+    if (memory.amount == null) {
+      final income = memory.categoryKey != null && _isIncome(memory.categoryKey!);
+      return ChatParseResult.question(_t(context,
+          income ? 'Bạn đã nhận được bao nhiêu tiền? Ví dụ: 12tr hoặc 12.000.000đ.'
+              : 'Bạn đã chi hết bao nhiêu tiền? Ví dụ: 50k hoặc 50.000đ.',
+          income ? 'How much did you receive?' : 'How much did you spend?'));
+    }
+    if (memory.categoryKey == null) {
+      return ChatParseResult.question(_t(context,
+          'Mình đã giữ số tiền. Khoản này là gì: đi chợ, ăn uống, taxi, lương…?',
+          'I have the amount. What is it for: groceries, food, taxi, salary…?'));
+    }
+    final key = memory.categoryKey!;
+    final type = listType.indexWhere((item) => item['title'] == key && item['isParent'] != 'true');
+    return ChatParseResult.success(ChatTransactionDraft(
+      amount: memory.amount!, type: type, typeName: categoryLabel(key, context),
+      date: _mergeDateAndTime(memory.date!, memory.time),
+      note: memory.note, location: memory.location,
+      hasExplicitTime: memory.time != null,
+      kind: _isIncome(key) ? ChatTransactionKind.income : ChatTransactionKind.expense,
+      confidence: match?.confidence ?? 0.9,
+    ));
+  }
+
   static ChatParseResult parse(String raw, BuildContext context) {
     final text = raw.trim();
     if (text.isEmpty) {

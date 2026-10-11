@@ -84,17 +84,8 @@ class ChatAIService:
                     phrases.setdefault(folded(label), set()).add(cid)
         for cid in ids:
             phrases.setdefault(folded(cid), set()).add(cid)
-        # Recognize shortened canonical labels only when they identify one category.
-        # This does not add synonym arrays to the dataset.
-        stop = {'tien', 'chi', 'thu', 'phi', 'va', 'khac', 'danh', 'muc', 'money', 'fee', 'other'}
-        short = {}
-        for phrase, targets in list(phrases.items()):
-            for word in phrase.split():
-                if len(word) >= 3 and word not in stop and '_' not in word:
-                    short.setdefault(word, set()).update(targets)
-        for word, targets in short.items():
-            if len(targets) == 1:
-                phrases.setdefault(word, set()).update(targets)
+        # Match complete catalog labels and IDs only. Individual words from
+        # labels can collide with intent phrases such as "danh gia".
         from .category_taxonomy import normalize_key
         for word in folded(question).split():
             cid = normalize_key(word)
