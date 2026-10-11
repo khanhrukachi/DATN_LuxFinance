@@ -14,7 +14,7 @@ _log = logging.getLogger(__name__)
 _init_lock = threading.Lock()
 
 SERVICE_ACCOUNT_PATH = (
-    Path(__file__).resolve().parent / "service-account.json"
+    Path(__file__).resolve().parent / "/etc/secrets/service-account.json"
 )
 
 
