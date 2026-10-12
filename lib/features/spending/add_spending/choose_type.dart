@@ -42,7 +42,6 @@ class _ChooseTypeState extends State<ChooseType>
     'expense_unexpected': SpendingStyle.teal,
     'expense_fixed': SpendingStyle.teal,
     'investment_saving': SpendingStyle.teal,
-    'loan_borrow': SpendingStyle.teal,
   };
 
   @override
@@ -136,7 +135,7 @@ class _ChooseTypeState extends State<ChooseType>
     final keyword = _normalizeSearchText(search.text);
     if (selectedTab == 1) {
       final items = listType.where((e) {
-        return e['parent'] == 'income' &&
+        return isSpendingCategory(e) && e['parent'] == 'income' &&
             e['isParent'] == 'false' &&
             _matchesSearch(e, keyword);
       }).toList();
@@ -144,7 +143,7 @@ class _ChooseTypeState extends State<ChooseType>
     }
 
     final groups = listType.where((e) {
-      return e['parent'] == 'expense' && e['isParent'] == 'true';
+      return isSpendingCategory(e) && e['parent'] == 'expense' && e['isParent'] == 'true';
     }).toList();
 
     return ListView.separated(
@@ -157,7 +156,7 @@ class _ChooseTypeState extends State<ChooseType>
 
   Widget _groupCard(Map<String, String> group, bool dark, String keyword) {
     final children = listType.where((e) {
-      return e['parent'] == group['id'] &&
+      return isSpendingCategory(e) && e['parent'] == group['id'] &&
           e['isParent'] == 'false' &&
           _matchesSearch(e, keyword);
     }).toList();
@@ -256,6 +255,7 @@ class _ChooseTypeState extends State<ChooseType>
   }
 
   void _select(Map<String, String> item, int coefficient) {
+    if(!isSpendingCategory(item)) return;
     final parent = listType.firstWhere(
           (e) => e['id'] == item['parent'],
       orElse: () => <String, String>{},

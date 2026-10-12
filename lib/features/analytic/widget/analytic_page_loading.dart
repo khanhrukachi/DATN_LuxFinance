@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
 
 class AnalyticPageLoading extends StatelessWidget {
   const AnalyticPageLoading({Key? key, this.isPieChart = false, this.itemCount = 5}) : super(key: key);

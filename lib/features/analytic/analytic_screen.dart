@@ -1,8 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_page_loading.dart';
+import 'package:personal_financial_management/features/analytic/chart/column_chart.dart';
+import 'package:personal_financial_management/features/analytic/chart/pie_chart.dart';
+import 'package:personal_financial_management/features/analytic/search/search_screen.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_page_loading.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
+import 'package:personal_financial_management/features/analytic/widget/custom_tabbar.dart';
+import 'package:personal_financial_management/features/analytic/widget/show_date.dart';
+import 'package:personal_financial_management/features/analytic/widget/show_list_spending_column.dart';
+import 'package:personal_financial_management/features/analytic/widget/show_list_spending_pie.dart';
+import 'package:personal_financial_management/features/analytic/widget/tabbar_chart.dart';
+import 'package:personal_financial_management/features/analytic/widget/tabbar_type.dart';
+import 'package:personal_financial_management/features/analytic/widget/total_report.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:personal_financial_management/core/constants/function/get_date.dart';
@@ -11,16 +21,6 @@ import 'package:personal_financial_management/core/constants/function/route_func
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 import 'package:personal_financial_management/models/spending.dart';
-import 'package:personal_financial_management/features/main/analytic/chart/column_chart.dart';
-import 'package:personal_financial_management/features/main/analytic/chart/pie_chart.dart';
-import 'package:personal_financial_management/features/main/analytic/search/search_screen.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/custom_tabbar.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/show_date.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/show_list_spending_column.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/show_list_spending_pie.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/tabbar_chart.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/tabbar_type.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/total_report.dart';
 
 class AnalyticPage extends StatefulWidget {
   const AnalyticPage({Key? key}) : super(key: key);
@@ -103,13 +103,14 @@ class _AnalyticPageState extends State<AnalyticPage>
     return Scaffold(
       backgroundColor: AnalyticStyle.background(context),
       appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AnalyticStyle.background(context),
-        centerTitle: false,
-        automaticallyImplyLeading: false,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Trở về',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
-          AppLocalizations.of(context).translate('spending'),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          AppLocalizations.of(context).translate('analytic'),
         ),
         actions: [
           Padding(padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),

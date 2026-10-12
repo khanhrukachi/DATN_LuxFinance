@@ -21,6 +21,8 @@ class ChatRequest(BaseModel):
     category_catalog: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
     advisor_context: dict[str, Any] = Field(default_factory=dict)
     history: list[dict[str, str]] = Field(default_factory=list, max_length=6)
+    debt_contact_id: str | None = Field(default=None,min_length=1,max_length=128)
+    debt_id: str | None = Field(default=None,min_length=1,max_length=128)
 
 
 def resolve_followup(service, request, today):
@@ -55,6 +57,24 @@ async def ask(request: ChatRequest, raw_request: Request, uid: str = Depends(aut
     if not isinstance(budgets,list) or len(budgets)>1000 or not all(isinstance(b,dict) for b in budgets):
         raise HTTPException(422, detail='budgets phải chứa tối đa 1000 object.')
     request_id = getattr(raw_request.state, 'request_id', uuid.uuid4().hex[:12])
+    # Read debt evidence directly from the authenticated user's Firestore path.
+    # This happens BEFORE the old spending/model service and followup resolver.
+    from ..services.debt_qa_service import DebtQAService
+    if DebtQAService.is_debt_question(request.question,request.history) or request.debt_id or request.debt_contact_id:
+        from ..services.debt_repository import DebtRepository, DebtDataUnavailable
+        try:
+            snapshot=await run_in_threadpool(DebtRepository().load,uid)
+            result=await run_in_threadpool(DebtQAService().answer,
+                question=request.question,snapshot=snapshot,
+                reference_date=datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date(),
+                history=request.history,contact_id=request.debt_contact_id,debt_id=request.debt_id)
+            result.update(requestId=request_id,question=request.question)
+            return result
+        except DebtDataUnavailable as exc:
+            logger.warning('Debt data unavailable request_id=%s',request_id)
+            raise HTTPException(503,detail={'code':'debt_data_unavailable','message':str(exc),'requestId':request_id}) from None
+        except (ValueError,TypeError) as exc:
+            raise HTTPException(422,detail={'code':'invalid_debt_query','message':str(exc),'requestId':request_id}) from None
     try:
         from ..services.chat_ai_service import get_chat_ai_service, plain
         service = await run_in_threadpool(get_chat_ai_service)
@@ -81,4 +101,7 @@ def capabilities():
               'category_share','category_comparison','period_comparison','transaction_details',
               'budget_status','spending_forecast','behavior_analysis','anomaly_analysis',
               'financial_recommendations','payment_capacity'],
-            'forecastDays':{'min':1,'max':30},'maxTransactions':10000}
+            'forecastDays':{'min':1,'max':30},'maxTransactions':10000,
+            'debtRevision':'debt_qa_v1','debtSource':'authenticated_firestore',
+            'debtCapabilities':['totals','people','person_balance','payments','payment_count','last_payment','due_dates','overdue','upcoming','settled','partial','unpaid','no_due_date','ranking','wallet_capacity','historical_balance','followups'],
+            'debtWrites':False,'debtMaxRecords':10000}

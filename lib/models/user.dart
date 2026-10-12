@@ -74,7 +74,7 @@ class User {
       birthday: data["birthday"] ?? "",
       avatar: data["avatar"] ?? defaultAvatar,
       gender: data["gender"] ?? true,
-      money: data["money"] ?? 0,
+      money: (data["money"] as num?)?.toInt() ?? 0,
 
       currentAddress: data["currentAddress"] ?? "",
       maritalStatus: data["maritalStatus"] ?? "",
@@ -132,6 +132,7 @@ class User {
 
       hasCompletedSurvey:
       hasCompletedSurvey ?? this.hasCompletedSurvey,
+      createdAt: createdAt,
     );
   }
 }

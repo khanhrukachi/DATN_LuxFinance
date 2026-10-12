@@ -6,7 +6,6 @@ import 'package:personal_financial_management/features/spending/add_spending/wid
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
-import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/add_friend.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/input_money.dart';
@@ -47,6 +46,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   XFile? image;
   bool checkPickImage = false;
   bool more = false;
+  bool _saving = false;
 
   List<String> friends = [];
   List<Color> colors = [];
@@ -94,12 +94,12 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
         centerTitle: false,
         leading: IconButton(
           icon: const Icon(Icons.close_outlined),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving ? null : () => Navigator.pop(context),
         ),
         actions: [
           SpendingSaveAction(
             label: AppLocalizations.of(context).translate('save'),
-            onPressed: updateSpending,
+            onPressed: _saving ? null : updateSpending,
           )
         ],
         bottom: PreferredSize(
@@ -110,6 +110,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            if (_saving) const LinearProgressIndicator(),
             buildMainCard(),
             if (more) buildMore(),
             MoreButton(
@@ -251,17 +252,25 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   Widget line() => Divider(color: SpendingStyle.teal.withOpacity(.12), thickness: .5);
 
   Future<void> updateSpending() async {
+    if (_saving) return;
     final moneyRaw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (moneyRaw.isEmpty) return;
+    if (moneyRaw.isEmpty || (int.tryParse(moneyRaw) ?? 0) <= 0 || type == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nhập số tiền và danh mục hợp lệ')));
+      return;
+    }
 
     final money = int.parse(moneyRaw);
     final signedMoney = coefficient * money;
 
     final newSpending = Spending(
       id: widget.spending.id,
+      revision: widget.spending.revision,
       money: signedMoney,
       type: type!,
       typeName: typeName,
+      categoryId: widget.spending.categoryId,
+      parentId: widget.spending.parentId,
+      parentName: widget.spending.parentName,
       dateTime: DateTime(
         selectedDate.year,
         selectedDate.month,
@@ -275,19 +284,17 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
       friends: friends,
     );
 
-    loadingAnimation(context);
-
-    await SpendingFirebase.updateSpending(
-      newSpending,
-      widget.spending.dateTime,
-      image != null ? File(image!.path) : null,
-      checkPickImage,
-    );
-
-    if (!mounted) return;
-    Navigator.pop(context);
-    Navigator.pop(context);
-    Navigator.pop(context);
-    Navigator.pop(context);
+    setState(() => _saving = true);
+    try {
+      await SpendingFirebase.updateSpending(
+        newSpending, widget.spending.dateTime,
+        image != null ? File(image!.path) : null, checkPickImage,
+      );
+      if (!mounted) return;
+      widget.change?.call(newSpending, colors);
+      Navigator.pop(context, newSpending);
+    } catch(e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chưa cập nhật được giao dịch: $e')));
+    } finally { if (mounted) setState(() => _saving = false); }
   }
 }

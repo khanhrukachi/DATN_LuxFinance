@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -34,6 +36,7 @@ class NotificationService {
 
   Future<void>? _initialization;
   bool _ready = false;
+  bool _fcmHandlersReady = false;
   void Function(Map<String, dynamic>)? onNotificationTap;
   Map<String, dynamic>? pendingTap;
 
@@ -46,29 +49,29 @@ class NotificationService {
 
   Future<void> _initialize() async {
     tzdata.initializeTimeZones();
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    await _requestPermission();
     await _initializeLocalNotifications();
-    // Only the local plugin presents foreground messages, avoiding two banners.
-    await _messaging.setForegroundNotificationPresentationOptions(
-      alert: false, badge: false, sound: false,
-    );
+    _ready = true; // Local reminders work even if FCM setup is unavailable.
     final launch = await _localNotifications.getNotificationAppLaunchDetails();
-    await _saveFCMToken();
-    _ready = true;
-    _setupFCMHandlers();
-
-    _messaging.onTokenRefresh.listen((token) async {
-      try {
-        await _updateFCMToken(token);
-      } catch (e) {
-        debugPrint('Token update failed: $e');
-      }
-    });
+    unawaited(_initializeFCMSafely());
     if (launch?.didNotificationLaunchApp ?? false) {
       final response = launch?.notificationResponse;
       if (response != null) _onNotificationTapped(response);
     }
+  }
+
+  Future<void> _initializeFCMSafely() async {
+    if(_fcmHandlersReady) return;
+    try {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      _setupFCMHandlers();
+      _messaging.onTokenRefresh.listen((token) async {
+        try {await _updateFCMToken(token);} catch(e) {debugPrint('Token update failed: $e');}
+      });
+      _fcmHandlersReady=true;
+      await _requestPermission().timeout(const Duration(seconds:10));
+      await _messaging.setForegroundNotificationPresentationOptions(alert:false,badge:false,sound:false);
+      await _saveFCMToken();
+    } catch(e) {debugPrint('FCM unavailable; local reminders remain ready: $e');}
   }
 
   Future<void> _requestPermission() async {
@@ -119,6 +122,8 @@ class NotificationService {
   }
 
   void _deliverTap(Map<String, dynamic> data) {
+    final uid=FirebaseAuth.instance.currentUser?.uid;
+    if(uid!=null && data['uid']!=null && data['uid']!=uid) return;
     pendingTap = data;
     try {
       onNotificationTap?.call(data);
@@ -138,10 +143,31 @@ class NotificationService {
     if (payload == null || payload.isEmpty) return;
     try {
       final decoded = jsonDecode(payload);
-      if (decoded is Map<String, dynamic>) _deliverTap(decoded);
+      if (decoded is Map<String, dynamic>) {
+        final current=FirebaseAuth.instance.currentUser?.uid;
+        if(current!=null && decoded['uid']!=null && decoded['uid']!=current) return;
+        unawaited(recordLocalTap(decoded));
+        _deliverTap(decoded);
+      }
     } catch (e) {
       debugPrint('Invalid notification payload: $e');
     }
+  }
+
+  Future<void> recordLocalTap(Map<String,dynamic> data) async {
+    final source=data['source'];
+    if(!['debt_local','manual_reminder','daily_spending'].contains(source))return;
+    final user=FirebaseAuth.instance.currentUser;
+    if(user==null || (data['uid']!=null && data['uid']!=user.uid))return;
+    final title=data['scheduleTitle']?.toString();
+    if(title==null || title.isEmpty)return;
+    final now=DateTime.now();
+    final suffix=source=='daily_spending' ? '${now.year}_${now.month}_${now.day}' : data['scheduledAt']?.toString() ?? '';
+    try {
+      await createNotification(title:title,body:data['scheduleBody']?.toString() ?? '',
+          deduplicationKey:'local_${data['scheduleId']}_$suffix',
+          showLocal:false,data:data);
+    }catch(e){debugPrint('Local tap inbox save failed: $e');}
   }
 
   void _setupFCMHandlers() {
@@ -306,6 +332,36 @@ class NotificationService {
     );
   }
 
+  Future<bool> requestLocalNotificationPermission() async {
+    await initialize();
+    if (Platform.isAndroid) {
+      return await _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission() ?? false;
+    }
+    if (Platform.isIOS) {
+      return await _localNotifications.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()?.requestPermissions(alert:true,badge:true,sound:true) ?? false;
+    }
+    return false;
+  }
+
+  Future<void> configureDailyReminder({required bool enabled, int hour=20, int minute=0}) async {
+    final uid=FirebaseAuth.instance.currentUser?.uid;
+    if(uid==null) throw StateError('Bạn cần đăng nhập.');
+    if(hour<0 || hour>23 || minute<0 || minute>59) throw ArgumentError('Giờ không hợp lệ');
+    await initialize();
+    final prefs=await SharedPreferences.getInstance();
+    if(FirebaseAuth.instance.currentUser?.uid!=uid)throw StateError('Phiên đăng nhập đã thay đổi');
+    await prefs.setString('lux_daily_reminder_$uid', jsonEncode({'enabled':enabled,'hour':hour,'minute':minute}));
+    if(enabled) await scheduleDailyReminder(hour:hour,minute:minute);
+    else await cancelReminder(2000000001);
+  }
+
+  Future<void> restoreSavedDailyReminder() async {
+    final uid=FirebaseAuth.instance.currentUser?.uid;
+    if(uid==null) return;
+    final prefs=await SharedPreferences.getInstance();
+    if(prefs.containsKey('lux_daily_reminder_$uid')) await scheduleDailyReminder();
+  }
+
   Future<void> scheduleDailyReminder({
     int id = 2000000001,
     int hour = 20,
@@ -321,6 +377,15 @@ class NotificationService {
     if (FirebaseAuth.instance.currentUser == null) {
       throw StateError('Bạn cần đăng nhập.');
     }
+    final uid=FirebaseAuth.instance.currentUser!.uid;
+    final prefs=await SharedPreferences.getInstance();
+    final saved=prefs.getString('lux_daily_reminder_$uid');
+    if(saved!=null) {
+      final settings=Map<String,dynamic>.from(jsonDecode(saved) as Map);
+      if(settings['enabled']==false) {await cancelReminder(id);return;}
+      hour=(settings['hour'] as num?)?.toInt() ?? hour;
+      minute=(settings['minute'] as num?)?.toInt() ?? minute;
+    }
     final location = tz.getLocation(timeZone);
     final now = tz.TZDateTime.now(location);
     var next = tz.TZDateTime(location, now.year, now.month, now.day, hour, minute);
@@ -330,12 +395,13 @@ class NotificationService {
     debugPrint('Giờ hiện tại: $now');
     debugPrint('Lần nhắc tiếp theo: $next');
 
+    if(FirebaseAuth.instance.currentUser?.uid!=uid)throw StateError('Phiên đăng nhập đã thay đổi');
     await _localNotifications.zonedSchedule(
       id, title, body, next, _details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      payload: jsonEncode({'type': 'reminder'}),
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: jsonEncode({'type':'reminder','source':'daily_spending','uid':uid,'scheduleId':id,'scheduleTitle':title,'scheduleBody':body,'scheduleKind':'daily','hour':hour,'minute':minute,'timeZone':timeZone,'scheduledAt':next.toUtc().toIso8601String()}),
     );
   }
 
@@ -345,11 +411,14 @@ class NotificationService {
     required String title,
     required String body,
     String timeZone = 'Asia/Ho_Chi_Minh',
+    Map<String,dynamic> data = const {},
   }) async {
     if (!_ready) throw StateError('Gọi initialize() trước.');
     if (FirebaseAuth.instance.currentUser == null) {
       throw StateError('Bạn cần đăng nhập.');
     }
+    final uid=FirebaseAuth.instance.currentUser!.uid;
+    if(data['uid']!=null && data['uid']!=uid)throw StateError('Phiên đăng nhập đã thay đổi');
     if (!scheduledAt.isAfter(DateTime.now())) {
       throw ArgumentError('Thời điểm nhắc phải ở tương lai.');
     }
@@ -358,8 +427,20 @@ class NotificationService {
       tz.TZDateTime.from(scheduledAt, tz.getLocation(timeZone)), _details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      payload: jsonEncode({'type': 'reminder'}),
+      payload: jsonEncode({'type':'reminder','scheduleKind':'once',...data,'scheduleId':id,'scheduleTitle':title,'scheduleBody':body,'uid':uid,'scheduledAt':scheduledAt.toUtc().toIso8601String(),'timeZone':timeZone}),
     );
+  }
+
+  Future<void> cancelRemindersForOtherAccounts(String? uid) async {
+    final pending=await getPendingReminders();
+    for(final p in pending) {
+      try {
+        final data=Map<String,dynamic>.from(jsonDecode(p.payload ?? '{}') as Map);
+        final owner=data['uid']?.toString();
+        final owned=['debt_local','manual_reminder','daily_spending'].contains(data['source']);
+        if((owned && (uid==null || owner!=uid)) || (uid==null && p.id==2000000001)) await cancelReminder(p.id);
+      }catch(e){debugPrint('Could not inspect/cancel reminder ${p.id}: $e');}
+    }
   }
 
   Future<void> cancelReminder(int id) => _localNotifications.cancel(id);

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Spending {
   String? id;
+  int? revision;
 
   int money;
   int type;
@@ -26,6 +27,7 @@ class Spending {
 
   Spending({
     this.id,
+    this.revision,
     required this.money,
     required this.type,
     required this.dateTime,
@@ -50,6 +52,7 @@ class Spending {
 
 
   Map<String, dynamic> toMap() => {
+    if (revision != null) "revision": revision,
     "money": money,
     "type": type,
     "typeName": typeName,
@@ -70,6 +73,7 @@ class Spending {
 
     return Spending(
       id: snapshot.id,
+      revision: (data["revision"] as num?)?.toInt() ?? 0,
       money: (data['money'] ?? 0).toInt(),
       type: data['type'] ?? 0,
       typeName: data['typeName'],
@@ -118,6 +122,7 @@ class Spending {
   }) {
     return Spending(
       id: id,
+      revision: revision,
       money: money ?? this.money,
       type: type ?? this.type,
       dateTime: dateTime ?? this.dateTime,

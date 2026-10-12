@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
 Widget tabBarChart({required TabController controller}) => Padding(
   padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
   child: AnalyticTabs(controller: controller, width: 200,

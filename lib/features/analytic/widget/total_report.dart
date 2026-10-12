@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 class TotalReport extends StatelessWidget {

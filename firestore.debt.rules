@@ -1,0 +1,38 @@
+// Merge these matches INSIDE your existing match /databases/{database}/documents.
+// Do not replace your current spending/budget rules.
+match /debt_books/{uid}/contacts/{contactId} {
+  allow read, delete: if request.auth != null && request.auth.uid == uid;
+  allow create, update: if request.auth != null && request.auth.uid == uid
+    && request.resource.data.keys().hasOnly(['name','phone','role','note'])
+    && request.resource.data.name is string
+    && request.resource.data.name.size() > 0
+    && request.resource.data.name.size() <= 100
+    && request.resource.data.phone is string
+    && request.resource.data.phone.size() <= 30
+    && request.resource.data.role in ['person','customer','supplier','lender','borrower']
+    && request.resource.data.note is string
+    && request.resource.data.note.size() <= 500;
+}
+match /debt_books/{uid}/items/{debtId} {
+  allow read, delete: if request.auth != null && request.auth.uid == uid;
+  allow create, update: if request.auth != null && request.auth.uid == uid
+    && request.resource.data.keys().hasOnly(['contactId','contactName','direction','amount','date','dueDate','remind','note','payments','revision','createdAt','updatedAt','walletTracked','walletImpact','walletBaseline'])
+    && request.resource.data.contactId is string
+    && exists(/databases/$(database)/documents/debt_books/$(uid)/contacts/$(request.resource.data.contactId))
+    && request.resource.data.contactName is string
+    && request.resource.data.direction in ['lend','borrow']
+    && request.resource.data.amount is int
+    && request.resource.data.amount > 0
+    && request.resource.data.amount <= 999999999999
+    && request.resource.data.date is timestamp
+    && (request.resource.data.dueDate == null || request.resource.data.dueDate is timestamp)
+    && request.resource.data.remind is bool
+    && request.resource.data.note is string
+    && request.resource.data.note.size() <= 500
+    && request.resource.data.payments is list
+    && request.resource.data.payments.size() <= 500
+    && request.resource.data.revision is int
+    && request.resource.data.walletTracked is bool
+    && request.resource.data.walletImpact is int
+    && request.resource.data.walletBaseline is int;
+}

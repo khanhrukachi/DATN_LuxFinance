@@ -9,6 +9,7 @@ import 'package:personal_financial_management/features/main/home/widget/item_par
 import 'package:personal_financial_management/features/main/home/widget/item_spending_widget.dart';
 import 'package:personal_financial_management/features/main/home/widget/summary_spending.dart';
 import 'package:personal_financial_management/models/spending.dart';
+import 'package:personal_financial_management/models/user.dart' as profile;
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
@@ -56,41 +57,66 @@ class _HomePageState extends State<HomePage>
     return Scaffold(
       backgroundColor: HomeStyle.background(context),
       body: SafeArea(
-        child: StreamBuilder<QuerySnapshot>(
+        child: StreamBuilder<DocumentSnapshot>(
+          // `info/<uid>.money` is the saved current balance for this user.
           stream: FirebaseFirestore.instance
-              .collection("spending")
-              .where(
-            "userId",
-            isEqualTo: user.uid,
-          )
-              .orderBy("date", descending: true)
+              .collection('info')
+              .doc(user.uid)
               .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) return Center(child: Text(
-                AppLocalizations.of(context).translate('something_went_wrong'),
-                style: TextStyle(color: HomeStyle.muted(context))));
-            if (!snapshot.hasData) {
-              return _loading();
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.hasError) {
+              return Center(
+                child: Text(
+                  AppLocalizations.of(context)
+                      .translate('something_went_wrong'),
+                  style: TextStyle(color: HomeStyle.muted(context)),
+                ),
+              );
             }
+            if (!profileSnapshot.hasData) return _loading();
 
-            // ===== ALL DATA (LŨY KẾ) =====
-            final allSpendingList = snapshot.data!.docs
-                .map((e) => Spending.fromFirebase(e))
-                .toList();
+            final profileData = profileSnapshot.data!;
+            final appUser = profileData.exists
+                ? profile.User.fromFirebase(profileData)
+                : null;
 
-            // ===== MONTH SELECTED =====
-            final selectedMonth =
-            months[18 - _monthController.index];
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('spending')
+                  .where('userId', isEqualTo: user.uid)
+                  .orderBy('date', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      AppLocalizations.of(context)
+                          .translate('something_went_wrong'),
+                      style: TextStyle(color: HomeStyle.muted(context)),
+                    ),
+                  );
+                }
+                if (!snapshot.hasData) return _loading();
 
-            // ===== FILTER BY MONTH =====
-            final monthSpendingList = allSpendingList.where((e) {
-              return e.dateTime.year == selectedMonth.year &&
-                  e.dateTime.month == selectedMonth.month;
-            }).toList();
+                // All transactions are used for the selected-month list and
+                // monthly income/expense totals. The balance comes from
+                // appUser.money in the user's `info` document.
+                final allSpendingList = snapshot.data!.docs
+                    .map((e) => Spending.fromFirebase(e))
+                    .toList();
 
-            return _body(
-              allSpendingList: allSpendingList,
-              monthSpendingList: monthSpendingList,
+                final selectedMonth = months[18 - _monthController.index];
+                final monthSpendingList = allSpendingList.where((e) {
+                  return e.dateTime.year == selectedMonth.year &&
+                      e.dateTime.month == selectedMonth.month;
+                }).toList();
+
+                return _body(
+                  appUser: appUser,
+                  allSpendingList: allSpendingList,
+                  monthSpendingList: monthSpendingList,
+                );
+              },
             );
           },
         ),
@@ -101,6 +127,7 @@ class _HomePageState extends State<HomePage>
   // ================= BODY =================
 
   Widget _body({
+    required profile.User? appUser,
     required List<Spending> allSpendingList,
     required List<Spending> monthSpendingList,
   }) {
@@ -155,6 +182,7 @@ class _HomePageState extends State<HomePage>
           child: SummarySpending(
             monthSpendingList: monthSpendingList,
             allSpendingList: allSpendingList,
+            user: appUser,
           ),
         ),
 

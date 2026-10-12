@@ -65,7 +65,8 @@ async def ask(request: Request):
         args = _common(data)
         payload = ChatRequest(user_id=args['user_id'], question=question,
             transactions=args['transactions'], category_catalog=args['category_catalog'] or [],
-            advisor_context=args['advisor_context'], history=data.get('history', []))
+            advisor_context=args['advisor_context'], history=data.get('history', []),
+            debt_contact_id=data.get('debt_contact_id'),debt_id=data.get('debt_id'))
         return await answer_chat(payload, raw_request=request, uid=args['user_id'])
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))

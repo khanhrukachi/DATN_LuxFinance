@@ -35,15 +35,15 @@ List<Map<String, String>> listType = [
   {'id': 'education', 'parent': 'investment_saving', 'type': 'expense', 'image': 'assets/icons/education.png', 'title': 'education', 'level': '2', 'isParent': 'false'},
   {'id': 'insurance', 'parent': 'investment_saving', 'type': 'expense', 'image': 'assets/icons/health-insurance.png', 'title': 'insurance', 'level': '2', 'isParent': 'false'},
 
-  {'id': 'loan_borrow', 'parent': 'expense', 'type': 'expense', 'image': 'assets/icons/loan.png', 'title': 'loan_borrow', 'level': '1', 'isParent': 'true'},
-  {'id': 'loan', 'parent': 'loan_borrow', 'type': 'expense', 'image': 'assets/icons/loan.png', 'title': 'loan', 'level': '2', 'isParent': 'false'},
-  {'id': 'pay', 'parent': 'loan_borrow', 'type': 'expense', 'image': 'assets/icons/pay.png', 'title': 'pay', 'level': '2', 'isParent': 'false'},
-  {'id': 'pay_interest', 'parent': 'loan_borrow', 'type': 'expense', 'image': 'assets/icons/commission.png', 'title': 'pay_interest', 'level': '2', 'isParent': 'false'},
+  {'id': 'loan_borrow', 'parent': '', 'type': 'debt', 'image': 'assets/icons/loan.png', 'title': 'loan_borrow', 'level': '0', 'isParent': 'true' , 'legacyParent': 'expense', 'legacyType': 'expense', 'debtOnly': 'true'},
+  {'id': 'loan', 'parent': 'loan_borrow', 'type': 'debt', 'image': 'assets/icons/loan.png', 'title': 'loan', 'level': '1', 'isParent': 'false' , 'legacyParent': 'loan_borrow', 'legacyType': 'expense', 'debtOnly': 'true'},
+  {'id': 'pay', 'parent': 'loan_borrow', 'type': 'debt', 'image': 'assets/icons/pay.png', 'title': 'pay', 'level': '1', 'isParent': 'false' , 'legacyParent': 'loan_borrow', 'legacyType': 'expense', 'debtOnly': 'true'},
+  {'id': 'pay_interest', 'parent': 'loan_borrow', 'type': 'debt', 'image': 'assets/icons/commission.png', 'title': 'pay_interest', 'level': '1', 'isParent': 'false' , 'legacyParent': 'loan_borrow', 'legacyType': 'expense', 'debtOnly': 'true'},
 
   // Root: Thu nhập
   {'id': 'income', 'parent': '', 'type': 'income', 'image': 'assets/icons/money-bag.png', 'title': 'income', 'level': '0', 'isParent': 'true'},
-  {'id': 'debt_collection', 'parent': 'income', 'type': 'income', 'image': 'assets/icons/coins.png', 'title': 'debt_collection', 'level': '1', 'isParent': 'false'},
-  {'id': 'borrow', 'parent': 'income', 'type': 'income', 'image': 'assets/icons/borrow.png', 'title': 'borrow', 'level': '1', 'isParent': 'false'},
+  {'id': 'debt_collection', 'parent': 'loan_borrow', 'type': 'debt', 'image': 'assets/icons/coins.png', 'title': 'debt_collection', 'level': '1', 'isParent': 'false' , 'legacyParent': 'income', 'legacyType': 'income', 'debtOnly': 'true'},
+  {'id': 'borrow', 'parent': 'loan_borrow', 'type': 'debt', 'image': 'assets/icons/borrow.png', 'title': 'borrow', 'level': '1', 'isParent': 'false' , 'legacyParent': 'income', 'legacyType': 'income', 'debtOnly': 'true'},
   {'id': 'earn_profit', 'parent': 'income', 'type': 'income', 'image': 'assets/icons/percentage.png', 'title': 'earn_profit', 'level': '1', 'isParent': 'false'},
   {'id': 'salary', 'parent': 'income', 'type': 'income', 'image': 'assets/icons/money.png', 'title': 'salary', 'level': '1', 'isParent': 'false'},
   {'id': 'other_income', 'parent': 'income', 'type': 'income', 'image': 'assets/icons/money-bag.png', 'title': 'other_income', 'level': '1', 'isParent': 'false'},
@@ -104,3 +104,10 @@ List<String> listMonthOfYearAcronym = [
   "nov",
   "dec"
 ];
+
+// Keep listType positions stable: persisted spending.type uses these indices.
+const debtCategoryIds = <String>{'loan_borrow','loan','pay','pay_interest','debt_collection','borrow'};
+bool isDebtCategory(Map<String,String> category) => category['type']=='debt' || debtCategoryIds.contains(category['id']);
+bool isSpendingCategory(Map<String,String> category) => !isDebtCategory(category);
+List<Map<String,String>> get spendingCategoryEntries => listType.where(isSpendingCategory).toList();
+List<Map<String,String>> get debtCategoryEntries => listType.where(isDebtCategory).toList();

@@ -1,0 +1,19 @@
+// Merge into existing /databases/{database}/documents; retain profile rules.
+// info document must already exist from registration/survey.
+match /info/{uid} {
+  allow read: if request.auth != null && request.auth.uid == uid;
+  allow update: if request.auth != null && request.auth.uid == uid
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['money'])
+    && request.resource.data.money is int;
+}
+match /wallet/{uid} {
+  allow read, create, update: if request.auth != null && request.auth.uid == uid;
+}
+match /data/{uid} {
+  allow read, create, update: if request.auth != null && request.auth.uid == uid;
+}
+// Existing spending create/update rules must allow new revision/createdAt/updatedAt.
+// Every spending read/write must be protected by userId == request.auth.uid.
+// These snippets do not replace your complete rules or guarantee enforcement
+// of every accounting invariant against modified clients. Existing broad OR
+// allow rules must be removed/restricted separately when hardening production.

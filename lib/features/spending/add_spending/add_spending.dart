@@ -1,11 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/debt/debt_book_screen.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
@@ -43,6 +44,8 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
   String? parentId;
   String? parentName;
   int coefficient = 1;
+  bool _saving = false;
+  String? _draftId;
   List<String> friends = [];
   List<Color> colors = [];
 
@@ -66,12 +69,12 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
         actions: [
           SpendingSaveAction(
             label: AppLocalizations.of(context).translate('save'),
-            onPressed: () async { await addingSpending(); },
+            onPressed: _saving ? null : () async { await addingSpending(); },
           )
         ],
         leading: IconButton(
           icon: const Icon(Icons.close_outlined, size: 30),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving ? null : () => Navigator.pop(context),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(100),
@@ -81,6 +84,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            if (_saving) const LinearProgressIndicator(),
             addSpending(),
             if (more) moreFunction(),
             MoreButton(
@@ -308,54 +312,40 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
     );
   }
 
-  Future addingSpending() async {
-    String moneyString = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (type != null &&
-        moneyString.isNotEmpty &&
-        moneyString.compareTo("0") != 0) {
-      int money = int.parse(moneyString);
-
-      String typeName = '';
-      final selected = listType[type!];
-      if (type! >= 0 && type! < listType.length) {
-        typeName = selected['title'] ?? '';
-      }
-
-      Spending spending = Spending(
-        money: categoryId == "custom"
-            ? coefficient * money
-            : coefficient * money,
-        type: type!,
-        typeName: typeName.trim(),
-        categoryId: categoryId ?? selected['id'],
-        parentId: parentId ?? selected['parent'],
-        parentName: parentName,
-        dateTime: DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          selectedTime.hour,
-          selectedTime.minute,
-        ),
-        note: _note.text.trim(),
-        image: image != null ? image!.path : null,
-        location: _location.text.trim(),
-        friends: friends,
-      );
-
-      loadingAnimation(context);
-      await SpendingFirebase.addSpending(spending);
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      Navigator.pop(context);
-    } else if (type == null) {
-      Fluttertoast.showToast(
-          msg: AppLocalizations.of(context).translate('please_select_type'));
-    } else {
-      Fluttertoast.showToast(
-        msg: AppLocalizations.of(context).translate('please_enter_valid_amount'),
-      );
+  Future<void> addingSpending() async {
+    if (_saving) return;
+    final raw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final money = int.tryParse(raw);
+    if (type == null || type! < 0 || type! >= listType.length) {
+      Fluttertoast.showToast(msg: AppLocalizations.of(context).translate('please_select_type'));
+      return;
     }
+    if(isDebtCategory(listType[type!])) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Hãy ghi khoản vay hoặc thanh toán nợ trong Sổ nợ.')));
+      return;
+    }
+    if (money == null || money <= 0) {
+      Fluttertoast.showToast(msg: AppLocalizations.of(context).translate('please_enter_valid_amount'));
+      return;
+    }
+    final selected = listType[type!];
+    _draftId ??= FirebaseFirestore.instance.collection('spending').doc().id;
+    final spending = Spending(
+      id: _draftId,
+      money: coefficient * money, type: type!,
+      typeName: categoryId == 'custom' ? typeName?.trim() : selected['title'],
+      categoryId: categoryId ?? selected['id'],
+      parentId: parentId ?? selected['parent'], parentName: parentName,
+      dateTime: DateTime(selectedDate.year,selectedDate.month,selectedDate.day,selectedTime.hour,selectedTime.minute),
+      note: _note.text.trim(), image: image?.path,
+      location: _location.text.trim(), friends: List<String>.from(friends),
+    );
+    setState(() => _saving = true);
+    try {
+      await SpendingFirebase.addSpending(spending);
+      if (mounted) Navigator.pop(context, spending);
+    } catch(e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chưa lưu được giao dịch: $e')));
+    } finally { if (mounted) setState(() => _saving = false); }
   }
 }

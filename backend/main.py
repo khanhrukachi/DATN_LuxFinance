@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.routers import prediction_router, clustering_router, anomaly_router, insights_router, chat_router
+from app.routers import prediction_router, clustering_router, anomaly_router, insights_router, chat_router, debt_router
 from app.services.lstm_service import TF_AVAILABLE
 from app.schemas.response import HealthResponse
 
@@ -30,7 +30,7 @@ async def server_error(request: Request, exc: Exception):
     return JSONResponse(status_code=500,content={"detail":{"code":"server_error",
         "message":"Máy chủ chưa xử lý được yêu cầu.","requestId":rid}},headers={"X-Request-ID":rid})
 
-for router in (prediction_router, clustering_router, anomaly_router, insights_router, chat_router):
+for router in (prediction_router, clustering_router, anomaly_router, insights_router, chat_router, debt_router):
     app.include_router(router,prefix=settings.API_V1_PREFIX)
 
 @app.get("/")

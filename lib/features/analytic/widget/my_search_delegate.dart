@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
 
 class MySearchDelegate extends SearchDelegate<String> {
   String q;

@@ -1,3 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:personal_financial_management/controls/debt_firebase.dart';
+import 'package:personal_financial_management/features/main/debt/debt_book_screen.dart';
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/notification/reminder_schedule_page.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -100,6 +105,23 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  Future<void> _open(NotificationModel notification) async {
+    final uid=_uid;
+    if(uid==null)return;
+    await _markRead(notification);
+    try {
+      final doc=await FirebaseFirestore.instance.collection('users').doc(uid).collection('notifications').doc(notification.id).get();
+      if(!mounted || FirebaseAuth.instance.currentUser?.uid!=uid)return;
+      final raw=doc.data()?['data'];
+      if(raw is! Map)return;
+      final data=Map<String,dynamic>.from(raw);
+      if(data['source']=='debt' || data['source']=='debt_local') {
+        final id=data['debtId']?.toString();
+        if(id!=null && id.isNotEmpty) await Navigator.push(context,MaterialPageRoute(builder:(_)=>DebtDetailScreen(service:DebtFirebase(userId:uid),id:id)));
+      }
+    }catch(e){debugPrint('Open notification target failed: $e');if(mounted)_message('Không mở được nội dung thông báo');}
+  }
+
   Future<void> _delete(NotificationModel notification) async {
     if (_busyIds.contains(notification.id)) return;
     final generation = _generation;
@@ -157,11 +179,18 @@ class _NotificationPageState extends State<NotificationPage> {
   Widget build(BuildContext context) {
     final unread = _notifications.where((n) => !n.isRead).length;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
+        backgroundColor: SpendingStyle.background(context),
         title: Text(_text('title')),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: 'Lịch nhắc',
+            icon: const Icon(Icons.alarm_outlined),
+            onPressed: _uid == null ? null : () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ReminderSchedulePage())),
+          ),
           if (kDebugMode)
             IconButton(
               tooltip: _text('test_tooltip'),
@@ -228,7 +257,7 @@ class _NotificationPageState extends State<NotificationPage> {
         return _NotificationItem(
           key: ValueKey(notification.id),
           notification: notification,
-          onTap: () => _markRead(notification),
+          onTap: () => _open(notification),
           onDelete: () => _delete(notification),
         );
       },

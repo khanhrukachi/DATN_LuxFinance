@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/analytic/widget/analytic_style.dart';
+import 'package:personal_financial_management/features/analytic/widget/analytic_style.dart';
 import 'package:personal_financial_management/core/constants/function/get_date.dart';
 Widget showDate({required String date, required int index, required DateTime now,
   required Function(String, DateTime) action}) => Builder(builder: (context) => Padding(
