@@ -17,19 +17,21 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthSurface(child: Scaffold(
-      body: WillPopScope(
-        onWillPop: () => onWillPop(
-          action: (now) => currentBackPressTime = now,
-          currentBackPressTime: currentBackPressTime,
-        ),
-        child: SafeArea(
-          child: BlocProvider(
-            create: (context) => SignupBloc(),
-            child: const SignupForm(),
+    return AuthSurface(
+      child: Scaffold(
+        body: WillPopScope(
+          onWillPop: () => onWillPop(
+            action: (now) => currentBackPressTime = now,
+            currentBackPressTime: currentBackPressTime,
+          ),
+          child: SafeArea(
+            child: BlocProvider(
+              create: (context) => SignupBloc(),
+              child: const SignupForm(),
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 }

@@ -8,12 +8,7 @@ class SettingCubit extends Cubit<SettingState> {
   bool isDark;
 
   SettingCubit({this.language, required this.isDark})
-      : super(
-          SettingChange(
-            _getLocal(language),
-            isDark,
-          ),
-        );
+    : super(SettingChange(_getLocal(language), isDark));
 
   static Locale _getLocal(int? lang) {
     return lang == null

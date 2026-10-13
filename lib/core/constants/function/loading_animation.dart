@@ -17,9 +17,7 @@ void loadingAnimation(BuildContext context) {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Container(
-                    color: Colors.transparent,
-                  ),
+                  Container(color: Colors.transparent),
                   RotationAnimationWidget(),
                   Container(
                     width: 73,
@@ -44,6 +42,8 @@ void loadingAnimation(BuildContext context) {
 }
 
 class RotationAnimationWidget extends StatefulWidget {
+  const RotationAnimationWidget({super.key});
+
   @override
   _RotationAnimationWidgetState createState() =>
       _RotationAnimationWidgetState();

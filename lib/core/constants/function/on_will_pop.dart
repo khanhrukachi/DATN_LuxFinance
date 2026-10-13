@@ -1,7 +1,9 @@
 import 'package:fluttertoast/fluttertoast.dart';
 
-Future<bool> onWillPop(
-    {required Function(DateTime?) action, DateTime? currentBackPressTime}) {
+Future<bool> onWillPop({
+  required Function(DateTime?) action,
+  DateTime? currentBackPressTime,
+}) {
   DateTime now = DateTime.now();
   if (currentBackPressTime == null ||
       now.difference(currentBackPressTime) > const Duration(seconds: 3)) {

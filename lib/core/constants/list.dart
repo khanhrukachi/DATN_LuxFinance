@@ -2,13 +2,13 @@ List<Map<String, String>> listType = [
   // Root: Chi tiêu
   {'id': 'expense', 'parent': '', 'type': 'expense', 'image': 'assets/icons/wallet.png', 'title': 'expense', 'level': '0', 'isParent': 'true'},
 
-  {'id': 'expense_living', 'parent': 'expense', 'type': 'expense', 'image': 'assets/icons/house.png', 'title': 'expense_living', 'level': '1', 'isParent': 'true'},
+  {'id': 'expense_living', 'parent': 'expense', 'type': 'expense', 'image': 'assets/icons/living.png', 'title': 'expense_living', 'level': '1', 'isParent': 'true'},
   {'id': 'eating', 'parent': 'expense_living', 'type': 'expense', 'image': 'assets/icons/eat.png', 'title': 'eating', 'level': '2', 'isParent': 'false'},
   {'id': 'move', 'parent': 'expense_living', 'type': 'expense', 'image': 'assets/icons/taxi.png', 'title': 'move', 'level': '2', 'isParent': 'false'},
-  {'id': 'market', 'parent': 'expense_living', 'type': 'expense', 'image': 'assets/icons/box.png', 'title': 'market', 'level': '2', 'isParent': 'false'},
+  {'id': 'market', 'parent': 'expense_living', 'type': 'expense', 'image': 'assets/icons/market.png', 'title': 'market', 'level': '2', 'isParent': 'false'},
   {'id': 'telephone_fee', 'parent': 'expense_living', 'type': 'expense', 'image': 'assets/icons/phone.png', 'title': 'telephone_fee', 'level': '2', 'isParent': 'false'},
 
-  {'id': 'expense_unexpected', 'parent': 'expense', 'type': 'expense', 'image': 'assets/icons/box.png', 'title': 'expense_unexpected', 'level': '1', 'isParent': 'true'},
+  {'id': 'expense_unexpected', 'parent': 'expense', 'type': 'expense', 'image': 'assets/icons/unexpected.png', 'title': 'expense_unexpected', 'level': '1', 'isParent': 'true'},
   {'id': 'vehicle_maintenance', 'parent': 'expense_unexpected', 'type': 'expense', 'image': 'assets/icons/tools.png', 'title': 'vehicle_maintenance', 'level': '2', 'isParent': 'false'},
   {'id': 'physical_examination', 'parent': 'expense_unexpected', 'type': 'expense', 'image': 'assets/icons/doctor.png', 'title': 'physical_examination', 'level': '2', 'isParent': 'false'},
   {'id': 'repair_and_decorate_the_house', 'parent': 'expense_unexpected', 'type': 'expense', 'image': 'assets/icons/house_2.png', 'title': 'repair_and_decorate_the_house', 'level': '2', 'isParent': 'false'},

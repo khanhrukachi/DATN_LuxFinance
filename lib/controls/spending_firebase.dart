@@ -1,8 +1,8 @@
+import 'dart:async';
+import 'package:personal_financial_management/setting/localization/service_localizations.dart';
 import 'wallet_firebase.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:personal_financial_management/controls/notification_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,111 +17,199 @@ import 'package:personal_financial_management/core/constants/list.dart';
 class SpendingFirebase {
   static String get _uid {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if(uid == null) throw StateError('Bạn cần đăng nhập');
+    if (uid == null) throw ServiceException('service_login_required');
     return uid;
   }
-  static void _owner(Map<String,dynamic> data, String uid) {
-    if(data['userId'] != uid) throw StateError('Không có quyền sửa giao dịch này');
+
+  static void _owner(Map<String, dynamic> data, String uid) {
+    if (data['userId'] != uid) {
+      throw ServiceException('service_spending_not_owned');
+    }
   }
+
   static Future<void> _deleteImageSafely(String? url) async {
-    if(url == null || !url.startsWith('https://')) return;
-    try { await FirebaseStorage.instance.refFromURL(url).delete(); }
-    catch(e) { debugPrint('Giao dịch đã lưu; chưa dọn được ảnh cũ: $e'); }
+    if (url == null || !url.startsWith('https://')) return;
+    try {
+      await FirebaseStorage.instance.refFromURL(url).delete();
+    } catch (e) {
+      debugPrint('Giao dịch đã lưu; chưa dọn được ảnh cũ: $e');
+    }
   }
-  static Future<void> addSpending(Spending spending, {String? categoryId,String? parentId,String? parentName}) async {
-    if(spending.type<0 || spending.type>=listType.length) throw StateError('Danh mục không hợp lệ');
-    if(isDebtCategory(listType[spending.type])) throw StateError('Vay, cho vay, thu/trả nợ được quản lý trong Sổ nợ, không thêm vào chi tiêu.');
+
+  static Future<void> addSpending(
+    Spending spending, {
+    String? categoryId,
+    String? parentId,
+    String? parentName,
+  }) async {
+    await ServiceLocalizations.initialize();
+    if (spending.type < 0 || spending.type >= listType.length) {
+      throw ServiceException('service_category_invalid');
+    }
+    if (isDebtCategory(listType[spending.type])) {
+      throw ServiceException('service_use_debt_book');
+    }
     final uid = _uid;
     final db = FirebaseFirestore.instance;
     // Keep document id on the draft for safe retry on this same draft.
     spending.id ??= db.collection('spending').doc().id;
     final ref = db.collection('spending').doc(spending.id);
     final dataRef = db.collection('data').doc(uid);
-    if(spending.image != null && !spending.image!.startsWith('https://')) {
-      spending.image = await uploadImage(folder:'spending',name:'${ref.id}_${DateTime.now().microsecondsSinceEpoch}.png',image:File(spending.image!));
+    if (spending.image != null && !spending.image!.startsWith('https://')) {
+      spending.image = await uploadImage(
+        folder: 'spending',
+        name: '${ref.id}_${DateTime.now().microsecondsSinceEpoch}.png',
+        image: File(spending.image!),
+      );
     }
     final key = DateFormat('MM_yyyy').format(spending.dateTime);
     await db.runTransaction((tx) async {
       final existing = await tx.get(ref);
-      final wallet = await WalletFirebase.read(tx,db,uid);
-      if(existing.exists) {
-        _owner(existing.data()!,uid);
+      final wallet = await WalletFirebase.read(tx, db, uid);
+      if (existing.exists) {
+        _owner(existing.data()!, uid);
         return; // Same create id: no duplicate wallet increment.
       }
       wallet.apply(spending.money);
-      tx.set(ref, {...spending.toMap(),'userId':uid,'categoryId':categoryId ?? spending.categoryId,'parentId':parentId ?? spending.parentId,'parentName':parentName ?? spending.parentName,'revision':0,'createdAt':FieldValue.serverTimestamp(),'updatedAt':FieldValue.serverTimestamp()});
-      tx.set(dataRef,{key:FieldValue.arrayUnion([ref.id])},SetOptions(merge:true));
+      tx.set(ref, {
+        ...spending.toMap(),
+        'userId': uid,
+        'categoryId': categoryId ?? spending.categoryId,
+        'parentId': parentId ?? spending.parentId,
+        'parentName': parentName ?? spending.parentName,
+        'revision': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      tx.set(dataRef, {
+        key: FieldValue.arrayUnion([ref.id]),
+      }, SetOptions(merge: true));
     });
     spending.revision ??= 0;
-    await _checkBudgetNotificationsSafely(uid:uid,month:spending.dateTime.month,year:spending.dateTime.year);
+    await _checkBudgetNotificationsSafely(
+      uid: uid,
+      month: spending.dateTime.month,
+      year: spending.dateTime.year,
+    );
   }
-  static Future<void> updateSpending(Spending spending,DateTime oldDay,File? image,bool deleteImage) async {
-    if(spending.id == null) throw StateError('Giao dịch chưa có id');
+
+  static Future<void> updateSpending(
+    Spending spending,
+    DateTime oldDay,
+    File? image,
+    bool deleteImage,
+  ) async {
+    await ServiceLocalizations.initialize();
+    if (spending.id == null) {
+      throw ServiceException('service_spending_id_missing');
+    }
     final uid = _uid;
     final db = FirebaseFirestore.instance;
     final ref = db.collection('spending').doc(spending.id);
     final initial = await ref.get();
-    if(!initial.exists) throw StateError('Giao dịch đã bị xóa');
-    _owner(initial.data()!,uid);
+    if (!initial.exists) throw ServiceException('service_spending_deleted');
+    _owner(initial.data()!, uid);
     final baseline = (initial.data()!['revision'] as num?)?.toInt() ?? 0;
-    if(spending.revision != null && spending.revision != baseline) throw StateError('Giao dịch đã thay đổi từ khi mở màn hình. Hãy mở lại');
+    if (spending.revision != null && spending.revision != baseline) {
+      throw ServiceException('service_spending_changed');
+    }
     final oldImage = initial.data()!['image'] as String?;
     String? newImage = oldImage;
-    if(image != null) {
-      newImage = await uploadImage(folder:'spending',name:'${ref.id}_${DateTime.now().microsecondsSinceEpoch}.png',image:image);
-    } else if(deleteImage) { newImage = null; }
+    if (image != null) {
+      newImage = await uploadImage(
+        folder: 'spending',
+        name: '${ref.id}_${DateTime.now().microsecondsSinceEpoch}.png',
+        image: image,
+      );
+    } else if (deleteImage) {
+      newImage = null;
+    }
     await db.runTransaction((tx) async {
       final snap = await tx.get(ref);
-      final wallet = await WalletFirebase.read(tx,db,uid);
-      if(!snap.exists) throw StateError('Giao dịch đã bị xóa');
+      final wallet = await WalletFirebase.read(tx, db, uid);
+      if (!snap.exists) throw ServiceException('service_spending_deleted');
       final old = snap.data()!;
-      _owner(old,uid);
+      _owner(old, uid);
       final revision = (old['revision'] as num?)?.toInt() ?? 0;
-      if(revision != baseline) throw StateError('Giao dịch vừa thay đổi. Hãy mở lại để sửa');
-      final oldKey = DateFormat('MM_yyyy').format((old['date'] as Timestamp).toDate());
+      if (revision != baseline) {
+        throw ServiceException('service_spending_changed');
+      }
+      final oldKey = DateFormat(
+        'MM_yyyy',
+      ).format((old['date'] as Timestamp).toDate());
       final newKey = DateFormat('MM_yyyy').format(spending.dateTime);
-      wallet.apply(spending.money-(old['money'] as num).toInt());
+      wallet.apply(spending.money - (old['money'] as num).toInt());
       final values = spending.toMap();
       // Preserve category metadata only if category did not change.
-      if(old['type'] == spending.type) {
-        for(final key in ['categoryId','parentId','parentName']) {
-          if(values[key] == null && old.containsKey(key)) values[key]=old[key];
+      if (old['type'] == spending.type) {
+        for (final key in ['categoryId', 'parentId', 'parentName']) {
+          if (values[key] == null && old.containsKey(key)) {
+            values[key] = old[key];
+          }
         }
       }
-      tx.update(ref,{...values,'userId':uid,'image':newImage,'revision':revision+1,'updatedAt':FieldValue.serverTimestamp()});
-      if(oldKey != newKey) tx.set(db.collection('data').doc(uid),{oldKey:FieldValue.arrayRemove([ref.id]),newKey:FieldValue.arrayUnion([ref.id])},SetOptions(merge:true));
+      tx.update(ref, {
+        ...values,
+        'userId': uid,
+        'image': newImage,
+        'revision': revision + 1,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (oldKey != newKey) {
+        tx.set(db.collection('data').doc(uid), {
+          oldKey: FieldValue.arrayRemove([ref.id]),
+          newKey: FieldValue.arrayUnion([ref.id]),
+        }, SetOptions(merge: true));
+      }
     });
     spending.image = newImage;
     spending.revision = baseline + 1;
-    if(oldImage != newImage) await _deleteImageSafely(oldImage);
-    await _checkBudgetNotificationsSafely(uid:uid,month:spending.dateTime.month,year:spending.dateTime.year);
+    if (oldImage != newImage) await _deleteImageSafely(oldImage);
+    await _checkBudgetNotificationsSafely(
+      uid: uid,
+      month: spending.dateTime.month,
+      year: spending.dateTime.year,
+    );
   }
+
   static Future<void> deleteSpending(Spending spending) async {
-    if(spending.id == null) throw StateError('Giao dịch chưa có id');
-    final uid = _uid; final db = FirebaseFirestore.instance;
+    await ServiceLocalizations.initialize();
+    if (spending.id == null) {
+      throw ServiceException('service_spending_id_missing');
+    }
+    final uid = _uid;
+    final db = FirebaseFirestore.instance;
     final ref = db.collection('spending').doc(spending.id);
     String? oldImage;
     await db.runTransaction((tx) async {
       final snap = await tx.get(ref);
-      final wallet = await WalletFirebase.read(tx,db,uid);
-      if(!snap.exists) return; // Repeated delete never refunds twice.
+      final wallet = await WalletFirebase.read(tx, db, uid);
+      if (!snap.exists) return; // Repeated delete never refunds twice.
       final old = snap.data()!;
-      _owner(old,uid);
-      if(spending.revision != null && spending.revision != ((old['revision'] as num?)?.toInt() ?? 0)) throw StateError('Giao dịch đã thay đổi. Hãy mở lại trước khi xóa');
+      _owner(old, uid);
+      if (spending.revision != null &&
+          spending.revision != ((old['revision'] as num?)?.toInt() ?? 0)) {
+        throw ServiceException('service_spending_delete_changed');
+      }
       oldImage = old['image'] as String?;
-      final key = DateFormat('MM_yyyy').format((old['date'] as Timestamp).toDate());
+      final key = DateFormat(
+        'MM_yyyy',
+      ).format((old['date'] as Timestamp).toDate());
       wallet.apply(-(old['money'] as num).toInt());
-      tx.set(db.collection('data').doc(uid),{key:FieldValue.arrayRemove([ref.id])},SetOptions(merge:true));
+      tx.set(db.collection('data').doc(uid), {
+        key: FieldValue.arrayRemove([ref.id]),
+      }, SetOptions(merge: true));
       tx.delete(ref);
     });
     await _deleteImageSafely(oldImage);
   }
+
   // =====================================================
   // ================= EXPORT FOR AI =====================
   // =====================================================
 
   static Future<List<Spending>> getAllSpendingForAI() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = _uid;
 
     final snap = await FirebaseFirestore.instance
         .collection("spending")
@@ -139,8 +227,10 @@ class SpendingFirebase {
   static Future<List<Spending>> getSpendingList(List<String> ids) async {
     List<Spending> list = [];
     for (final id in ids) {
-      final doc =
-      await FirebaseFirestore.instance.collection("spending").doc(id).get();
+      final doc = await FirebaseFirestore.instance
+          .collection("spending")
+          .doc(id)
+          .get();
       if (doc.exists && doc.data() != null) {
         list.add(Spending.fromFirebase(doc));
       }
@@ -153,7 +243,8 @@ class SpendingFirebase {
   // =====================================================
 
   static Future<void> addOrUpdateBudget(Budget budget) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await ServiceLocalizations.initialize();
+    final uid = _uid;
     final ref = FirebaseFirestore.instance
         .collection("budget")
         .doc(uid)
@@ -162,12 +253,15 @@ class SpendingFirebase {
 
     await ref.set(budget.toMap(), SetOptions(merge: true));
     await _checkBudgetNotificationsSafely(
-      uid: uid, month: budget.month, year: budget.year, onlyType: budget.type,
+      uid: uid,
+      month: budget.month,
+      year: budget.year,
+      onlyType: budget.type,
     );
   }
 
   static Future<List<Budget>> getBudgetsOfMonth(int month, int year) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = _uid;
     final snap = await FirebaseFirestore.instance
         .collection("budget")
         .doc(uid)
@@ -184,7 +278,7 @@ class SpendingFirebase {
     required int year,
     int? type,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = _uid;
 
     Query query = FirebaseFirestore.instance
         .collection("spending")
@@ -209,7 +303,9 @@ class SpendingFirebase {
     int total = 0;
     for (var doc in snap.docs) {
       final spending = Spending.fromFirebase(doc);
-      if (coveredTypes != null && !coveredTypes.contains(spending.type)) continue;
+      if (coveredTypes != null && !coveredTypes.contains(spending.type)) {
+        continue;
+      }
       if (spending.month == month && spending.year == year) {
         total += spending.money.abs();
       }
@@ -228,11 +324,12 @@ class SpendingFirebase {
       final visited = <String>{};
       var current = Map<String, dynamic>.from(listType[index] as Map);
       while (true) {
-        final parentId = (current['legacyParent'] ?? current['parent'])?.toString() ?? '';
+        final parentId =
+            (current['legacyParent'] ?? current['parent'])?.toString() ?? '';
         if (parentId == expenseRootId) return true;
         if (parentId.isEmpty || !visited.add(parentId)) return false;
         final parentIndex = listType.indexWhere(
-              (item) => item['id']?.toString() == parentId,
+          (item) => item['id']?.toString() == parentId,
         );
         if (parentIndex < 0) return false;
         current = Map<String, dynamic>.from(listType[parentIndex] as Map);
@@ -252,9 +349,12 @@ class SpendingFirebase {
       changed = false;
       for (var i = 1; i < listType.length; i++) {
         if (scope.contains(i) || !belongsToExpense(i)) continue;
-        final parentId = (listType[i]['legacyParent'] ?? listType[i]['parent'])?.toString() ?? '';
+        final parentId =
+            (listType[i]['legacyParent'] ?? listType[i]['parent'])
+                ?.toString() ??
+            '';
         final parentIndex = listType.indexWhere(
-              (item) => item['id']?.toString() == parentId,
+          (item) => item['id']?.toString() == parentId,
         );
         if (scope.contains(parentIndex)) {
           scope.add(i);
@@ -278,11 +378,12 @@ class SpendingFirebase {
     required Budget budget,
     required int newLimit,
   }) async {
+    await ServiceLocalizations.initialize();
     if (budget.id == null) {
-      throw Exception("Budget document không tồn tại!");
+      throw ServiceException('service_budget_missing');
     }
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = _uid;
     final ref = FirebaseFirestore.instance
         .collection("budget")
         .doc(uid)
@@ -295,38 +396,22 @@ class SpendingFirebase {
     });
     // Re-read the stored budget so the check uses the new limit.
     await _checkBudgetNotificationsSafely(
-      uid: uid, month: budget.month, year: budget.year, onlyType: budget.type,
+      uid: uid,
+      month: budget.month,
+      year: budget.year,
+      onlyType: budget.type,
     );
   }
 
-
-  // BUDGET NOTIFICATIONS: Vietnamese by default. Set the active app language
-  // using setNotificationLanguage(Localizations.localeOf(context).languageCode).
-  static String _notificationLanguage = 'vi';
-  static final Map<String, Map<String, dynamic>> _translations = {};
-
+  // Shared with debt reminders and daily reminders; persisted for background use.
   static void setNotificationLanguage(String code) {
-    _notificationLanguage = code.toLowerCase().startsWith('en') ? 'en' : 'vi';
-  }
-
-  static Future<Map<String, dynamic>> _loadTranslations(String language) async {
-    if (_translations.containsKey(language)) return _translations[language]!;
-    try {
-      final path = language == 'en' ? 'assets/lang/en.json' : 'assets/lang/vn.json';
-      final values = Map<String, dynamic>.from(
-        jsonDecode(await rootBundle.loadString(path)) as Map,
-      );
-      _translations[language] = values;
-      return values;
-    } catch (e) {
-      debugPrint('Budget translations unavailable: $e');
-      return {};
-    }
+    unawaited(ServiceLocalizations.setLanguage(code));
   }
 
   /// Optional manual check. Existing mutation methods call this automatically.
   static Future<void> checkBudgetNotifications({
-    required int month, required int year,
+    required int month,
+    required int year,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -345,11 +430,15 @@ class SpendingFirebase {
       // Do not send outdated alerts when the user edits historical transactions.
       if (month != now.month || year != now.year) return;
       final db = FirebaseFirestore.instance;
-      final budgetSnapshot = await db.collection('budget').doc(uid)
-          .collection('items').get(const GetOptions(source: Source.server));
+      final budgetSnapshot = await db
+          .collection('budget')
+          .doc(uid)
+          .collection('items')
+          .get(const GetOptions(source: Source.server));
       final budgets = budgetSnapshot.docs.where((doc) {
         final data = doc.data();
-        return data['month'] == month && data['year'] == year &&
+        return data['month'] == month &&
+            data['year'] == year &&
             data['isActive'] != false &&
             (onlyType == null || data['type'] == onlyType);
       }).toList();
@@ -357,23 +446,26 @@ class SpendingFirebase {
 
       // Fetch once for all budgets. A userId-only query needs no new composite
       // index. This scans user history; large datasets should use monthly totals.
-      final snapshot = await db.collection('spending')
+      final snapshot = await db
+          .collection('spending')
           .where('userId', isEqualTo: uid)
           .get(const GetOptions(source: Source.server));
       var total = 0;
       final byType = <int, int>{};
       for (final doc in snapshot.docs) {
         final item = Spending.fromFirebase(doc);
-        if (item.money >= 0 || item.month != month || item.year != year) continue;
+        if (item.money >= 0 || item.month != month || item.year != year) {
+          continue;
+        }
         final amount = item.money.abs();
         total += amount;
         byType[item.type] = (byType[item.type] ?? 0) + amount;
       }
 
-      final language = _notificationLanguage;
-      final translations = await _loadTranslations(language);
-      String tr(String key) => translations[key]?.toString() ??
-          _budgetFallback[language]![key] ?? key;
+      await ServiceLocalizations.initialize();
+      final language = ServiceLocalizations.language;
+      final translations = ServiceLocalizations.translations;
+      String tr(String key) => ServiceLocalizations.text(key);
       final number = NumberFormat.decimalPattern(
         language == 'en' ? 'en_US' : 'vi_VN',
       );
@@ -398,20 +490,26 @@ class SpendingFirebase {
           final spent = type == 0
               ? total
               : _budgetCategoryScope(type).fold<int>(
-            0,
-                (sum, categoryType) => sum + (byType[categoryType] ?? 0),
-          );
+                  0,
+                  (sum, categoryType) => sum + (byType[categoryType] ?? 0),
+                );
           if (spent * 100 < limit * 80) continue;
-          final level = spent > limit ? 'exceeded'
-              : spent == limit ? 'reached' : 'near';
+          final level = spent > limit
+              ? 'exceeded'
+              : spent == limit
+              ? 'reached'
+              : 'near';
           final rawName = data['typeName']?.toString() ?? '';
-          final category = type == 0 ? tr('budget_notification_overall')
-              : rawName.isEmpty ? tr('budget_notification_category')
+          final category = type == 0
+              ? tr('budget_notification_overall')
+              : rawName.isEmpty
+              ? tr('budget_notification_category')
               : translations[rawName]?.toString() ?? rawName;
           final args = <String, String>{
             'category': category,
             'period': '${month.toString().padLeft(2, '0')}/$year',
-            'spent': money(spent), 'limit': money(limit),
+            'spent': money(spent),
+            'limit': money(limit),
             'remaining': money(limit > spent ? limit - spent : 0),
             'over': money(spent > limit ? spent - limit : 0),
             'percent': (spent * 100 ~/ limit).toString(),
@@ -423,6 +521,7 @@ class SpendingFirebase {
             }
             return text;
           }
+
           await service.createNotification(
             title: render('budget_notification_${level}_title'),
             body: render('budget_notification_${level}_body'),
@@ -430,9 +529,15 @@ class SpendingFirebase {
             deduplicationKey: 'budget_${year}_${month}_${type}_$level',
             showLocal: showLocal,
             data: {
-              'source': 'budget', 'budgetId': doc.id, 'month': month,
-              'year': year, 'categoryType': type, 'level': level,
-              'spent': spent, 'limit': limit, 'language': language,
+              'source': 'budget',
+              'budgetId': doc.id,
+              'month': month,
+              'year': year,
+              'categoryType': type,
+              'level': level,
+              'spent': spent,
+              'limit': limit,
+              'language': language,
             },
           );
         } catch (e) {
@@ -445,30 +550,6 @@ class SpendingFirebase {
     }
   }
 
-  // Fallback only when the app JSON does not yet contain these keys.
-  static const Map<String, Map<String, String>> _budgetFallback = {
-    'vi': {
-      'budget_notification_overall': "Tổng chi tiêu",
-      'budget_notification_category': "Danh mục chi tiêu",
-      'budget_notification_near_title': "{category}: sắp hết ngân sách",
-      'budget_notification_near_body': "Tháng {period}: đã chi {spent}/{limit} ({percent}%). Còn {remaining} trong ngân sách.",
-      'budget_notification_reached_title': "{category}: đã dùng hết ngân sách",
-      'budget_notification_reached_body': "Tháng {period}: đã chi {spent}, bằng hạn mức {limit}. Các khoản chi tiếp theo sẽ vượt ngân sách.",
-      'budget_notification_exceeded_title': "{category}: đã vượt ngân sách",
-      'budget_notification_exceeded_body': "Tháng {period}: đã chi {spent}/{limit}, vượt {over}. Hãy xem lại các khoản chi còn lại trong tháng.",
-    },
-    'en': {
-      'budget_notification_overall': "Overall spending",
-      'budget_notification_category': "Spending category",
-      'budget_notification_near_title': "{category}: budget nearly used up",
-      'budget_notification_near_body': "For {period}, you have spent {spent} of {limit} ({percent}%). You have {remaining} left.",
-      'budget_notification_reached_title': "{category}: budget fully used",
-      'budget_notification_reached_body': "For {period}, spending of {spent} has reached your {limit} limit. Further spending will exceed the budget.",
-      'budget_notification_exceeded_title': "{category}: budget exceeded",
-      'budget_notification_exceeded_body': "For {period}, you have spent {spent} of {limit}, exceeding the budget by {over}. Review your remaining expenses this month.",
-    },
-  };
-
   // =====================================================
   // ================= DELETE BUDGET =====================
   // =====================================================
@@ -478,7 +559,8 @@ class SpendingFirebase {
     required int month,
     required int year,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    await ServiceLocalizations.initialize();
+    final uid = _uid;
     final ref = FirebaseFirestore.instance
         .collection("budget")
         .doc(uid)
@@ -493,6 +575,7 @@ class SpendingFirebase {
       print("Error deleting budget: $e");
     }
   }
+
   // =====================================================
   // ================= USER ==============================
   // =====================================================
@@ -501,7 +584,7 @@ class SpendingFirebase {
     required myuser.User user,
     File? image,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final uid = _uid;
 
     if (image != null) {
       user.avatar = await uploadImage(
@@ -512,8 +595,11 @@ class SpendingFirebase {
     }
 
     final profile = user.toMap()..remove('money');
-    if(user.createdAt == null) profile.remove('createdAt');
-    await FirebaseFirestore.instance.collection('info').doc(uid).set(profile, SetOptions(merge:true));
+    if (user.createdAt == null) profile.remove('createdAt');
+    await FirebaseFirestore.instance
+        .collection('info')
+        .doc(uid)
+        .set(profile, SetOptions(merge: true));
   }
 
   // =====================================================

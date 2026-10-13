@@ -8,8 +8,7 @@ import 'package:personal_financial_management/models/spending.dart';
 import 'widget/item_spending_day.dart';
 
 class ViewListSpendingPage extends StatelessWidget {
-  const ViewListSpendingPage({Key? key, required this.spendingList})
-      : super(key: key);
+  const ViewListSpendingPage({super.key, required this.spendingList});
   final List<Spending> spendingList;
 
   @override

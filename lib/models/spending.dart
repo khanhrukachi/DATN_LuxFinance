@@ -50,7 +50,6 @@ class Spending {
     isIncome = money > 0;
   }
 
-
   Map<String, dynamic> toMap() => {
     if (revision != null) "revision": revision,
     "money": money,
@@ -68,8 +67,7 @@ class Spending {
 
   factory Spending.fromFirebase(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>? ?? {};
-    final date =
-        (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final date = (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     return Spending(
       id: snapshot.id,
@@ -84,9 +82,10 @@ class Spending {
       note: data['note'],
       image: data['image'],
       location: data['location'],
-      friends: (data['friends'] as List<dynamic>?)
-          ?.map((e) => e.toString())
-          .toList() ??
+      friends:
+          (data['friends'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
           [],
     );
   }

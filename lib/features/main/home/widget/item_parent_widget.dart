@@ -9,7 +9,7 @@ import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class ItemParentIdWidget extends StatefulWidget {
-  const ItemParentIdWidget({Key? key, this.spendingList, this.embedded = false}) : super(key: key);
+  const ItemParentIdWidget({super.key, this.spendingList, this.embedded = false});
 
   final List<Spending>? spendingList;
   final bool embedded;

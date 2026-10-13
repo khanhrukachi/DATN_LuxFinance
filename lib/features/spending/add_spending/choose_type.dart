@@ -4,7 +4,7 @@ import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class ChooseType extends StatefulWidget {
-  const ChooseType({Key? key, required this.action}) : super(key: key);
+  const ChooseType({super.key, required this.action});
   final Function(int, int, String?, Map<String, String>) action;
 
   @override
@@ -22,18 +22,72 @@ class _ChooseTypeState extends State<ChooseType>
   };
 
   static const Map<String, String> _diacriticMap = {
-    'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
-    'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
-    'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
-    'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
-    'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
-    'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
-    'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
-    'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
-    'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
-    'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
-    'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
-    'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+    'à': 'a',
+    'á': 'a',
+    'ả': 'a',
+    'ã': 'a',
+    'ạ': 'a',
+    'â': 'a',
+    'ầ': 'a',
+    'ấ': 'a',
+    'ẩ': 'a',
+    'ẫ': 'a',
+    'ậ': 'a',
+    'ă': 'a',
+    'ằ': 'a',
+    'ắ': 'a',
+    'ẳ': 'a',
+    'ẵ': 'a',
+    'ặ': 'a',
+    'è': 'e',
+    'é': 'e',
+    'ẻ': 'e',
+    'ẽ': 'e',
+    'ẹ': 'e',
+    'ê': 'e',
+    'ề': 'e',
+    'ế': 'e',
+    'ể': 'e',
+    'ễ': 'e',
+    'ệ': 'e',
+    'ì': 'i',
+    'í': 'i',
+    'ỉ': 'i',
+    'ĩ': 'i',
+    'ị': 'i',
+    'ò': 'o',
+    'ó': 'o',
+    'ỏ': 'o',
+    'õ': 'o',
+    'ọ': 'o',
+    'ô': 'o',
+    'ồ': 'o',
+    'ố': 'o',
+    'ổ': 'o',
+    'ỗ': 'o',
+    'ộ': 'o',
+    'ơ': 'o',
+    'ờ': 'o',
+    'ớ': 'o',
+    'ở': 'o',
+    'ỡ': 'o',
+    'ợ': 'o',
+    'ù': 'u',
+    'ú': 'u',
+    'ủ': 'u',
+    'ũ': 'u',
+    'ụ': 'u',
+    'ư': 'u',
+    'ừ': 'u',
+    'ứ': 'u',
+    'ử': 'u',
+    'ữ': 'u',
+    'ự': 'u',
+    'ỳ': 'y',
+    'ý': 'y',
+    'ỷ': 'y',
+    'ỹ': 'y',
+    'ỵ': 'y',
     'đ': 'd',
   };
 
@@ -107,12 +161,12 @@ class _ChooseTypeState extends State<ChooseType>
                     suffixIcon: search.text.isEmpty
                         ? null
                         : IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () {
-                        search.clear();
-                        setState(() {});
-                      },
-                    ),
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              search.clear();
+                              setState(() {});
+                            },
+                          ),
                     hintText: _tr('search_category'),
                     filled: true,
                     fillColor: SpendingStyle.card(context),
@@ -135,7 +189,8 @@ class _ChooseTypeState extends State<ChooseType>
     final keyword = _normalizeSearchText(search.text);
     if (selectedTab == 1) {
       final items = listType.where((e) {
-        return isSpendingCategory(e) && e['parent'] == 'income' &&
+        return isSpendingCategory(e) &&
+            e['parent'] == 'income' &&
             e['isParent'] == 'false' &&
             _matchesSearch(e, keyword);
       }).toList();
@@ -143,7 +198,9 @@ class _ChooseTypeState extends State<ChooseType>
     }
 
     final groups = listType.where((e) {
-      return isSpendingCategory(e) && e['parent'] == 'expense' && e['isParent'] == 'true';
+      return isSpendingCategory(e) &&
+          e['parent'] == 'expense' &&
+          e['isParent'] == 'true';
     }).toList();
 
     return ListView.separated(
@@ -156,7 +213,8 @@ class _ChooseTypeState extends State<ChooseType>
 
   Widget _groupCard(Map<String, String> group, bool dark, String keyword) {
     final children = listType.where((e) {
-      return isSpendingCategory(e) && e['parent'] == group['id'] &&
+      return isSpendingCategory(e) &&
+          e['parent'] == group['id'] &&
           e['isParent'] == 'false' &&
           _matchesSearch(e, keyword);
     }).toList();
@@ -174,10 +232,18 @@ class _ChooseTypeState extends State<ChooseType>
               _iconBox(group['image'], color, size: 46),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(_title(group),
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                child: Text(
+                  _title(group),
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              Text('${children.length}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+              Text(
+                '${children.length}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -207,33 +273,70 @@ class _ChooseTypeState extends State<ChooseType>
   }
 
   Widget _incomeCard(Map<String, String> item, bool dark) {
-    return Material(color: SpendingStyle.card(context),
-      borderRadius: BorderRadius.circular(20), clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: () => _select(item, 1),
-        child: Padding(padding: const EdgeInsets.all(14),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    return Material(
+      color: SpendingStyle.card(context),
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _select(item, 1),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               _iconBox(item['image'], SpendingStyle.accent(context), size: 48),
               const SizedBox(height: 10),
-              Flexible(child: Text(_title(item), textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-            ])),
+              Flexible(
+                child: Text(
+                  _title(item),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _childChip(Map<String, String> item, Color color, bool dark) {
-    return Material(color: SpendingStyle.teal.withOpacity(.08),
-      borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
-      child: InkWell(onTap: () => _select(item, -1),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
+    return Material(
+      color: SpendingStyle.teal.withOpacity(.08),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _select(item, -1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               if (item['image'] != null) ...[
-                Image.asset(item['image']!, width: 25, height: 25,
-                    errorBuilder: (_, __, ___) => Icon(Icons.label_outline_rounded, size: 25, color: color)),
+                Image.asset(
+                  item['image']!,
+                  width: 25,
+                  height: 25,
+                  errorBuilder: (_, __, ___) =>
+                      Icon(Icons.label_outline_rounded, size: 25, color: color),
+                ),
                 const SizedBox(width: 8),
               ],
-              Flexible(child: Text(_title(item), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-            ])),
+              Flexible(
+                child: Text(
+                  _title(item),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -249,15 +352,19 @@ class _ChooseTypeState extends State<ChooseType>
       ),
       child: path == null
           ? Icon(Icons.category_outlined, color: color)
-          : Image.asset(path, fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(Icons.category_outlined, color: color)),
+          : Image.asset(
+              path,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) =>
+                  Icon(Icons.category_outlined, color: color),
+            ),
     );
   }
 
   void _select(Map<String, String> item, int coefficient) {
-    if(!isSpendingCategory(item)) return;
+    if (!isSpendingCategory(item)) return;
     final parent = listType.firstWhere(
-          (e) => e['id'] == item['parent'],
+      (e) => e['id'] == item['parent'],
       orElse: () => <String, String>{},
     );
     final selected = Map<String, String>.from(item)

@@ -18,7 +18,10 @@ class ChatParser {
     'gas_money': ['Tiền gas', 'Cooking gas'],
     'tv_money': ['Truyền hình', 'Television'],
     'internet_money': ['Internet', 'Internet'],
-    'repair_and_decorate_the_house': ['Sửa chữa và trang trí nhà', 'Home repairs and decoration'],
+    'repair_and_decorate_the_house': [
+      'Sửa chữa và trang trí nhà',
+      'Home repairs and decoration',
+    ],
     'vehicle_maintenance': ['Bảo dưỡng xe', 'Vehicle maintenance'],
     'physical_examination': ['Y tế', 'Healthcare'],
     'insurance': ['Bảo hiểm', 'Insurance'],
@@ -65,56 +68,108 @@ class ChatParser {
 
   /// Merge explicit fields only; an amount reply never resets date or category.
   static ChatParseResult parseTurn(
-      String raw, BuildContext context, ChatConversationMemory memory,
-      ) {
+    String raw,
+    BuildContext context,
+    ChatConversationMemory memory,
+  ) {
     final text = raw.trim();
     final folded = _fold(text);
     if (RegExp(r'^(chao|xin chao|hello|hi|cam on|thanks)$').hasMatch(folded)) {
-      return ChatParseResult.question(_t(context,
+      return ChatParseResult.question(
+        _t(
+          context,
           'Bạn kể khoản thu hoặc chi muốn ghi nhé. Ví dụ: hôm nay đi chợ lúc 7h30.',
-          'Tell me what you want to record, for example: groceries today at 7:30.'));
+          'Tell me what you want to record, for example: groceries today at 7:30.',
+        ),
+      );
     }
-    if (RegExp(r'\b(bao nhieu|nhu nao|the nao|thong ke|so sanh|du bao|tong quan|how much|compare|forecast)\b').hasMatch(folded)) {
-      return ChatParseResult.question(_t(context,
+    if (RegExp(
+      r'\b(bao nhieu|nhu nao|the nao|thong ke|so sanh|du bao|tong quan|how much|compare|forecast)\b',
+    ).hasMatch(folded)) {
+      return ChatParseResult.question(
+        _t(
+          context,
           'Khung chat này giúp ghi giao dịch. Để hỏi thống kê, bạn mở Chat tài chính. Bạn muốn ghi thêm khoản nào?',
-          'This chat records transactions. Open Financial Chat for analysis. What would you like to record?'));
+          'This chat records transactions. Open Financial Chat for analysis. What would you like to record?',
+        ),
+      );
     }
     // Metadata is text, never a second transaction amount or category.
-    final metadataOnly = RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]?\s+').hasMatch(folded) ||
+    final metadataOnly =
+        RegExp(
+          r'^(?:ghi chu|note|dia diem|location)\s*[:：]?\s+',
+        ).hasMatch(folded) ||
         RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]').hasMatch(folded);
     final match = metadataOnly ? null : CategoryMatcher.find(text);
-    if (match != null && (!_categoryLabels.containsKey(match.key) ||
-        !listType.any((item) => item['title'] == match.key && item['isParent'] != 'true'))) {
-      return ChatParseResult.question(_t(context,
+    if (match != null &&
+        (!_categoryLabels.containsKey(match.key) ||
+            !listType.any(
+              (item) =>
+                  item['title'] == match.key && item['isParent'] != 'true',
+            ))) {
+      return ChatParseResult.question(
+        _t(
+          context,
           'Bạn chọn một danh mục thu/chi cụ thể giúp mình nhé.',
-          'Please choose a specific income or expense category.'));
+          'Please choose a specific income or expense category.',
+        ),
+      );
     }
     final parsedDate = metadataOnly ? null : _date(text);
     final parsedTime = metadataOnly ? null : _time(text);
-    final hasDate = RegExp(r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d').hasMatch(folded);
-    final hasTime = _timePattern.hasMatch(folded) || RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
-    if (!metadataOnly && ((hasDate && parsedDate == null) || (hasTime && parsedTime == null))) {
-      return ChatParseResult.question(_t(context,
+    final hasDate = RegExp(
+      r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
+    ).hasMatch(folded);
+    final hasTime =
+        _timePattern.hasMatch(folded) ||
+        RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
+    if (!metadataOnly &&
+        ((hasDate && parsedDate == null) || (hasTime && parsedTime == null))) {
+      return ChatParseResult.question(
+        _t(
+          context,
           'Ngày hoặc giờ chưa hợp lệ. Mình vẫn giữ thông tin trước đó; bạn nhập lại ngày/giờ nhé.',
-          'Invalid date or time. Your previous details are kept; please correct it.'));
+          'Invalid date or time. Your previous details are kept; please correct it.',
+        ),
+      );
     }
     final amount = metadataOnly ? null : _amount(text);
-    if (!metadataOnly && (RegExp(r'(^|\s)-\s*\d').hasMatch(folded) ||
-        RegExp(r'^(?:0+(?:[.,]0+)?\s*(?:k|tr|d|dong)?)$').hasMatch(folded))) {
-      return ChatParseResult.question(_t(context,
+    if (!metadataOnly &&
+        (RegExp(r"(^|\s)-\s*\d").hasMatch(folded) ||
+            RegExp(
+              r'^0+(?:[.,]0+)?\s*(?:k|tr|d|dong)?$',
+            ).hasMatch(folded))) {
+      return ChatParseResult.question(
+        _t(
+          context,
           'Số tiền cần lớn hơn 0. Bạn nhập lại số tiền nhé.',
-          'The amount must be greater than zero. Please enter it again.'));
+          'The amount must be greater than zero. Please enter it again.',
+        ),
+      );
     }
-    final noteUpdate = RegExp(r'^(?:ghi chu|note)\s*[:：]?\s*(.+)$').firstMatch(folded);
-    final locationUpdate = RegExp(r'^(?:dia diem|location)\s*[:：]?\s*(.+)$').firstMatch(folded);
+    final noteUpdate = RegExp(
+      r'^(?:ghi chu|note)\s*[:：]?\s*(.+)$',
+    ).firstMatch(folded);
+    final locationUpdate = RegExp(
+      r'^(?:dia diem|location)\s*[:：]?\s*(.+)$',
+    ).firstMatch(folded);
     final location = _location(text);
-    if (match == null && amount == null && parsedDate == null && parsedTime == null &&
-        noteUpdate == null && locationUpdate == null && location.isEmpty) {
-      return ChatParseResult.question(_t(context,
+    if (match == null &&
+        amount == null &&
+        parsedDate == null &&
+        parsedTime == null &&
+        noteUpdate == null &&
+        locationUpdate == null &&
+        location.isEmpty) {
+      return ChatParseResult.question(
+        _t(
+          context,
           memory.isActive
               ? 'Mình đang giữ giao dịch trước. Bạn bổ sung số tiền, danh mục, ngày/giờ, hoặc nhập “hủy”.'
               : 'Bạn muốn ghi khoản gì? Ví dụ: đi chợ, ăn uống, taxi hoặc nhận lương.',
-          'Please enter an amount, category, date/time, or type cancel.'));
+          'Please enter an amount, category, date/time, or type cancel.',
+        ),
+      );
     }
     // Freeze the default day on the first accepted turn (including midnight).
     memory.date ??= DateTime.now();
@@ -123,13 +178,17 @@ class ChatParser {
     if (parsedDate != null) memory.date = parsedDate;
     if (parsedTime != null) memory.time = parsedTime;
     if (locationUpdate != null) {
-      final prefix = RegExp(r'^(?:dia diem|location)\s*[:：]?\s*').firstMatch(_foldKeepingOffsets(text))!;
+      final prefix = RegExp(
+        r'^(?:dia diem|location)\s*[:：]?\s*',
+      ).firstMatch(_foldKeepingOffsets(text))!;
       memory.location = text.substring(prefix.end).trim();
     } else if (location.isNotEmpty) {
       memory.location = location;
     }
     if (noteUpdate != null) {
-      final prefix = RegExp(r'^(?:ghi chu|note)\s*[:：]?\s*').firstMatch(_foldKeepingOffsets(text))!;
+      final prefix = RegExp(
+        r'^(?:ghi chu|note)\s*[:：]?\s*',
+      ).firstMatch(_foldKeepingOffsets(text))!;
       memory.note = text.substring(prefix.end).trim();
     } else if (match != null && memory.note.isEmpty) {
       memory.note = _cleanNote(text);
@@ -137,80 +196,109 @@ class ChatParser {
     memory.turns.add(text);
     if (memory.turns.length > 20) memory.turns.removeAt(0);
     if (memory.amount == null) {
-      final income = memory.categoryKey != null && _isIncome(memory.categoryKey!);
-      return ChatParseResult.question(_t(context,
-          income ? 'Bạn đã nhận được bao nhiêu tiền? Ví dụ: 12tr hoặc 12.000.000đ.'
+      final income =
+          memory.categoryKey != null && _isIncome(memory.categoryKey!);
+      return ChatParseResult.question(
+        _t(
+          context,
+          income
+              ? 'Bạn đã nhận được bao nhiêu tiền? Ví dụ: 12tr hoặc 12.000.000đ.'
               : 'Bạn đã chi hết bao nhiêu tiền? Ví dụ: 50k hoặc 50.000đ.',
-          income ? 'How much did you receive?' : 'How much did you spend?'));
+          income ? 'How much did you receive?' : 'How much did you spend?',
+        ),
+      );
     }
     if (memory.categoryKey == null) {
-      return ChatParseResult.question(_t(context,
+      return ChatParseResult.question(
+        _t(
+          context,
           'Mình đã giữ số tiền. Khoản này là gì: đi chợ, ăn uống, taxi, lương…?',
-          'I have the amount. What is it for: groceries, food, taxi, salary…?'));
+          'I have the amount. What is it for: groceries, food, taxi, salary…?',
+        ),
+      );
     }
     final key = memory.categoryKey!;
-    final type = listType.indexWhere((item) => item['title'] == key && item['isParent'] != 'true');
-    return ChatParseResult.success(ChatTransactionDraft(
-      amount: memory.amount!, type: type, typeName: categoryLabel(key, context),
-      date: _mergeDateAndTime(memory.date!, memory.time),
-      note: memory.note, location: memory.location,
-      hasExplicitTime: memory.time != null,
-      kind: _isIncome(key) ? ChatTransactionKind.income : ChatTransactionKind.expense,
-      confidence: match?.confidence ?? 0.9,
-    ));
+    final type = listType.indexWhere(
+      (item) => item['title'] == key && item['isParent'] != 'true',
+    );
+    return ChatParseResult.success(
+      ChatTransactionDraft(
+        amount: memory.amount!,
+        type: type,
+        typeName: categoryLabel(key, context),
+        date: _mergeDateAndTime(memory.date!, memory.time),
+        note: memory.note,
+        location: memory.location,
+        hasExplicitTime: memory.time != null,
+        kind: _isIncome(key)
+            ? ChatTransactionKind.income
+            : ChatTransactionKind.expense,
+        confidence: match?.confidence ?? 0.9,
+      ),
+    );
   }
 
   static ChatParseResult parse(String raw, BuildContext context) {
     final text = raw.trim();
     if (text.isEmpty) {
-      return ChatParseResult.question(_t(
-        context,
-        'Bạn muốn ghi khoản thu/chi nào?',
-        'What income or expense would you like to record?',
-      ));
+      return ChatParseResult.question(
+        _t(
+          context,
+          'Bạn muốn ghi khoản thu/chi nào?',
+          'What income or expense would you like to record?',
+        ),
+      );
     }
 
     final match = CategoryMatcher.find(text);
     if (match != null &&
         (match.key == 'current_money' || match.key == 'new_group')) {
-      return ChatParseResult.question(_t(
-        context,
-        match.key == 'current_money'
-            ? 'Số dư không phải khoản thu/chi mới. Bạn hãy dùng màn hình quản lý số dư.'
-            : 'Nhóm tùy chỉnh cần tên nhóm và loại thu/chi. Bạn hãy chọn nhóm trong màn hình thêm giao dịch.',
-        match.key == 'current_money'
-            ? 'A balance is not a new transaction. Please use the balance screen.'
-            : 'A custom category needs a name and income/expense direction. Please select it on the transaction screen.',
-      ));
+      return ChatParseResult.question(
+        _t(
+          context,
+          match.key == 'current_money'
+              ? 'Số dư không phải khoản thu/chi mới. Bạn hãy dùng màn hình quản lý số dư.'
+              : 'Nhóm tùy chỉnh cần tên nhóm và loại thu/chi. Bạn hãy chọn nhóm trong màn hình thêm giao dịch.',
+          match.key == 'current_money'
+              ? 'A balance is not a new transaction. Please use the balance screen.'
+              : 'A custom category needs a name and income/expense direction. Please select it on the transaction screen.',
+        ),
+      );
     }
 
     final amount = _amount(text);
     if (amount == null || amount <= 0) {
-      return ChatParseResult.question(_t(
-        context,
-        'Bạn chưa nhập số tiền. Ví dụ: đi chợ mua đồ hết 50k lúc 17h30 ngày 9/8.',
-        'Please enter an amount, for example: groceries 50k at 17:30 on 9/8.',
-      ));
+      return ChatParseResult.question(
+        _t(
+          context,
+          'Bạn chưa nhập số tiền. Ví dụ: đi chợ mua đồ hết 50k lúc 17h30 ngày 9/8.',
+          'Please enter an amount, for example: groceries 50k at 17:30 on 9/8.',
+        ),
+      );
     }
 
     if (match == null) {
-      return ChatParseResult.question(_t(
-        context,
-        'Khoản này thuộc danh mục nào? Ví dụ: ăn uống, đi lại hoặc mua sắm.',
-        'Which category is this? For example: eating, transport or shopping.',
-      ));
+      return ChatParseResult.question(
+        _t(
+          context,
+          'Khoản này thuộc danh mục nào? Ví dụ: ăn uống, đi lại hoặc mua sắm.',
+          'Which category is this? For example: eating, transport or shopping.',
+        ),
+      );
     }
 
     // Re-resolve the index from the application's real list, never reindex it.
     final typeIndex = listType.indexWhere(
-          (item) => item['title'] == match.key && item['isParent'] != 'true',
+      (item) => item['title'] == match.key && item['isParent'] != 'true',
     );
     if (typeIndex < 0 || !_categoryLabels.containsKey(match.key)) {
-      return ChatParseResult.question(_t(
-        context,
-        'Danh mục này chưa được cấu hình. Bạn hãy chọn danh mục trong màn hình thêm giao dịch.',
-        'This category is not configured. Please select it on the transaction screen.',
-      ));
+      return ChatParseResult.question(
+        _t(
+          context,
+          'Danh mục này chưa được cấu hình. Bạn hãy chọn danh mục trong màn hình thêm giao dịch.',
+          'This category is not configured. Please select it on the transaction screen.',
+        ),
+      );
     }
 
     final date = _date(text);
@@ -219,35 +307,42 @@ class ChatParser {
     final hasDate = RegExp(
       r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
     ).hasMatch(folded);
-    final hasTime = _timePattern.hasMatch(folded) || RegExp(
-      r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b',
-    ).hasMatch(folded);
+    final hasTime =
+        _timePattern.hasMatch(folded) ||
+        RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
     if ((hasDate && date == null) || (hasTime && time == null)) {
-      return ChatParseResult.question(_t(context,
+      return ChatParseResult.question(
+        _t(
+          context,
           'Ngày hoặc giờ chưa hợp lệ. Bạn kiểm tra lại giúp mình nhé.',
-          'Invalid date or time. Please check your transaction.'));
+          'Invalid date or time. Please check your transaction.',
+        ),
+      );
     }
 
-    final confidence = (match.confidence +
-        (date != null ? 0.02 : 0) +
-        (time != null ? 0.02 : 0) +
-        0.02)
-        .clamp(0.0, 0.99)
-        .toDouble();
+    final confidence =
+        (match.confidence +
+                (date != null ? 0.02 : 0) +
+                (time != null ? 0.02 : 0) +
+                0.02)
+            .clamp(0.0, 0.99)
+            .toDouble();
 
-    return ChatParseResult.success(ChatTransactionDraft(
-      amount: amount,
-      type: typeIndex,
-      typeName: categoryLabel(match.key, context),
-      date: _mergeDateAndTime(date ?? DateTime.now(), time),
-      note: _cleanNote(text),
-      location: _location(text),
-      hasExplicitTime: time != null,
-      kind: _isIncome(match.key)
-          ? ChatTransactionKind.income
-          : ChatTransactionKind.expense,
-      confidence: confidence,
-    ));
+    return ChatParseResult.success(
+      ChatTransactionDraft(
+        amount: amount,
+        type: typeIndex,
+        typeName: categoryLabel(match.key, context),
+        date: _mergeDateAndTime(date ?? DateTime.now(), time),
+        note: _cleanNote(text),
+        location: _location(text),
+        hasExplicitTime: time != null,
+        kind: _isIncome(match.key)
+            ? ChatTransactionKind.income
+            : ChatTransactionKind.expense,
+        confidence: confidence,
+      ),
+    );
   }
 
   /// Đọc 50k, 50 nghìn, 1.5 triệu, 1,5 triệu, 50.000đ và 50000.
@@ -256,11 +351,17 @@ class ChatParser {
     // Exclude complete date/time spans before looking for money. A day,
     // month or minute must never become the amount of a transaction.
     for (final pattern in <RegExp>[
-      RegExp(r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)'),
-      RegExp(r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)'),
+      RegExp(
+        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)',
+      ),
+      RegExp(
+        r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)',
+      ),
       RegExp(r'(?<![a-z0-9])ngay\s*\d{1,2}(?!\d)'),
       _timePattern,
-      RegExp(r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])'),
+      RegExp(
+        r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
+      ),
     ]) {
       text = _without(text, pattern);
     }
@@ -335,11 +436,11 @@ class ChatParser {
   }
 
   static bool _isDateOrTimeNumber(
-      String text,
-      int start,
-      int end,
-      String candidate,
-      ) {
+    String text,
+    int start,
+    int end,
+    String candidate,
+  ) {
     final value = _fold(candidate.trim());
 
     // Có đơn vị tiền rõ ràng thì không xem là ngày hoặc giờ.
@@ -361,28 +462,20 @@ class ChatParser {
     }
 
     // Số giờ: 5h, 5h30, 5 giờ, 5 am, 5 pm.
-    if (RegExp(
-      r'^(?:h(?=\d|\s|$)|gio\b|am\b|pm\b)',
-    ).hasMatch(right)) {
+    if (RegExp(r'^(?:h(?=\d|\s|$)|gio\b|am\b|pm\b)').hasMatch(right)) {
       return true;
     }
 
-    if (RegExp(
-      r'(?:^|\s)\d{1,2}\s*(?:h|gio)$',
-    ).hasMatch(left)) {
+    if (RegExp(r'(?:^|\s)\d{1,2}\s*(?:h|gio)$').hasMatch(left)) {
       return true;
     }
 
     // Ngày 16 tháng 8 năm 2026.
-    if (RegExp(
-      r'(?:^|\s)(?:ngay|thang|nam)$',
-    ).hasMatch(left)) {
+    if (RegExp(r'(?:^|\s)(?:ngay|thang|nam)$').hasMatch(left)) {
       return true;
     }
 
-    if (RegExp(
-      r'^(?:thang|nam)(?:\s|$)',
-    ).hasMatch(right)) {
+    if (RegExp(r'^(?:thang|nam)(?:\s|$)').hasMatch(right)) {
       return true;
     }
 
@@ -390,7 +483,7 @@ class ChatParser {
   }
 
   static bool _isIncome(String category) => listType.any(
-        (item) => item['title'] == category && item['type'] == 'income',
+    (item) => item['title'] == category && item['type'] == 'income',
   );
 
   /// Nhận hôm nay, hôm qua, ngày mai, ngày kia, thứ trong tuần,
@@ -407,12 +500,14 @@ class ChatParser {
     if (RegExp(r'\b(ngày mai|ngay mai|tomorrow)\b').hasMatch(folded)) {
       return DateTime(now.year, now.month, now.day + 1);
     }
-    if (RegExp(r'\b(ngày kia|ngay kia|day after tomorrow)\b').hasMatch(folded)) {
+    if (RegExp(
+      r'\b(ngày kia|ngay kia|day after tomorrow)\b',
+    ).hasMatch(folded)) {
       return DateTime(now.year, now.month, now.day + 2);
     }
 
     var match = RegExp(
-      r'\b(\d{1,2})\s*(?:/|-|\.)\s*(\d{1,2})(?:\s*(?:/|-|\.)\s*(\d{2,4}))?\b',
+      r'\b(\d{1,2})\s*[/\-.]\s*(\d{1,2})(?:\s*[/\-.]\s*(\d{2,4}))?\b',
     ).firstMatch(folded);
     if (match != null) {
       return _validDate(
@@ -443,12 +538,29 @@ class ChatParser {
     }
 
     final monthNames = <String, int>{
-      'january': 1, 'february': 2, 'march': 3, 'april': 4,
-      'may': 5, 'june': 6, 'july': 7, 'august': 8,
-      'september': 9, 'october': 10, 'november': 11, 'december': 12,
-      'thang mot': 1, 'thang hai': 2, 'thang ba': 3, 'thang tu': 4,
-      'thang nam': 5, 'thang sau': 6, 'thang bay': 7, 'thang tam': 8,
-      'thang chin': 9, 'thang muoi': 10, 'thang muoi mot': 11,
+      'january': 1,
+      'february': 2,
+      'march': 3,
+      'april': 4,
+      'may': 5,
+      'june': 6,
+      'july': 7,
+      'august': 8,
+      'september': 9,
+      'october': 10,
+      'november': 11,
+      'december': 12,
+      'thang mot': 1,
+      'thang hai': 2,
+      'thang ba': 3,
+      'thang tu': 4,
+      'thang nam': 5,
+      'thang sau': 6,
+      'thang bay': 7,
+      'thang tam': 8,
+      'thang chin': 9,
+      'thang muoi': 10,
+      'thang muoi mot': 11,
       'thang muoi hai': 12,
     };
     for (final entry in monthNames.entries) {
@@ -489,9 +601,11 @@ class ChatParser {
 
   static DateTime? _time(String text) {
     final folded = _fold(text);
-    final match = _timePattern.firstMatch(folded) ?? RegExp(
-      r'(?<![\d/.-])(\d{1,2})\s+(sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
-    ).firstMatch(folded);
+    final match =
+        _timePattern.firstMatch(folded) ??
+        RegExp(
+          r'(?<![\d/.-])(\d{1,2})\s+(sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
+        ).firstMatch(folded);
     if (match == null) return null;
     final hasSeparator = match.groupCount == 3;
     var hour = int.parse(match.group(1)!);
@@ -543,22 +657,36 @@ class ChatParser {
   }
 
   static String _cleanNote(String text) {
-    final explicit = RegExp(r'(?:ghi chu|note)\s*[:：]\s*(.+)$')
-        .firstMatch(_foldKeepingOffsets(text));
+    final explicit = RegExp(
+      r'(?:ghi chu|note)\s*[:：]\s*(.+)$',
+    ).firstMatch(_foldKeepingOffsets(text));
     if (explicit != null) {
-      return _tidyNote(text.substring(explicit.start +
-          explicit.group(0)!.indexOf(explicit.group(1)!)));
+      return _tidyNote(
+        text.substring(
+          explicit.start + explicit.group(0)!.indexOf(explicit.group(1)!),
+        ),
+      );
     }
     var note = text;
     // Remove full date/time spans BEFORE amounts.
     for (final pattern in <RegExp>[
-      RegExp(r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)'),
-      RegExp(r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)'),
+      RegExp(
+        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)',
+      ),
+      RegExp(
+        r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)',
+      ),
       RegExp(r'(?<![a-z0-9])ngay\s*\d{1,2}(?!\d)'),
       _timePattern,
-      RegExp(r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])'),
-      RegExp(r'(?<![a-z0-9])(?:hom nay|hom qua|ngay mai|ngay kia|today|yesterday|tomorrow)(?![a-z0-9])'),
-      RegExp(r'\d[\d.,]*(?:\s*(?:trieu|tr|million|k|nghin|ngan|dong|d)(?![a-z0-9]))?'),
+      RegExp(
+        r'(?<![a-z0-9])\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
+      ),
+      RegExp(
+        r'(?<![a-z0-9])(?:hom nay|hom qua|ngay mai|ngay kia|today|yesterday|tomorrow)(?![a-z0-9])',
+      ),
+      RegExp(
+        r'\d[\d.,]*(?:\s*(?:trieu|tr|million|k|nghin|ngan|dong|d)(?![a-z0-9]))?',
+      ),
       RegExp(r'(?<![a-z0-9])(?:o|tai|at|in)\s+[^,.;]+'),
     ]) {
       note = _without(note, pattern);
@@ -568,14 +696,17 @@ class ChatParser {
     // Strip conversational/action prefixes only; do not delete words inside
     // item names (for example "bánh mì", "bún bò", "cơm chiên").
     final prefix = RegExp(
-      r'^\s*(?:toi|minh|em|anh|chi|ban|di|da|vua|co|an|uong|mua|dung|chi tieu|chi|tra|thanh toan|nhan|dong|gui)\s+',
+      r'^\s*(?:toi|minh|em|anh|ban|di|da|vua|co|an|uong|mua|dung|chi tieu|chi|tra|thanh toan|nhan|dong|gui)\s+',
     );
     while (prefix.hasMatch(_foldKeepingOffsets(note))) {
       note = _without(note, prefix);
     }
-    note = _without(note, RegExp(
-      r'(?<![a-z0-9])(?:het|ton|mat|gia|luc|vao|khi|hoi|ngay)(?![a-z0-9])',
-    ));
+    note = _without(
+      note,
+      RegExp(
+        r'(?<![a-z0-9])(?:het|ton|mat|gia|luc|vao|khi|hoi|ngay)(?![a-z0-9])',
+      ),
+    );
     note = note.replaceAll('/', ' ');
     note = _tidyNote(note);
     if (RegExp(r'^(?:sang|trua|toi|khuya)$').hasMatch(_fold(note))) {
@@ -592,16 +723,73 @@ class ChatParser {
   static String _fold(String value, {bool preserveOffsets = false}) {
     var result = value.toLowerCase();
     const replacements = <String, String>{
-      'à': 'a', 'á': 'a', 'ạ': 'a', 'ả': 'a', 'ã': 'a', 'â': 'a', 'ầ': 'a',
-      'ấ': 'a', 'ậ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ă': 'a', 'ằ': 'a', 'ắ': 'a',
-      'ặ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'è': 'e', 'é': 'e', 'ẹ': 'e', 'ẻ': 'e',
-      'ẽ': 'e', 'ê': 'e', 'ề': 'e', 'ế': 'e', 'ệ': 'e', 'ể': 'e', 'ễ': 'e',
-      'ì': 'i', 'í': 'i', 'ị': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ò': 'o', 'ó': 'o',
-      'ọ': 'o', 'ỏ': 'o', 'õ': 'o', 'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ộ': 'o',
-      'ổ': 'o', 'ỗ': 'o', 'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ợ': 'o', 'ở': 'o',
-      'ỡ': 'o', 'ù': 'u', 'ú': 'u', 'ụ': 'u', 'ủ': 'u', 'ũ': 'u', 'ư': 'u',
-      'ừ': 'u', 'ứ': 'u', 'ự': 'u', 'ử': 'u', 'ữ': 'u', 'ỳ': 'y', 'ý': 'y',
-      'ỵ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'đ': 'd',
+      'à': 'a',
+      'á': 'a',
+      'ạ': 'a',
+      'ả': 'a',
+      'ã': 'a',
+      'â': 'a',
+      'ầ': 'a',
+      'ấ': 'a',
+      'ậ': 'a',
+      'ẩ': 'a',
+      'ẫ': 'a',
+      'ă': 'a',
+      'ằ': 'a',
+      'ắ': 'a',
+      'ặ': 'a',
+      'ẳ': 'a',
+      'ẵ': 'a',
+      'è': 'e',
+      'é': 'e',
+      'ẹ': 'e',
+      'ẻ': 'e',
+      'ẽ': 'e',
+      'ê': 'e',
+      'ề': 'e',
+      'ế': 'e',
+      'ệ': 'e',
+      'ể': 'e',
+      'ễ': 'e',
+      'ì': 'i',
+      'í': 'i',
+      'ị': 'i',
+      'ỉ': 'i',
+      'ĩ': 'i',
+      'ò': 'o',
+      'ó': 'o',
+      'ọ': 'o',
+      'ỏ': 'o',
+      'õ': 'o',
+      'ô': 'o',
+      'ồ': 'o',
+      'ố': 'o',
+      'ộ': 'o',
+      'ổ': 'o',
+      'ỗ': 'o',
+      'ơ': 'o',
+      'ờ': 'o',
+      'ớ': 'o',
+      'ợ': 'o',
+      'ở': 'o',
+      'ỡ': 'o',
+      'ù': 'u',
+      'ú': 'u',
+      'ụ': 'u',
+      'ủ': 'u',
+      'ũ': 'u',
+      'ư': 'u',
+      'ừ': 'u',
+      'ứ': 'u',
+      'ự': 'u',
+      'ử': 'u',
+      'ữ': 'u',
+      'ỳ': 'y',
+      'ý': 'y',
+      'ỵ': 'y',
+      'ỷ': 'y',
+      'ỹ': 'y',
+      'đ': 'd',
     };
     replacements.forEach((from, to) => result = result.replaceAll(from, to));
     if (preserveOffsets) return result;
@@ -612,5 +800,3 @@ class ChatParser {
     return Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
   }
 }
-
-

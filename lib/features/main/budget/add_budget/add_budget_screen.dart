@@ -7,10 +7,8 @@ import 'package:personal_financial_management/features/main/budget/widget/budget
 import 'package:personal_financial_management/models/budget.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
-import '../../../../core/constants/function/loading_animation.dart';
-
 class AddBudgetPage extends StatefulWidget {
-  const AddBudgetPage({Key? key}) : super(key: key);
+  const AddBudgetPage({super.key});
 
   @override
   State<AddBudgetPage> createState() => _AddBudgetPageState();
@@ -42,7 +40,8 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
     }
 
     final limit =
-        int.tryParse(_limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ?? 0;
+        int.tryParse(_limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ??
+        0;
 
     if (limit <= 0) {
       _showSnack('budget_limit_must_be_greater_than_zero');
@@ -56,8 +55,11 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       final year = DateTime.now().year;
 
       // 🔍 check trùng budget
-      final existingBudgets =
-      await SpendingFirebase.getBudgetsOfMonth(month, year);
+      final existingBudgets = await SpendingFirebase.getBudgetsOfMonth(
+        month,
+        year,
+      );
+      if (!mounted) return;
 
       Budget? conflictingBudget;
       for (final budget in existingBudgets) {
@@ -115,22 +117,24 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
   }
 
   void _showSnack(String key) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppLocalizations.of(context).translate(key)),
-      ),
+    if (!mounted) return;
+    BudgetStyle.showNotice(
+      context,
+      AppLocalizations.of(context).translate(key),
     );
   }
 
   void _showOverlapSnack() {
-    final isEnglish = Localizations.localeOf(context)
-        .languageCode.toLowerCase().startsWith('en');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isEnglish
-            ? 'This budget overlaps an existing parent or subcategory budget. Edit the existing budget or choose another category.'
-            : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con đã có. Hãy sửa ngân sách hiện tại hoặc chọn danh mục khác.'),
-      ),
+    if (!mounted) return;
+    final isEnglish = Localizations.localeOf(
+      context,
+    ).languageCode.toLowerCase().startsWith('en');
+    BudgetStyle.showNotice(
+      context,
+      isEnglish
+          ? 'This budget overlaps an existing parent or subcategory budget. Edit the existing budget or choose another category.'
+          : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con đã có. Hãy sửa ngân sách hiện tại hoặc chọn danh mục khác.',
+      warningNotice: true,
     );
   }
 
@@ -144,9 +148,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: BudgetStyle.background(context),
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : Colors.black,
-        ),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         title: Text(
           AppLocalizations.of(context).translate('add_budget'),
           style: TextStyle(
@@ -158,39 +160,34 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
         centerTitle: false,
       ),
 
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                BudgetCard(
-                  selectedType: selectedType,
-                  limitController: _limitController,
-                  onTypeTap: isLoading ? () {} : _openTypeSelector,
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: BudgetActionButton(
-                    onPressed: isLoading ? null : _saveBudget,
-                    label: AppLocalizations.of(context).translate('save_budget'),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            if (isLoading) const LinearProgressIndicator(),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  BudgetCard(
+                    selectedType: selectedType,
+                    limitController: _limitController,
+                    onTypeTap: isLoading ? () {} : _openTypeSelector,
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // 🔥 LOADING Y HỆT EDIT
-          if (isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withOpacity(0.4),
-                alignment: Alignment.center,
-                child: RotationAnimationWidget(),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BudgetActionButton(
+                      onPressed: isLoading ? null : _saveBudget,
+                      label: AppLocalizations.of(
+                        context,
+                      ).translate('save_budget'),
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

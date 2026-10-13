@@ -18,11 +18,7 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/models/spending.dart';
 
 class EditSpendingPage extends StatefulWidget {
-  const EditSpendingPage({
-    Key? key,
-    required this.spending,
-    this.change,
-  }) : super(key: key);
+  const EditSpendingPage({super.key, required this.spending, this.change});
 
   final Spending spending;
   final Function(Spending spending, List<Color> colors)? change;
@@ -55,8 +51,11 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
   void initState() {
     super.initState();
 
-    _money.text = NumberFormat.currency(locale: "vi_VN", symbol: '', decimalDigits: 0)
-        .format(widget.spending.money.abs());
+    _money.text = NumberFormat.currency(
+      locale: "vi_VN",
+      symbol: '',
+      decimalDigits: 0,
+    ).format(widget.spending.money.abs());
 
     _note.text = widget.spending.note ?? '';
     _location.text = widget.spending.location ?? '';
@@ -100,7 +99,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
           SpendingSaveAction(
             label: AppLocalizations.of(context).translate('save'),
             onPressed: _saving ? null : updateSpending,
-          )
+          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(100),
@@ -113,10 +112,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
             if (_saving) const LinearProgressIndicator(),
             buildMainCard(),
             if (more) buildMore(),
-            MoreButton(
-              more: more,
-              action: () => setState(() => more = !more),
-            ),
+            MoreButton(more: more, action: () => setState(() => more = !more)),
             const SizedBox(height: 10),
           ],
         ),
@@ -134,7 +130,9 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
         elevation: 0,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-            side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
+          side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -148,7 +146,9 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
                     context: context,
                     initialDate: selectedDate,
                   );
-                  if (mounted && day != null) setState(() => selectedDate = day);
+                  if (mounted && day != null) {
+                    setState(() => selectedDate = day);
+                  }
                 },
               ),
               line(),
@@ -156,13 +156,15 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
                 icon: Icons.access_time,
                 color: SpendingStyle.accent(context),
                 text:
-                "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}",
+                    "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}",
                 action: () async {
                   final time = await selectTime(
                     context: context,
                     initialTime: selectedTime,
                   );
-                  if (mounted && time != null) setState(() => selectedTime = time);
+                  if (mounted && time != null) {
+                    setState(() => selectedTime = time);
+                  }
                 },
               ),
               line(),
@@ -170,8 +172,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
                 icon: Icons.edit_note,
                 color: SpendingStyle.accent(context),
                 controller: _note,
-                hintText:
-                AppLocalizations.of(context).translate('note'),
+                hintText: AppLocalizations.of(context).translate('note'),
               ),
             ],
           ),
@@ -189,8 +190,10 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
             color: SpendingStyle.card(context),
             elevation: 0,
             clipBehavior: Clip.antiAlias,
-            shape:
-            RoundedRectangleBorder(side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: AddFriend(
@@ -220,11 +223,15 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-          side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),borderRadius: BorderRadius.circular(20)),
+        side: BorderSide(color: SpendingStyle.teal.withOpacity(.16)),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: image == null && (widget.spending.image == null || checkPickImage)
           ? pickImageWidget(
-        image: (file) { if (mounted && file != null) setState(() => image = file); },
-      )
+              image: (file) {
+                if (mounted && file != null) setState(() => image = file);
+              },
+            )
           : showImage(),
     );
   }
@@ -242,20 +249,26 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
           top: 5,
           right: 5,
           child: removeIcon(
-            action: () => setState(() { image = null; checkPickImage = true; }),
+            action: () => setState(() {
+              image = null;
+              checkPickImage = true;
+            }),
           ),
         ),
       ],
     );
   }
 
-  Widget line() => Divider(color: SpendingStyle.teal.withOpacity(.12), thickness: .5);
+  Widget line() =>
+      Divider(color: SpendingStyle.teal.withOpacity(.12), thickness: .5);
 
   Future<void> updateSpending() async {
     if (_saving) return;
     final moneyRaw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (moneyRaw.isEmpty || (int.tryParse(moneyRaw) ?? 0) <= 0 || type == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nhập số tiền và danh mục hợp lệ')));
+    if (moneyRaw.isEmpty ||
+        (int.tryParse(moneyRaw) ?? 0) <= 0 ||
+        type == null) {
+      SpendingStyle.showNotice(context, 'Nhập số tiền và danh mục hợp lệ');
       return;
     }
 
@@ -287,14 +300,20 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
     setState(() => _saving = true);
     try {
       await SpendingFirebase.updateSpending(
-        newSpending, widget.spending.dateTime,
-        image != null ? File(image!.path) : null, checkPickImage,
+        newSpending,
+        widget.spending.dateTime,
+        image != null ? File(image!.path) : null,
+        checkPickImage,
       );
       if (!mounted) return;
       widget.change?.call(newSpending, colors);
       Navigator.pop(context, newSpending);
-    } catch(e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chưa cập nhật được giao dịch: $e')));
-    } finally { if (mounted) setState(() => _saving = false); }
+    } catch (e) {
+      if (mounted) {
+        SpendingStyle.showNotice(context, 'Chưa cập nhật được giao dịch: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }

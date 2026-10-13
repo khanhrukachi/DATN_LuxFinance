@@ -60,8 +60,8 @@ class HomeStyle {
 
 
 class HomeCategoryTile extends StatelessWidget {
-  const HomeCategoryTile({Key? key, required this.title, required this.money,
-    required this.onTap, this.image, this.isParent = false, this.isExpanded = false}) : super(key: key);
+  const HomeCategoryTile({super.key, required this.title, required this.money,
+    required this.onTap, this.image, this.isParent = false, this.isExpanded = false});
   final String title;
   final int money;
   final String? image;
@@ -105,7 +105,7 @@ class HomeCategoryTile extends StatelessWidget {
 }
 
 class HomeLoadingList extends StatelessWidget {
-  const HomeLoadingList({Key? key, this.embedded = false}) : super(key: key);
+  const HomeLoadingList({super.key, this.embedded = false});
   final bool embedded;
   @override
   Widget build(BuildContext context) => ListView.separated(

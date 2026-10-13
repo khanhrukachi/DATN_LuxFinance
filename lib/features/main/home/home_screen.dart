@@ -1,10 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/core/constants/function/extension.dart';
 import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 import 'package:intl/intl.dart';
-
-import 'package:personal_financial_management/core/constants/function/extension.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_parent_widget.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_spending_widget.dart';
 import 'package:personal_financial_management/features/main/home/widget/summary_spending.dart';
@@ -13,7 +12,7 @@ import 'package:personal_financial_management/models/user.dart' as profile;
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();

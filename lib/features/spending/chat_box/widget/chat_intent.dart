@@ -26,9 +26,8 @@ class ChatTransactionDraft {
     required this.confidence,
   });
 
-  int get signedMoney => kind == ChatTransactionKind.expense
-      ? -amount.round()
-      : amount.round();
+  int get signedMoney =>
+      kind == ChatTransactionKind.expense ? -amount.round() : amount.round();
 }
 
 @immutable

@@ -123,15 +123,13 @@ class User {
       maritalStatus: maritalStatus ?? this.maritalStatus,
       job: job ?? this.job,
       educationLevel: educationLevel ?? this.educationLevel,
-      averageMonthlyIncome:
-      averageMonthlyIncome ?? this.averageMonthlyIncome,
+      averageMonthlyIncome: averageMonthlyIncome ?? this.averageMonthlyIncome,
 
       lifestyle: lifestyle ?? this.lifestyle,
       riskTolerance: riskTolerance ?? this.riskTolerance,
       hobbies: hobbies ?? this.hobbies,
 
-      hasCompletedSurvey:
-      hasCompletedSurvey ?? this.hasCompletedSurvey,
+      hasCompletedSurvey: hasCompletedSurvey ?? this.hasCompletedSurvey,
       createdAt: createdAt,
     );
   }

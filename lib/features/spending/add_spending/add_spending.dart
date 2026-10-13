@@ -2,9 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/main/debt/debt_book_screen.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/core/constants/function/pick_function.dart';
@@ -24,7 +22,7 @@ import 'package:personal_financial_management/models/spending.dart';
 import 'choose_type.dart';
 
 class AddSpendingPage extends StatefulWidget {
-  const AddSpendingPage({Key? key}) : super(key: key);
+  const AddSpendingPage({super.key});
 
   @override
   State<AddSpendingPage> createState() => _AddSpendingPageState();
@@ -69,8 +67,12 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
         actions: [
           SpendingSaveAction(
             label: AppLocalizations.of(context).translate('save'),
-            onPressed: _saving ? null : () async { await addingSpending(); },
-          )
+            onPressed: _saving
+                ? null
+                : () async {
+                    await addingSpending();
+                  },
+          ),
         ],
         leading: IconButton(
           icon: const Icon(Icons.close_outlined, size: 30),
@@ -87,11 +89,8 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
             if (_saving) const LinearProgressIndicator(),
             addSpending(),
             if (more) moreFunction(),
-            MoreButton(
-              action: () => setState(() => more = !more),
-              more: more,
-            ),
-            const SizedBox(height: 10)
+            MoreButton(action: () => setState(() => more = !more), more: more),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -119,9 +118,13 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                     type == null
                         ? "assets/icons/question_mark.png"
                         : (listType[type!]["image"] ??
-                        "assets/icons/question_mark.png"),
+                              "assets/icons/question_mark.png"),
                     width: 35,
-                    errorBuilder: (_, __, ___) => Icon(Icons.category_outlined, color: SpendingStyle.accent(context), size: 35),
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.category_outlined,
+                      color: SpendingStyle.accent(context),
+                      size: 35,
+                    ),
                   ),
                   Expanded(
                     child: InkWell(
@@ -149,17 +152,30 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                       child: Row(
                         children: [
                           const SizedBox(width: 10),
-                          Expanded(child: Text(
-                            type == null
-                                ? AppLocalizations.of(context).translate('type')
-                                : (categoryId == "custom"
-                                ? typeName!
-                                : AppLocalizations.of(context)
-                                .translate(listType[type!]["title"]!)),
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                          )),
+                          Expanded(
+                            child: Text(
+                              type == null
+                                  ? AppLocalizations.of(
+                                      context,
+                                    ).translate('type')
+                                  : (categoryId == "custom"
+                                        ? typeName!
+                                        : AppLocalizations.of(
+                                            context,
+                                          ).translate(
+                                            listType[type!]["title"]!,
+                                          )),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 8),
-                          Icon(Icons.chevron_right_rounded, color: SpendingStyle.accent(context)),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: SpendingStyle.accent(context),
+                          ),
                         ],
                       ),
                     ),
@@ -174,7 +190,9 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                 text: DateFormat("dd/MM/yyyy").format(selectedDate),
                 action: () async {
                   var day = await selectDate(
-                      context: context, initialDate: selectedDate);
+                    context: context,
+                    initialDate: selectedDate,
+                  );
                   if (mounted && day != null && day != selectedDate) {
                     setState(() => selectedDate = day);
                   }
@@ -185,10 +203,12 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                 color: SpendingStyle.accent(context),
                 icon: Icons.access_time_rounded,
                 text:
-                "${selectedTime.hour.toString().padLeft(2, "0")}:${selectedTime.minute.toString().padLeft(2, "0")}",
+                    "${selectedTime.hour.toString().padLeft(2, "0")}:${selectedTime.minute.toString().padLeft(2, "0")}",
                 action: () async {
                   var time = await selectTime(
-                      context: context, initialTime: selectedTime);
+                    context: context,
+                    initialTime: selectedTime,
+                  );
                   if (mounted && time != null && time != selectedTime) {
                     setState(() => selectedTime = time);
                   }
@@ -233,8 +253,9 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                     controller: _location,
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.done,
-                    hintText:
-                    AppLocalizations.of(context).translate('location'),
+                    hintText: AppLocalizations.of(
+                      context,
+                    ).translate('location'),
                   ),
                   line(),
                   const SizedBox(height: 5),
@@ -274,32 +295,34 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: image == null
-          ? pickImageWidget(image: (file) {
-        if (mounted && file != null) {
-          setState(() => image = file);
-        }
-      })
+          ? pickImageWidget(
+              image: (file) {
+                if (mounted && file != null) {
+                  setState(() => image = file);
+                }
+              },
+            )
           : Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: Image.file(
-              File(image!.path),
-              width: double.infinity,
-              fit: BoxFit.fitWidth,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(15),
+                  child: Image.file(
+                    File(image!.path),
+                    width: double.infinity,
+                    fit: BoxFit.fitWidth,
+                  ),
+                ),
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: removeIcon(
+                    background: SpendingStyle.danger.withOpacity(0.9),
+                    color: Colors.white,
+                    action: () => setState(() => image = null),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            top: 5,
-            right: 5,
-            child: removeIcon(
-              background: SpendingStyle.danger.withOpacity(0.9),
-              color: Colors.white,
-              action: () => setState(() => image = null),
-            ),
-          )
-        ],
-      ),
     );
   }
 
@@ -317,35 +340,59 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
     final raw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
     final money = int.tryParse(raw);
     if (type == null || type! < 0 || type! >= listType.length) {
-      Fluttertoast.showToast(msg: AppLocalizations.of(context).translate('please_select_type'));
+      SpendingStyle.showNotice(
+        context,
+        AppLocalizations.of(context).translate('please_select_type'),
+      );
       return;
     }
-    if(isDebtCategory(listType[type!])) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Hãy ghi khoản vay hoặc thanh toán nợ trong Sổ nợ.')));
+    if (isDebtCategory(listType[type!])) {
+      SpendingStyle.showNotice(
+        context,
+        'Hãy ghi khoản vay hoặc thanh toán nợ trong Sổ nợ.',
+        warningNotice: true,
+      );
       return;
     }
     if (money == null || money <= 0) {
-      Fluttertoast.showToast(msg: AppLocalizations.of(context).translate('please_enter_valid_amount'));
+      SpendingStyle.showNotice(
+        context,
+        AppLocalizations.of(context).translate('please_enter_valid_amount'),
+      );
       return;
     }
     final selected = listType[type!];
     _draftId ??= FirebaseFirestore.instance.collection('spending').doc().id;
     final spending = Spending(
       id: _draftId,
-      money: coefficient * money, type: type!,
+      money: coefficient * money,
+      type: type!,
       typeName: categoryId == 'custom' ? typeName?.trim() : selected['title'],
       categoryId: categoryId ?? selected['id'],
-      parentId: parentId ?? selected['parent'], parentName: parentName,
-      dateTime: DateTime(selectedDate.year,selectedDate.month,selectedDate.day,selectedTime.hour,selectedTime.minute),
-      note: _note.text.trim(), image: image?.path,
-      location: _location.text.trim(), friends: List<String>.from(friends),
+      parentId: parentId ?? selected['parent'],
+      parentName: parentName,
+      dateTime: DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      ),
+      note: _note.text.trim(),
+      image: image?.path,
+      location: _location.text.trim(),
+      friends: List<String>.from(friends),
     );
     setState(() => _saving = true);
     try {
       await SpendingFirebase.addSpending(spending);
       if (mounted) Navigator.pop(context, spending);
-    } catch(e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chưa lưu được giao dịch: $e')));
-    } finally { if (mounted) setState(() => _saving = false); }
+    } catch (e) {
+      if (mounted) {
+        SpendingStyle.showNotice(context, 'Chưa lưu được giao dịch: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }

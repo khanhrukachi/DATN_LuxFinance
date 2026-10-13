@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/features/auth/forgot/forgot_screen.dart';
 import 'package:personal_financial_management/features/auth/forgot/success_screen.dart';
 import 'package:personal_financial_management/features/auth/login/login_page.dart';
@@ -16,6 +15,7 @@ import 'package:personal_financial_management/controls/notification_service.dart
 import 'package:personal_financial_management/setting/bloc/setting_cubit.dart';
 import 'package:personal_financial_management/setting/bloc/setting_state.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations_setup.dart';
+import 'package:personal_financial_management/setting/localization/service_language_scope.dart';
 import 'package:personal_financial_management/firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'features/auth/signup/verify/update_profile_screen.dart';
@@ -31,16 +31,14 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await NotificationService().initialize();
-
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await NotificationService().initialize();
 
   final prefs = await SharedPreferences.getInstance();
   language = prefs.getInt('language');
   isDark = prefs.getBool("isDark") ?? false;
   isFirstStart = prefs.getBool("firstStart") ?? true;
   loginMethod = prefs.getBool("login") ?? false;
+  await NotificationService().initialize();
   runApp(const MyApp());
 }
 
@@ -68,6 +66,9 @@ class MyApp extends StatelessWidget {
               localeResolutionCallback:
               AppLocalizationsSetup.localeResolutionCallback,
               locale: settingState.locale,
+              builder: (context, child) => ServiceLanguageScope(
+                child: child ?? const SizedBox.shrink(),
+              ),
               debugShowCheckedModeBanner: false,
               title: 'Spending Management',
               theme: settingState.isDark
@@ -81,9 +82,7 @@ class MyApp extends StatelessWidget {
                 const ColorScheme.light(background: Colors.white),
                 brightness: Brightness.light,
                 primarySwatch: Colors.blue,
-                scaffoldBackgroundColor: AppColors.whisperBackground,
                 bottomAppBarTheme: BottomAppBarThemeData(
-                  color: AppColors.whisperBackground,
                   elevation: 3,
                 ),
                 floatingActionButtonTheme:
@@ -91,7 +90,6 @@ class MyApp extends StatelessWidget {
                   backgroundColor: Color.fromRGBO(121, 158, 84, 1),
                 ),
                 appBarTheme: AppBarTheme(
-                  backgroundColor: AppColors.whisperBackground,
                   iconTheme: const IconThemeData(color: Colors.black),
                   titleTextStyle: const TextStyle(
                     color: Colors.black,

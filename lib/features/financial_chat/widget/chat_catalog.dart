@@ -1,19 +1,36 @@
 /// Preserve the original listType positions, including section headers.
 List<Map<String, dynamic>> buildChatCatalog(
-    List<Map<String, String>> listType, String Function(String) translate) {
-  return [for (var i = 0; i < listType.length; i++) {
-    'id': listType[i]['id'] ?? listType[i]['title'] ?? '',
-    'title': listType[i]['title'] ?? '',
-    'type': listType[i]['type'] ?? '',
-    'level': int.tryParse(listType[i]['level'] ?? ''),
-    'index': i,
-    'display_name': translate(listType[i]['title'] ?? ''),
-    'parent': listType[i]['parentCategoryId'] ?? listType[i]['parent'] ??
-        _parents[listType[i]['title']],
-    'isParent': listType[i]['isParent'] == 'true' || const {'expense', 'expense_living', 'expense_fixed', 'expense_unexpected',
-      'income', 'investment_saving', 'loan_borrow'}.contains(listType[i]['title']),
-  }];
+  List<Map<String, String>> listType,
+  String Function(String) translate,
+) {
+  return [
+    for (var i = 0; i < listType.length; i++)
+      {
+        'id': listType[i]['id'] ?? listType[i]['title'] ?? '',
+        'title': listType[i]['title'] ?? '',
+        'type': listType[i]['type'] ?? '',
+        'level': int.tryParse(listType[i]['level'] ?? ''),
+        'index': i,
+        'display_name': translate(listType[i]['title'] ?? ''),
+        'parent':
+            listType[i]['parentCategoryId'] ??
+            listType[i]['parent'] ??
+            _parents[listType[i]['title']],
+        'isParent':
+            listType[i]['isParent'] == 'true' ||
+            const {
+              'expense',
+              'expense_living',
+              'expense_fixed',
+              'expense_unexpected',
+              'income',
+              'investment_saving',
+              'loan_borrow',
+            }.contains(listType[i]['title']),
+      },
+  ];
 }
+
 const _parents = <String, String>{
   'eating': 'expense_living',
   'move': 'expense_living',

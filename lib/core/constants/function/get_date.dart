@@ -39,11 +39,12 @@ List<DateTime> getListWeekOfMonth(DateTime dateTime) {
     check = isSameMonth(date, lastWeek);
     if (!check) {
       lastWeek = DateTime(
-          dateTime.year,
-          dateTime.month,
-          dateTime.month < 12
-              ? DateTime(dateTime.year, dateTime.month + 1, 0).day
-              : DateTime(dateTime.year + 1, 1, 0).day);
+        dateTime.year,
+        dateTime.month,
+        dateTime.month < 12
+            ? DateTime(dateTime.year, dateTime.month + 1, 0).day
+            : DateTime(dateTime.year + 1, 1, 0).day,
+      );
     }
     if (check) {
       date = lastWeek.add(const Duration(days: 1));
@@ -65,11 +66,12 @@ bool checkOnWeek(DateTime dateTime, DateTime date) {
   DateTime lastWeek = dateTime.add(Duration(days: 7 - dateTime.weekday));
   if (!isSameMonth(dateTime, lastWeek)) {
     lastWeek = DateTime(
-        dateTime.year,
-        dateTime.month,
-        dateTime.month < 12
-            ? DateTime(dateTime.year, dateTime.month + 1, 0).day
-            : DateTime(dateTime.year + 1, 1, 0).day);
+      dateTime.year,
+      dateTime.month,
+      dateTime.month < 12
+          ? DateTime(dateTime.year, dateTime.month + 1, 0).day
+          : DateTime(dateTime.year + 1, 1, 0).day,
+    );
   }
   return dateTime.isBefore(date) && lastWeek.isAfter(date) ||
       isSameDay(date, dateTime) ||

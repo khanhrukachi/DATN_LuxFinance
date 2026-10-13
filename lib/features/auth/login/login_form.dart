@@ -15,7 +15,6 @@ import 'package:personal_financial_management/features/auth/login/widget/custom_
 import 'package:personal_financial_management/features/auth/login/widget/input_password.dart';
 import 'package:personal_financial_management/features/auth/login/widget/input_text.dart';
 import 'package:personal_financial_management/features/auth/login/widget/text_continue.dart';
-import 'package:personal_financial_management/controls/api_service.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/features/auth/signup/signup_page.dart';
 
@@ -48,9 +47,6 @@ class _LoginFormState extends State<LoginForm> {
 
           final uid = FirebaseAuth.instance.currentUser!.uid;
           debugPrint("🔥 USER ID = $uid");
-
-          unawaited(APIService.fetchAI(uid));
-
           Fluttertoast.showToast(
             msg: AppLocalizations.of(context).translate("login_success"),
           );

@@ -32,8 +32,9 @@ Future<DateTime?> selectDate({
 
 Future<XFile?> pickImage(bool check) async {
   try {
-    final image = await ImagePicker()
-        .pickImage(source: check ? ImageSource.gallery : ImageSource.camera);
+    final image = await ImagePicker().pickImage(
+      source: check ? ImageSource.gallery : ImageSource.camera,
+    );
     return image;
   } on PlatformException catch (_) {}
   return null;

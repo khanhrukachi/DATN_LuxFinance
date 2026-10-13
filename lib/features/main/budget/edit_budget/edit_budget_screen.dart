@@ -6,12 +6,10 @@ import 'package:personal_financial_management/features/main/budget/widget/budget
 import 'package:personal_financial_management/models/budget.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
-import '../../../../core/constants/function/loading_animation.dart';
-
 class EditBudgetPage extends StatefulWidget {
   final Budget budget;
 
-  const EditBudgetPage({Key? key, required this.budget}) : super(key: key);
+  const EditBudgetPage({super.key, required this.budget});
 
   @override
   State<EditBudgetPage> createState() => _EditBudgetPageState();
@@ -26,7 +24,9 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
   void initState() {
     super.initState();
     selectedType = widget.budget.type;
-    limitController = TextEditingController(text: widget.budget.limitMoney.toString());
+    limitController = TextEditingController(
+      text: widget.budget.limitMoney.toString(),
+    );
   }
 
   @override
@@ -37,7 +37,9 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
 
   Future<void> _updateBudget() async {
     if (isLoading) return;
-    final limit = int.tryParse(limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ?? 0;
+    final limit =
+        int.tryParse(limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ??
+        0;
     if (limit <= 0) {
       _showSnack(AppLocalizations.of(context).translate('invalid_limit'));
       return;
@@ -49,6 +51,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
         widget.budget.month,
         widget.budget.year,
       );
+      if (!mounted) return;
       for (final existing in existingBudgets) {
         if (existing.type == widget.budget.type) continue;
         if (budgetTypesOverlap(existing.type, selectedType)) {
@@ -64,12 +67,14 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
         );
       } else {
         // Write the new category first so a failed write leaves the old budget intact.
-        await SpendingFirebase.addOrUpdateBudget(Budget(
-          type: selectedType,
-          month: widget.budget.month,
-          year: widget.budget.year,
-          limitMoney: limit,
-        ));
+        await SpendingFirebase.addOrUpdateBudget(
+          Budget(
+            type: selectedType,
+            month: widget.budget.month,
+            year: widget.budget.year,
+            limitMoney: limit,
+          ),
+        );
         await SpendingFirebase.deleteBudget(
           type: widget.budget.type,
           month: widget.budget.month,
@@ -79,6 +84,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       _showSnack(AppLocalizations.of(context).translate('budget_not_exist'));
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -96,18 +102,21 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
   }
 
   void _showOverlapSnack() {
-    final isEnglish = Localizations.localeOf(context)
-        .languageCode.toLowerCase().startsWith('en');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isEnglish
-            ? 'This budget overlaps an existing parent or subcategory budget. Choose another category.'
-            : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con khác. Hãy chọn danh mục khác.'),
-      ),
+    if (!mounted) return;
+    final isEnglish = Localizations.localeOf(
+      context,
+    ).languageCode.toLowerCase().startsWith('en');
+    BudgetStyle.showNotice(
+      context,
+      isEnglish
+          ? 'This budget overlaps an existing parent or subcategory budget. Choose another category.'
+          : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con khác. Hãy chọn danh mục khác.',
+      warningNotice: true,
     );
   }
 
   Future<void> _deleteBudget() async {
+    if (isLoading) return;
     final local = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -115,7 +124,9 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
       builder: (_) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           backgroundColor: BudgetStyle.card(context),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -147,7 +158,9 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
+                          backgroundColor: isDark
+                              ? Colors.grey[700]
+                              : Colors.grey[300],
                           foregroundColor: isDark ? Colors.white : Colors.black,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -182,21 +195,30 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => isLoading = true);
-    await SpendingFirebase.deleteBudget(
-      type: widget.budget.type,
-      month: widget.budget.month,
-      year: widget.budget.year,
-    );
-    if (!mounted) return;
-    setState(() => isLoading = false);
-    Navigator.pop(context, true);
+    try {
+      await SpendingFirebase.deleteBudget(
+        type: widget.budget.type,
+        month: widget.budget.month,
+        year: widget.budget.year,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        _showSnack(
+          AppLocalizations.of(context).translate('something_went_wrong'),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   void _showSnack(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    if (!mounted) return;
+    BudgetStyle.showNotice(context, text);
   }
 
   @override
@@ -223,38 +245,34 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
         ],
         elevation: 0,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                BudgetCard(
-                  selectedType: selectedType,
-                  limitController: limitController,
-                  onTypeTap: isLoading ? () {} : _openTypeSelector,
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: BudgetActionButton(
-                    onPressed: isLoading ? null : _updateBudget,
-                    label: AppLocalizations.of(context).translate('update_budget'),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            if (isLoading) const LinearProgressIndicator(),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  BudgetCard(
+                    selectedType: selectedType,
+                    limitController: limitController,
+                    onTypeTap: isLoading ? () {} : _openTypeSelector,
                   ),
-                ),
-              ],
-            ),
-          ),
-          if (isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withOpacity(0.4),
-                child: Center(
-                  child: RotationAnimationWidget(),
-                ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    child: BudgetActionButton(
+                      onPressed: isLoading ? null : _updateBudget,
+                      label: AppLocalizations.of(
+                        context,
+                      ).translate('update_budget'),
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

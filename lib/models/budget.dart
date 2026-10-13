@@ -42,8 +42,7 @@ class Budget {
       month: data['month'] ?? DateTime.now().month,
       year: data['year'] ?? DateTime.now().year,
       isActive: data['isActive'] ?? true,
-      createdAt:
-      (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

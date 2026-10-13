@@ -66,7 +66,7 @@ bool budgetTypesOverlap(int firstType, int secondType) {
 class BudgetTypeSelector extends StatefulWidget {
   final int? selectedType;
 
-  const BudgetTypeSelector({Key? key, this.selectedType}) : super(key: key);
+  const BudgetTypeSelector({super.key, this.selectedType});
 
   @override
   State<BudgetTypeSelector> createState() => _BudgetTypeSelectorState();
@@ -255,7 +255,4 @@ class _BudgetTypeSelectorState extends State<BudgetTypeSelector> {
       ),
     );
   }
-
-  bool _isEnglish(BuildContext context) =>
-      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('en');
 }

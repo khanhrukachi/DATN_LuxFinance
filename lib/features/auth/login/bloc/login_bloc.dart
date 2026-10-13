@@ -22,7 +22,9 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   /* ================= EMAIL LOGIN ================= */
 
   Future<void> _loginWithEmail(
-      LoginWithEmailPasswordEvent event, Emitter<LoginState> emit) async {
+    LoginWithEmailPasswordEvent event,
+    Emitter<LoginState> emit,
+  ) async {
     bool check = await signInWithEmailAndPassword(
       emailAddress: event.email,
       password: event.password,
@@ -43,7 +45,9 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   /* ================= GOOGLE LOGIN ================= */
 
   Future<void> _loginWithGoogle(
-      LoginWithGoogleEvent event, Emitter<LoginState> emit) async {
+    LoginWithGoogleEvent event,
+    Emitter<LoginState> emit,
+  ) async {
     try {
       final UserCredential? credential = await signInWithGoogle();
       final User? user = credential?.user;
@@ -60,8 +64,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
 
       await _updateNotificationToken();
 
-      emit(LoginSuccessState(
-          social: existed ? Social.google : Social.newUser));
+      emit(LoginSuccessState(social: existed ? Social.google : Social.newUser));
     } catch (e) {
       emit(LoginErrorState(status: e.toString()));
     }
@@ -102,8 +105,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   /* ================= FIRESTORE SYNC ================= */
 
   Future<bool> initInfoUser(User user) async {
-    final docRef =
-    FirebaseFirestore.instance.collection("info").doc(user.uid);
+    final docRef = FirebaseFirestore.instance.collection("info").doc(user.uid);
 
     final docSnap = await docRef.get();
 
@@ -128,25 +130,19 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     }
   }
 
-
   Future<void> _updateNotificationToken() async {
     final service = NotificationService();
 
     try {
       await service.initialize();
 
-      await service.scheduleDailyReminder(
-        hour: 20,
-        minute: 0,
-      );
+      await service.scheduleDailyReminder(hour: 20, minute: 0);
 
       final reminders = await service.getPendingReminders();
 
       debugPrint('Số lịch nhắc: ${reminders.length}');
       for (final reminder in reminders) {
-        debugPrint(
-          'Lịch nhắc: id=${reminder.id}, title=${reminder.title}',
-        );
+        debugPrint('Lịch nhắc: id=${reminder.id}, title=${reminder.title}');
       }
 
       await service.refreshToken();

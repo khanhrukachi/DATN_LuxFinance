@@ -6,15 +6,16 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 
 class BudgetItem extends StatelessWidget {
-  const BudgetItem({Key? key, required this.type, required this.spent,
-    required this.limit, required this.progress, this.onTap, this.isLoading = false}) : super(key: key);
+  const BudgetItem({super.key, required this.type, required this.spent,
+    required this.limit, required this.progress, this.onTap, this.isLoading = false});
   final int type, spent, limit;
   final double progress;
   final VoidCallback? onTap;
   final bool isLoading;
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return Padding(
+    if (isLoading) {
+      return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Shimmer.fromColors(
         baseColor: BudgetStyle.card(context),
@@ -23,6 +24,7 @@ class BudgetItem extends StatelessWidget {
             color: BudgetStyle.card(context), borderRadius: BorderRadius.circular(20))),
       ),
     );
+    }
     final item = type >= 0 && type < listType.length ? listType[type] : <String, dynamic>{};
     final image = item['image']?.toString();
     final p = progress.isFinite ? progress.clamp(0.0, double.infinity).toDouble() : 0.0;

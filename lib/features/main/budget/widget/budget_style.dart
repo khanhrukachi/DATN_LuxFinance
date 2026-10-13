@@ -2,6 +2,72 @@ import 'package:flutter/material.dart';
 
 /// Shared cyan–teal styling for the budget feature.
 class BudgetStyle {
+  /// Floating feedback shared by the add and edit budget screens.
+  static void showNotice(
+      BuildContext context,
+      String message, {
+        bool warningNotice = false,
+      }) {
+    final isDark = dark(context);
+    final color = warningNotice
+        ? (isDark ? const Color(0xFFFFC46B) : const Color(0xFF8A4F00))
+        : (isDark ? const Color(0xFFFFB4AB) : const Color(0xFFB3261E));
+    final backgroundColor = warningNotice
+        ? (isDark ? const Color(0xFF352A1C) : const Color(0xFFFFF4E3))
+        : (isDark ? const Color(0xFF362322) : const Color(0xFFFFF0EE));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: backgroundColor,
+        elevation: 4,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+        duration: Duration(seconds: warningNotice ? 6 : 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: color.withOpacity(.22)),
+        ),
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                warningNotice
+                    ? Icons.warning_amber_rounded
+                    : Icons.error_outline_rounded,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              onPressed: () => messenger.hideCurrentSnackBar(),
+              icon: Icon(Icons.close_rounded, color: color, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static const cyan = Color(0xFF00D2FF);
   static const teal = Color(0xFF2DD8C6);
   static const ink = Color(0xFF073D43);
@@ -47,15 +113,15 @@ class BudgetStyle {
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-      borderSide: BorderSide(color: teal.withOpacity(.16))),
+        borderSide: BorderSide(color: teal.withOpacity(.16))),
     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-      borderSide: BorderSide(color: accent(context), width: 1.5)),
+        borderSide: BorderSide(color: accent(context), width: 1.5)),
   );
 }
 
 class BudgetActionButton extends StatelessWidget {
-  const BudgetActionButton({Key? key, required this.label, this.onPressed,
-    this.icon = Icons.check_rounded}) : super(key: key);
+  const BudgetActionButton({super.key, required this.label, this.onPressed,
+    this.icon = Icons.check_rounded});
   final String label;
   final VoidCallback? onPressed;
   final IconData icon;
@@ -78,8 +144,8 @@ class BudgetActionButton extends StatelessWidget {
                 ? BudgetStyle.muted(context) : BudgetStyle.ink),
             const SizedBox(width: 10),
             Flexible(child: Text(label, textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                color: onPressed == null ? BudgetStyle.muted(context) : BudgetStyle.ink))),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                    color: onPressed == null ? BudgetStyle.muted(context) : BudgetStyle.ink))),
           ]),
         ),
       ),

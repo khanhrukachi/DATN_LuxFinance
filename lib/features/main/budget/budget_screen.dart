@@ -8,7 +8,7 @@ import 'package:personal_financial_management/features/main/budget/widget/budget
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class BudgetPage extends StatefulWidget {
-  const BudgetPage({Key? key}) : super(key: key);
+  const BudgetPage({super.key});
 
   @override
   State<BudgetPage> createState() => BudgetPageState();
@@ -38,9 +38,7 @@ class BudgetPageState extends State<BudgetPage>
 
     final budgets = await SpendingFirebase.getBudgetsOfMonth(month, year);
 
-    final futures = budgets
-        .where((b) => b.limitMoney > 0)
-        .map((budget) async {
+    final futures = budgets.where((b) => b.limitMoney > 0).map((budget) async {
       final spent = await SpendingFirebase.getTotalExpenseOfMonth(
         month: month,
         year: year,
@@ -70,14 +68,9 @@ class BudgetPageState extends State<BudgetPage>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final double spentTotal =
-    budgetItems.fold(0.0, (p, e) => p + e["spent"]);
-    final double limitTotal =
-    budgetItems.fold(0.0, (p, e) => p + e["limit"]);
-    final double progress =
-    limitTotal == 0 ? 0 : (spentTotal / limitTotal);
+    final double spentTotal = budgetItems.fold(0.0, (p, e) => p + e["spent"]);
+    final double limitTotal = budgetItems.fold(0.0, (p, e) => p + e["limit"]);
+    final double progress = limitTotal == 0 ? 0 : (spentTotal / limitTotal);
 
     return Scaffold(
       backgroundColor: BudgetStyle.background(context),
@@ -91,26 +84,25 @@ class BudgetPageState extends State<BudgetPage>
       ),
       body: SafeArea(
         child: Column(
-            children: [
-              if (!isLoading && budgetItems.isNotEmpty) ...[
-                TotalBudgetCard(
-                  spent: spentTotal,
-                  limit: limitTotal,
-                  progress: progress,
-                  isLoading: isLoading,
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              Expanded(
-                child: isLoading
-                    ? _buildLoading()
-                    : budgetItems.isEmpty
-                    ? _buildEmptyWithButton(context)
-                    : _buildBudgetList(),
+          children: [
+            if (!isLoading && budgetItems.isNotEmpty) ...[
+              TotalBudgetCard(
+                spent: spentTotal,
+                limit: limitTotal,
+                progress: progress,
+                isLoading: isLoading,
               ),
-            ]
+              const SizedBox(height: 12),
+            ],
 
+            Expanded(
+              child: isLoading
+                  ? _buildLoading()
+                  : budgetItems.isEmpty
+                  ? _buildEmptyWithButton(context)
+                  : _buildBudgetList(),
+            ),
+          ],
         ),
       ),
     );
@@ -136,8 +128,7 @@ class BudgetPageState extends State<BudgetPage>
       itemCount: budgetItems.length,
       itemBuilder: (context, index) {
         final item = budgetItems[index];
-        final progress =
-        (item["spent"] / item["limit"]);
+        final progress = (item["spent"] / item["limit"]);
 
         return BudgetItemFuture(
           budget: item["budget"],
@@ -158,11 +149,8 @@ class BudgetPageState extends State<BudgetPage>
     );
   }
 
-
   // ===================== EMPTY STATE =================
   Widget _buildEmptyWithButton(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -176,8 +164,9 @@ class BudgetPageState extends State<BudgetPage>
             ),
             const SizedBox(height: 16),
             Text(
-              AppLocalizations.of(context)
-                  .translate('no_budget_yet_add_a_new_budget'),
+              AppLocalizations.of(
+                context,
+              ).translate('no_budget_yet_add_a_new_budget'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
@@ -195,9 +184,7 @@ class BudgetPageState extends State<BudgetPage>
                 onPressed: () async {
                   final result = await Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const AddBudgetPage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const AddBudgetPage()),
                   );
                   if (result == true) fetchBudgets();
                 },
@@ -219,13 +206,13 @@ class BudgetItemFuture extends StatelessWidget {
   final VoidCallback? onTap;
 
   const BudgetItemFuture({
-    Key? key,
+    super.key,
     required this.budget,
     required this.spent,
     required this.limit,
     required this.progress,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

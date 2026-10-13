@@ -11,8 +11,10 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
 
   SignupBloc() : super(InitState()) {
     on<SignupEmailPasswordEvent>((event, emit) async {
-      bool check =
-          await createAccount(email: event.email, password: event.password);
+      bool check = await createAccount(
+        email: event.email,
+        password: event.password,
+      );
       if (check) {
         SharedPreferences.getInstance().then((value) {
           value.setBool("login", true);
@@ -25,8 +27,10 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
     });
   }
 
-  Future<bool> createAccount(
-      {required String email, required String password}) async {
+  Future<bool> createAccount({
+    required String email,
+    required String password,
+  }) async {
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -43,8 +47,10 @@ class SignupBloc extends Bloc<SignupEvent, SignupState> {
     var firestore = FirebaseFirestore.instance
         .collection("info")
         .doc(FirebaseAuth.instance.currentUser!.uid);
-    await firestore.set(user
-        .copyWith(avatar: FirebaseAuth.instance.currentUser!.photoURL)
-        .toMap());
+    await firestore.set(
+      user
+          .copyWith(avatar: FirebaseAuth.instance.currentUser!.photoURL)
+          .toMap(),
+    );
   }
 }

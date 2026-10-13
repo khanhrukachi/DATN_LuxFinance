@@ -3,7 +3,9 @@ import 'package:personal_financial_management/core/constants/function/list_categ
 import 'package:personal_financial_management/features/main/widget/transaction_input_form.dart';
 
 class InputIncome extends StatelessWidget {
-  const InputIncome({Key? key}) : super(key: key);
+  const InputIncome({super.key});
+
   @override
-  Widget build(BuildContext context) => TransactionInputForm(expense: false, categories: income);
+  Widget build(BuildContext context) =>
+      TransactionInputForm(expense: false, categories: income);
 }

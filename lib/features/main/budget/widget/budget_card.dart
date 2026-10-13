@@ -5,11 +5,11 @@ import 'package:personal_financial_management/features/main/budget/widget/budget
 
 class BudgetCard extends StatelessWidget {
   const BudgetCard({
-    Key? key,
+    super.key,
     required this.selectedType,
     required this.limitController,
     required this.onTypeTap,
-  }) : super(key: key);
+  });
   final int? selectedType;
   final TextEditingController limitController;
   final VoidCallback onTypeTap;

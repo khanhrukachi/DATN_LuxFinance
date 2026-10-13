@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/app_colors.dart';
 import 'package:personal_financial_management/core/constants/function/on_will_pop.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -7,7 +6,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'onboarding_body.dart';
 
 class OnBoardingPage extends StatefulWidget {
-  const OnBoardingPage({Key? key}) : super(key: key);
+  const OnBoardingPage({super.key});
 
   @override
   State<OnBoardingPage> createState() => _OnBoardingPageState();
@@ -21,37 +20,37 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
     {
       "image": "assets/intro/home.jpg",
       "title": "home",
-      "content": "view_monthly_spending_summary_and_remaining_balance"
+      "content": "view_monthly_spending_summary_and_remaining_balance",
     },
     {
       "image": "assets/intro/budget.jpg",
       "title": "budget",
-      "content": "review_your_scheduled_expenses"
+      "content": "review_your_scheduled_expenses",
     },
     {
       "image": "assets/intro/add.jpg",
       "title": "add_spending",
-      "content": "add_and_edit_your_daily_spending"
+      "content": "add_and_edit_your_daily_spending",
     },
     {
       "image": "assets/intro/share.jpg",
       "title": "share",
-      "content": "share_your_spending_with_friends"
+      "content": "share_your_spending_with_friends",
     },
     {
       "image": "assets/intro/search.jpg",
       "title": "search",
-      "content": "search_for_your_expenses"
+      "content": "search_for_your_expenses",
     },
     {
       "image": "assets/intro/analytic.jpg",
       "title": "statistical",
-      "content": "view_your_spending_and_income_reports_through_graphs"
+      "content": "view_your_spending_and_income_reports_through_graphs",
     },
     {
       "image": "assets/intro/profile.jpg",
       "title": "account",
-      "content": "edit_personal_information_and_other_settings"
+      "content": "edit_personal_information_and_other_settings",
     },
   ];
 
@@ -78,9 +77,8 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
               onPageChanged: (value) {
                 setState(() => isLastPage = value == 6);
               },
-              itemBuilder: (context, index) => ItemOnBoarding(
-                item: listPage[index],
-              ),
+              itemBuilder: (context, index) =>
+                  ItemOnBoarding(item: listPage[index]),
             ),
           ),
         ),
@@ -92,7 +90,6 @@ class _OnBoardingPageState extends State<OnBoardingPage> {
                   borderRadius: BorderRadius.circular(0),
                 ),
                 foregroundColor: Colors.white,
-                backgroundColor: AppColors.buttonLogin,
                 minimumSize: const Size.fromHeight(60),
               ),
               onPressed: () {

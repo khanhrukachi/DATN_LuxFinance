@@ -13,21 +13,13 @@ class ChatMessage {
   final bool fromUser;
   final ChatTransactionDraft? draft;
 
-  const ChatMessage({
-    required this.text,
-    required this.fromUser,
-    this.draft,
-  });
+  const ChatMessage({required this.text, required this.fromUser, this.draft});
 }
 
 class ChatBox extends StatefulWidget {
-  final Future<void> Function(ChatTransactionDraft draft)
-  onCreateTransaction;
+  final Future<void> Function(ChatTransactionDraft draft) onCreateTransaction;
 
-  const ChatBox({
-    super.key,
-    required this.onCreateTransaction,
-  });
+  const ChatBox({super.key, required this.onCreateTransaction});
 
   @override
   State<ChatBox> createState() => _ChatBoxState();
@@ -47,17 +39,26 @@ class _ChatBoxState extends State<ChatBox> {
       Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
 
   bool _sameDraft(ChatTransactionDraft a, ChatTransactionDraft b) =>
-      a.amount == b.amount && a.type == b.type && a.date == b.date &&
-          a.note == b.note && a.location == b.location && a.kind == b.kind &&
-          a.hasExplicitTime == b.hasExplicitTime;
+      a.amount == b.amount &&
+      a.type == b.type &&
+      a.date == b.date &&
+      a.note == b.note &&
+      a.location == b.location &&
+      a.kind == b.kind &&
+      a.hasExplicitTime == b.hasExplicitTime;
 
   void _retireDraft() {
     final active = _activeDraftMessage;
     if (active == null) return;
     final index = _messages.indexOf(active);
     if (index >= 0) {
-      _messages[index] = ChatMessage(text: _say(
-          'Bản nháp đã được cập nhật hoặc hủy.', 'Draft updated or cancelled.'), fromUser: false);
+      _messages[index] = ChatMessage(
+        text: _say(
+          'Bản nháp đã được cập nhật hoặc hủy.',
+          'Draft updated or cancelled.',
+        ),
+        fromUser: false,
+      );
     }
     _activeDraftMessage = null;
   }
@@ -69,20 +70,16 @@ class _ChatBoxState extends State<ChatBox> {
   Timer? _savingTimer;
   int _dotCount = 1;
 
-  bool get _dark =>
-      Theme.of(context).brightness == Brightness.dark;
+  bool get _dark => Theme.of(context).brightness == Brightness.dark;
 
   Color get _pageColor =>
       _dark ? const Color(0xFF0E1C22) : const Color(0xFFF3F9FA);
 
-  Color get _cardColor =>
-      _dark ? const Color(0xFF172A30) : Colors.white;
+  Color get _cardColor => _dark ? const Color(0xFF172A30) : Colors.white;
 
-  Color get _textColor =>
-      _dark ? Colors.white : const Color(0xFF16343C);
+  Color get _textColor => _dark ? Colors.white : const Color(0xFF16343C);
 
-  Color get _mutedColor =>
-      _dark ? Colors.white60 : const Color(0xFF687386);
+  Color get _mutedColor => _dark ? Colors.white60 : const Color(0xFF687386);
 
   String _t(String key) => AppLocalizations.of(context).translate(key);
 
@@ -97,12 +94,7 @@ class _ChatBoxState extends State<ChatBox> {
     if (_greetingAdded) return;
     _greetingAdded = true;
 
-    _messages.add(
-      ChatMessage(
-        text: _greeting,
-        fromUser: false,
-      ),
-    );
+    _messages.add(ChatMessage(text: _greeting, fromUser: false));
   }
 
   @override
@@ -124,9 +116,7 @@ class _ChatBoxState extends State<ChatBox> {
 
     _controller
       ..text = value
-      ..selection = TextSelection.collapsed(
-        offset: value.length,
-      );
+      ..selection = TextSelection.collapsed(offset: value.length);
 
     _focusInput();
   }
@@ -141,12 +131,7 @@ class _ChatBoxState extends State<ChatBox> {
     setState(() {
       _messages
         ..clear()
-        ..add(
-          ChatMessage(
-            text: _greeting,
-            fromUser: false,
-          ),
-        );
+        ..add(ChatMessage(text: _greeting, fromUser: false));
     });
   }
 
@@ -160,9 +145,17 @@ class _ChatBoxState extends State<ChatBox> {
       if (active != null) {
         _confirm(active);
       } else {
-        setState(() => _messages.add(ChatMessage(text: _say(
-            'Chưa có giao dịch đầy đủ để lưu. Bạn bổ sung thông tin nhé.',
-            'No complete transaction to save yet. Please add the missing details.'), fromUser: false)));
+        setState(
+          () => _messages.add(
+            ChatMessage(
+              text: _say(
+                'Chưa có giao dịch đầy đủ để lưu. Bạn bổ sung thông tin nhé.',
+                'No complete transaction to save yet. Please add the missing details.',
+              ),
+              fromUser: false,
+            ),
+          ),
+        );
       }
       _scrollToBottom();
       return;
@@ -172,29 +165,50 @@ class _ChatBoxState extends State<ChatBox> {
       if (ChatParser.isCancel(input) || ChatParser.isNewTransaction(input)) {
         _retireDraft();
         _memory.clear();
-        _messages.add(ChatMessage(text: _say(
-            'Đã xóa giao dịch đang nhập. Bạn muốn ghi khoản thu/chi nào tiếp theo?',
-            'Pending transaction cleared. What would you like to record next?'), fromUser: false));
+        _messages.add(
+          ChatMessage(
+            text: _say(
+              'Đã xóa giao dịch đang nhập. Bạn muốn ghi khoản thu/chi nào tiếp theo?',
+              'Pending transaction cleared. What would you like to record next?',
+            ),
+            fromUser: false,
+          ),
+        );
         return;
       }
       final result = ChatParser.parseTurn(input, context, _memory);
       if (result.draft != null) {
         final previous = _activeDraftMessage?.draft;
         if (previous != null && _sameDraft(previous, result.draft!)) {
-          _messages.add(ChatMessage(text: _say(
-              'Thông tin không thay đổi. Bạn nhấn Lưu giao dịch hoặc nhập “lưu”; muốn sửa thì nhập số tiền, danh mục, ngày/giờ mới.',
-              'Details are unchanged. Tap Save, type save, or enter corrected details.'), fromUser: false));
+          _messages.add(
+            ChatMessage(
+              text: _say(
+                'Thông tin không thay đổi. Bạn nhấn Lưu giao dịch hoặc nhập “lưu”; muốn sửa thì nhập số tiền, danh mục, ngày/giờ mới.',
+                'Details are unchanged. Tap Save, type save, or enter corrected details.',
+              ),
+              fromUser: false,
+            ),
+          );
           return;
         }
         _retireDraft();
-        final message = ChatMessage(text: _say(
+        final message = ChatMessage(
+          text: _say(
             'Mình đã ghép thông tin. Bạn kiểm tra rồi lưu nhé. Có thể nhập tiếp để sửa số tiền, danh mục hoặc ngày/giờ.',
-            'Your details are ready. Review and save, or enter a correction.'),
-            fromUser: false, draft: result.draft);
+            'Your details are ready. Review and save, or enter a correction.',
+          ),
+          fromUser: false,
+          draft: result.draft,
+        );
         _activeDraftMessage = message;
         _messages.add(message);
       } else {
-        _messages.add(ChatMessage(text: result.question ?? result.error ?? _t('transaction_chat_03'), fromUser: false));
+        _messages.add(
+          ChatMessage(
+            text: result.question ?? result.error ?? _t('transaction_chat_03'),
+            fromUser: false,
+          ),
+        );
       }
     });
     _scrollToBottom();
@@ -247,16 +261,13 @@ class _ChatBoxState extends State<ChatBox> {
     });
 
     _savingTimer?.cancel();
-    _savingTimer = Timer.periodic(
-      const Duration(milliseconds: 400),
-          (_) {
-        if (!mounted) return;
+    _savingTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      if (!mounted) return;
 
-        setState(() {
-          _dotCount = _dotCount % 3 + 1;
-        });
-      },
-    );
+      setState(() {
+        _dotCount = _dotCount % 3 + 1;
+      });
+    });
 
     try {
       // Đưa dòng trạng thái đang lưu vào vùng nhìn thấy.
@@ -282,8 +293,7 @@ class _ChatBoxState extends State<ChatBox> {
 
       if (index >= 0) {
         final money = NumberFormat.currency(
-          locale:
-          Localizations.localeOf(context).languageCode == 'vi'
+          locale: Localizations.localeOf(context).languageCode == 'vi'
               ? 'vi_VN'
               : 'en_US',
           symbol: '₫',
@@ -297,25 +307,37 @@ class _ChatBoxState extends State<ChatBox> {
           );
           _memory.clear();
           _activeDraftMessage = null;
-          _messages.add(ChatMessage(text: _say(
-              'Hôm nay bạn còn chi tiêu hoặc nhận khoản tiền nào nữa không? Kể mình để ghi tiếp nhé.',
-              'Any other expenses or income today? Tell me to record the next transaction.'), fromUser: false));
+          _messages.add(
+            ChatMessage(
+              text: _say(
+                'Hôm nay bạn còn chi tiêu hoặc nhận khoản tiền nào nữa không? Kể mình để ghi tiếp nhé.',
+                'Any other expenses or income today? Tell me to record the next transaction.',
+              ),
+              fromUser: false,
+            ),
+          );
         });
         _scrollToBottom();
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() => _messages.add(ChatMessage(text: _say(
-          'Chưa lưu được giao dịch. Mình vẫn giữ bản nháp; bạn kiểm tra kết nối rồi nhấn Lưu hoặc nhập “lưu” để thử lại.',
-          'Save failed. Your draft is kept; check your connection and retry Save.'), fromUser: false)));
+      setState(
+        () => _messages.add(
+          ChatMessage(
+            text: _say(
+              'Chưa lưu được giao dịch. Mình vẫn giữ bản nháp; bạn kiểm tra kết nối rồi nhấn Lưu hoặc nhập “lưu” để thử lại.',
+              'Save failed. Your draft is kept; check your connection and retry Save.',
+            ),
+            fromUser: false,
+          ),
+        ),
+      );
       _scrollToBottom();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text(
-            _t('transaction_chat_06'),
-          ),
+          content: Text(_t('transaction_chat_06')),
         ),
       );
     } finally {
@@ -342,15 +364,16 @@ class _ChatBoxState extends State<ChatBox> {
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _focusInput,
-        child: SafeArea(top: false, child: Column(
-          children: [
-            _buildSuggestions(),
-            Expanded(
-              child: _buildMessages(),
-            ),
-            _buildComposer(),
-          ],
-        )),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              _buildSuggestions(),
+              Expanded(child: _buildMessages()),
+              _buildComposer(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -384,14 +407,14 @@ class _ChatBoxState extends State<ChatBox> {
                 const SizedBox(height: 2),
                 Text(
                   _memory.isActive
-                      ? _say('Đang giữ một giao dịch chưa lưu', 'One pending transaction')
+                      ? _say(
+                          'Đang giữ một giao dịch chưa lưu',
+                          'One pending transaction',
+                        )
                       : _t('transaction_chat_08'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _mutedColor,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: _mutedColor, fontSize: 11),
                 ),
               ],
             ),
@@ -415,10 +438,7 @@ class _ChatBoxState extends State<ChatBox> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF00D2FF),
-            Color(0xFF2DD8C6),
-          ],
+          colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -441,52 +461,52 @@ class _ChatBoxState extends State<ChatBox> {
   Widget _buildSuggestions() {
     final suggestions = _memory.isActive
         ? (_activeDraftMessage != null
-        ? [_say('Lưu giao dịch', 'Save'), _say('Hủy', 'Cancel'), _say('Giao dịch mới', 'New transaction')]
-        : (_memory.amount == null
-        ? ['50k', '100k', _say('Hủy', 'Cancel')]
-        : [_say('Đi chợ', 'Groceries'), _say('Ăn uống', 'Food'), _say('Lương', 'Salary')]))
-        : [_say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'), _t('transaction_chat_taxi'), _t('transaction_chat_salary')];
+              ? [
+                  _say('Lưu giao dịch', 'Save'),
+                  _say('Hủy', 'Cancel'),
+                  _say('Giao dịch mới', 'New transaction'),
+                ]
+              : (_memory.amount == null
+                    ? ['50k', '100k', _say('Hủy', 'Cancel')]
+                    : [
+                        _say('Đi chợ', 'Groceries'),
+                        _say('Ăn uống', 'Food'),
+                        _say('Lương', 'Salary'),
+                      ]))
+        : [
+            _say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'),
+            _t('transaction_chat_taxi'),
+            _t('transaction_chat_salary'),
+          ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
-        children: List.generate(
-          suggestions.length,
-              (index) {
-            return Padding(
-              padding: EdgeInsets.only(
-                right: index == suggestions.length - 1 ? 0 : 8,
+        children: List.generate(suggestions.length, (index) {
+          return Padding(
+            padding: EdgeInsets.only(
+              right: index == suggestions.length - 1 ? 0 : 8,
+            ),
+            child: ActionChip(
+              onPressed: _saving
+                  ? null
+                  : () => _useSuggestion(suggestions[index]),
+              avatar: Icon(
+                index == 2 ? Icons.payments_rounded : Icons.add_circle_outline,
+                size: 16,
+                color: _dark ? Colors.tealAccent : const Color(0xFF008F7A),
               ),
-              child: ActionChip(
-                onPressed: _saving
-                    ? null
-                    : () => _useSuggestion(suggestions[index]),
-                avatar: Icon(
-                  index == 2
-                      ? Icons.payments_rounded
-                      : Icons.add_circle_outline,
-                  size: 16,
-                  color: _dark
-                      ? Colors.tealAccent
-                      : const Color(0xFF008F7A),
-                ),
-                label: Text(suggestions[index]),
-                labelStyle: TextStyle(
-                  color: _textColor,
-                  fontSize: 12,
-                ),
-                backgroundColor: _cardColor,
-                side: BorderSide(
-                  color: _dark ? Colors.white12 : Colors.black12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+              label: Text(suggestions[index]),
+              labelStyle: TextStyle(color: _textColor, fontSize: 12),
+              backgroundColor: _cardColor,
+              side: BorderSide(color: _dark ? Colors.white12 : Colors.black12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -494,8 +514,7 @@ class _ChatBoxState extends State<ChatBox> {
   Widget _buildMessages() {
     return ListView.builder(
       controller: _scrollController,
-      keyboardDismissBehavior:
-      ScrollViewKeyboardDismissBehavior.onDrag,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
@@ -510,36 +529,54 @@ class _ChatBoxState extends State<ChatBox> {
   }
 
   Widget _buildMessage(ChatMessage message) {
-    if (_messages.isNotEmpty && identical(message, _messages.first) && !message.fromUser && message.draft == null) {
+    if (_messages.isNotEmpty &&
+        identical(message, _messages.first) &&
+        !message.fromUser &&
+        message.draft == null) {
       return Container(
         margin: const EdgeInsets.only(bottom: 24, top: 8),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-            gradient: LinearGradient(colors: _dark
+          gradient: LinearGradient(
+            colors: _dark
                 ? [const Color(0xFF163A46), const Color(0xFF16463F)]
                 : [const Color(0xFFE1F7FF), const Color(0xFFDCF9F1)],
-                begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: const Color(0xFF2DD8C6).withOpacity(.18))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _botAvatar(size: 54),
-          const SizedBox(height: 20),
-          Text(_t('transaction_chat_07'), style: TextStyle(color: _textColor, fontSize: 22, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 12),
-          Text(_greeting, textAlign: TextAlign.justify, style: TextStyle(color: _mutedColor, height: 1.6)),
-        ]),
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFF2DD8C6).withOpacity(.18)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _botAvatar(size: 54),
+            const SizedBox(height: 20),
+            Text(
+              _t('transaction_chat_07'),
+              style: TextStyle(
+                color: _textColor,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _greeting,
+              textAlign: TextAlign.justify,
+              style: TextStyle(color: _mutedColor, height: 1.6),
+            ),
+          ],
+        ),
       );
     }
     final fromUser = message.fromUser;
-    final isSavingThisMessage =
-    identical(_savingMessage, message);
+    final isSavingThisMessage = identical(_savingMessage, message);
 
-    final bubbleColor =
-    fromUser ? const Color(0xFF2DD8C6) : _cardColor;
+    final bubbleColor = fromUser ? const Color(0xFF2DD8C6) : _cardColor;
 
     return Align(
-      alignment:
-      fromUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: fromUser ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.86,
@@ -557,7 +594,17 @@ class _ChatBoxState extends State<ChatBox> {
                       ? CrossAxisAlignment.end
                       : CrossAxisAlignment.start,
                   children: [
-                    Padding(padding: const EdgeInsets.only(bottom: 6, left: 4), child: Text(_t(fromUser ? 'transaction_chat_you' : 'transaction_chat_assistant'), style: TextStyle(fontSize: 11, color: _mutedColor))),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6, left: 4),
+                      child: Text(
+                        _t(
+                          fromUser
+                              ? 'transaction_chat_you'
+                              : 'transaction_chat_assistant',
+                        ),
+                        style: TextStyle(fontSize: 11, color: _mutedColor),
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 15,
@@ -565,17 +612,19 @@ class _ChatBoxState extends State<ChatBox> {
                       ),
                       decoration: BoxDecoration(
                         color: fromUser ? null : bubbleColor,
-                        gradient: fromUser ? const LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)]) : null,
-                        border: fromUser ? null : Border.all(color: _textColor.withOpacity(.08)),
+                        gradient: fromUser
+                            ? const LinearGradient(
+                                colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
+                              )
+                            : null,
+                        border: fromUser
+                            ? null
+                            : Border.all(color: _textColor.withOpacity(.08)),
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(20),
                           topRight: const Radius.circular(20),
-                          bottomLeft: Radius.circular(
-                            fromUser ? 20 : 5,
-                          ),
-                          bottomRight: Radius.circular(
-                            fromUser ? 5 : 20,
-                          ),
+                          bottomLeft: Radius.circular(fromUser ? 20 : 5),
+                          bottomRight: Radius.circular(fromUser ? 5 : 20),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -617,8 +666,7 @@ class _ChatBoxState extends State<ChatBox> {
                           ),
                         ),
                       ),
-                      if (isSavingThisMessage)
-                        _buildSavingStatus(),
+                      if (isSavingThisMessage) _buildSavingStatus(),
                     ],
                   ],
                 ),
@@ -631,9 +679,7 @@ class _ChatBoxState extends State<ChatBox> {
   }
 
   Widget _buildSavingStatus() {
-    final color = _dark
-        ? Colors.tealAccent
-        : const Color(0xFF008F7A);
+    final color = _dark ? Colors.tealAccent : const Color(0xFF008F7A);
 
     return Padding(
       key: _savingStatusKey,
@@ -647,10 +693,7 @@ class _ChatBoxState extends State<ChatBox> {
               SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: color,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
               ),
               const SizedBox(width: 10),
               Flexible(
@@ -690,9 +733,7 @@ class _ChatBoxState extends State<ChatBox> {
           color: _cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(
-            top: BorderSide(
-              color: _dark ? Colors.white10 : Colors.black12,
-            ),
+            top: BorderSide(color: _dark ? Colors.white10 : Colors.black12),
           ),
         ),
         child: Row(
@@ -707,22 +748,13 @@ class _ChatBoxState extends State<ChatBox> {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: _textColor, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: _saving
                       ? _t('transaction_chat_12')
                       : _t('transaction_chat_13'),
-                  hintStyle: TextStyle(
-                    color: _mutedColor,
-                    fontSize: 13,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.edit_note_rounded,
-                    color: _mutedColor,
-                  ),
+                  hintStyle: TextStyle(color: _mutedColor, fontSize: 13),
+                  prefixIcon: Icon(Icons.edit_note_rounded, color: _mutedColor),
                   filled: true,
                   fillColor: _pageColor,
                   contentPadding: const EdgeInsets.symmetric(
@@ -736,8 +768,7 @@ class _ChatBoxState extends State<ChatBox> {
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide(
-                      color:
-                      _dark ? Colors.white10 : Colors.black12,
+                      color: _dark ? Colors.white10 : Colors.black12,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -757,10 +788,7 @@ class _ChatBoxState extends State<ChatBox> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF00D2FF),
-                    Color(0xFF2DD8C6),
-                  ],
+                  colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

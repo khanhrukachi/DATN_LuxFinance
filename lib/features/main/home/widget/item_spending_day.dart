@@ -12,7 +12,7 @@ import 'package:personal_financial_management/features/view_spending/view_spendi
 import 'package:table_calendar/table_calendar.dart';
 
 class ItemSpendingDay extends StatefulWidget {
-  const ItemSpendingDay({Key? key, required this.spendingList}) : super(key: key);
+  const ItemSpendingDay({super.key, required this.spendingList});
   final List<Spending> spendingList;
 
   @override

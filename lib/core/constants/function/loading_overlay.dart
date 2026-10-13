@@ -5,11 +5,8 @@ class LoadingOverlay extends StatelessWidget {
   final bool isLoading;
   final Widget child;
 
-  const LoadingOverlay({
-    Key? key,
-    required this.isLoading,
-    required this.child,
-  }) : super(key: key);
+  const LoadingOverlay({Key? key, required this.isLoading, required this.child})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {

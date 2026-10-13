@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class ItemOnBoarding extends StatelessWidget {
-  const ItemOnBoarding({Key? key, required this.item}) : super(key: key);
+  const ItemOnBoarding({super.key, required this.item});
   final Map<String, String> item;
 
   @override
@@ -26,8 +26,9 @@ class ItemOnBoarding extends StatelessWidget {
           const SizedBox(height: 20),
           const Spacer(),
           Container(
-            decoration:
-                BoxDecoration(border: Border.all(color: Colors.black54)),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black54),
+            ),
             child: Image.asset(
               item["image"]!,
               fit: BoxFit.fitHeight,

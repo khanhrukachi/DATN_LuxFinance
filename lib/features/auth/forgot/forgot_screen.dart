@@ -24,54 +24,66 @@ class _ForgotPageState extends State<ForgotPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthSurface(child: Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Form(
-        key: _formKey,
-        child: AuthPanel(child: Column(
-          children: [
-            const AuthEmblem(icon: Icons.lock_reset_rounded),
-            Text(
-              AppLocalizations.of(context).translate('forgot_password'),
-              style:
-              const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+    return AuthSurface(
+      child: Scaffold(
+        appBar: AppBar(elevation: 0, backgroundColor: Colors.transparent),
+        body: Form(
+          key: _formKey,
+          child: AuthPanel(
+            child: Column(
+              children: [
+                const AuthEmblem(icon: Icons.lock_reset_rounded),
+                Text(
+                  AppLocalizations.of(context).translate('forgot_password'),
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  textAlign: TextAlign.center,
+                  AppLocalizations.of(
+                    context,
+                  ).translate('don_worry_it_happens'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: AuthStyle.muted(context),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                InputText(
+                  hint: "Email",
+                  validator: 0,
+                  controller: _emailController,
+                  inputType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 24),
+                customButton(
+                  action: () async {
+                    if (_formKey.currentState!.validate()) {
+                      try {
+                        await FirebaseAuth.instance.sendPasswordResetEmail(
+                          email: _emailController.text.trim(),
+                        );
+                        if (!mounted) return;
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/success',
+                          (route) => false,
+                        );
+                      } catch (_) {}
+                      return;
+                    }
+                  },
+                  text: AppLocalizations.of(context).translate('submit'),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              textAlign: TextAlign.center,
-              AppLocalizations.of(context).translate('don_worry_it_happens'),
-              style: TextStyle(fontSize: 14, height: 1.6, color: AuthStyle.muted(context)),
-            ),
-            const SizedBox(height: 28),
-            InputText(
-              hint: "Email",
-              validator: 0,
-              controller: _emailController,
-              inputType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 24),
-            customButton(
-              action: () async {
-                if (_formKey.currentState!.validate()) {
-                  try {
-                    await FirebaseAuth.instance.sendPasswordResetEmail(
-                        email: _emailController.text.trim());
-                    if (!mounted) return;
-                    Navigator.pushNamedAndRemoveUntil(
-                        context, '/success', (route) => false);
-                  } catch (_) {}
-                  return;
-                }
-              },
-              text: AppLocalizations.of(context).translate('submit'),
-            ),
-          ],
+          ),
         ),
-        ),
       ),
-    ));
+    );
   }
 }

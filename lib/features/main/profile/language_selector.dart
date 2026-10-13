@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 
 class LanguageSelector extends StatelessWidget {
-  const LanguageSelector({Key? key, required this.currentLanguage,
-    required this.onLanguageChanged}) : super(key: key);
+  const LanguageSelector({super.key, required this.currentLanguage,
+    required this.onLanguageChanged});
   final int currentLanguage;
   final Function(int) onLanguageChanged;
   @override

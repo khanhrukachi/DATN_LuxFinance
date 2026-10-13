@@ -7,6 +7,9 @@ class SignupEmailPasswordEvent extends SignupEvent {
   final String password;
   final User user;
 
-  SignupEmailPasswordEvent(
-      {required this.email, required this.password, required this.user});
+  SignupEmailPasswordEvent({
+    required this.email,
+    required this.password,
+    required this.user,
+  });
 }

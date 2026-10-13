@@ -7,12 +7,12 @@ import 'package:personal_financial_management/features/main/home/widget/home_sty
 
 class SummarySpending extends StatelessWidget {
   const SummarySpending({
-    Key? key,
+    super.key,
     required this.monthSpendingList,
     required this.allSpendingList,
     this.user,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   final List<Spending> monthSpendingList;
   final List<Spending> allSpendingList;

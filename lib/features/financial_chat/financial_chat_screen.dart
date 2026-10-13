@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/financial_chat/widget/monthly_comparison_chart.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
@@ -14,8 +13,8 @@ class FinancialChatScreen extends StatefulWidget {
     required this.categoryCatalog,
     this.baseUrl = const String.fromEnvironment(
       'ML_BASE_URL',
-      // defaultValue: 'https://datn-luxfinance.onrender.com',
-      defaultValue: 'http://10.0.2.2:8000',
+      defaultValue: 'https://datn-luxfinance.onrender.com',
+      // defaultValue: 'http://10.0.2.2:8000',
     ),
   });
 
@@ -181,14 +180,16 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
         .where((m) => m.user)
         .map((m) => <String, String>{'role': 'user', 'content': m.text})
         .toList();
-    if (retry && history.isNotEmpty && history.last['content'] == question)
+    if (retry && history.isNotEmpty && history.last['content'] == question) {
       history.removeLast();
+    }
     setState(() {
       _busy = true;
       _retryQuestion = null;
       if (!retry) _messages.add(_Message(question, user: true));
-      if (retry && _messages.isNotEmpty && _messages.last.errorKey != null)
+      if (retry && _messages.isNotEmpty && _messages.last.errorKey != null) {
         _messages.removeLast();
+      }
     });
     _input.clear();
     _scrollDown();
@@ -225,13 +226,14 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
       if (reply.needsInput.contains('available_balance') ||
           reply.needsInput.contains('rent_amount')) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && !_sessionChanged)
+          if (mounted && !_sessionChanged) {
             _provideAmount(
               question,
               reply.needsInput.contains('available_balance')
                   ? 'available_balance'
                   : 'target_amount',
             );
+          }
         });
       }
     } catch (error, stackTrace) {
@@ -411,8 +413,9 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
               final amount = double.tryParse(
                 controller.text.replaceAll(RegExp(r'[.,\s]'), ''),
               );
-              if (amount != null && amount.isFinite && amount >= 0)
+              if (amount != null && amount.isFinite && amount >= 0) {
                 Navigator.pop(dialogContext, amount);
+              }
             },
             child: Text(vi ? 'Xác nhận' : 'Confirm'),
           ),
@@ -430,17 +433,16 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
   void _chooseCategory() {
     final colors = Theme.of(context).colorScheme;
     final accent = _dark ? _teal : const Color(0xFF14988F);
-    final parentBackground =
-    _dark ? const Color(0xFF163A46) : const Color(0xFFE1F7FF);
+    final parentBackground = _dark
+        ? const Color(0xFF163A46)
+        : const Color(0xFFE1F7FF);
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: _background,
       shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(26),
-        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         side: BorderSide(color: _teal.withOpacity(.16)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -507,8 +509,7 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                   itemBuilder: (context, index) {
                     final item = widget.categoryCatalog[index];
                     final isParent = item['isParent'] == true;
-                    final name =
-                        '${item['display_name'] ?? item['id']}';
+                    final name = '${item['display_name'] ?? item['id']}';
 
                     return Padding(
                       padding: EdgeInsets.only(
@@ -521,9 +522,7 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
-                            color: _teal.withOpacity(
-                              isParent ? .24 : .12,
-                            ),
+                            color: _teal.withOpacity(isParent ? .24 : .12),
                           ),
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -550,10 +549,8 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                                     color: isParent
                                         ? null
                                         : _teal.withOpacity(.10),
-                                    gradient:
-                                    isParent ? _gradient : null,
-                                    borderRadius:
-                                    BorderRadius.circular(14),
+                                    gradient: isParent ? _gradient : null,
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Icon(
                                     isParent
@@ -811,8 +808,9 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                             padding: const EdgeInsets.all(16),
                             itemCount: _messages.length + (_busy ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (index < _messages.length)
+                              if (index < _messages.length) {
                                 return _bubble(_messages[index], colors);
+                              }
                               return Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: Row(

@@ -85,8 +85,11 @@ class _MyPieChartState extends State<MyPieChart>
               pieTouchData: PieTouchData(
                 touchCallback: (event, response) {
                   final index = response?.touchedSection?.touchedSectionIndex;
-                  final int? category = event.isInterestedForInteractions &&
-                      index != null && index >= 0 && index < categoryIds.length
+                  final int? category =
+                      event.isInterestedForInteractions &&
+                          index != null &&
+                          index >= 0 &&
+                          index < categoryIds.length
                       ? categoryIds[index]
                       : null;
                   if (mounted && category != _touchedCategory) {
@@ -97,9 +100,11 @@ class _MyPieChartState extends State<MyPieChart>
               borderData: FlBorderData(show: false),
               sectionsSpace: 4,
               centerSpaceRadius: 30,
-              centerSpaceColor:
-              AnalyticStyle.background(context),
-              sections: _buildSections(progress: _controller.value, context: context),
+              centerSpaceColor: AnalyticStyle.background(context),
+              sections: _buildSections(
+                progress: _controller.value,
+                context: context,
+              ),
             ),
             // Never interpolate sections against a different badge list.
             key: ValueKey<String>('pie-${categoryIds.join('-')}'),
@@ -118,10 +123,7 @@ class _MyPieChartState extends State<MyPieChart>
 
     if (widget.list.isEmpty) return sections;
 
-    final total = widget.list.fold<int>(
-      0,
-          (sum, e) => sum + e.money.abs(),
-    );
+    final total = widget.list.fold<int>(0, (sum, e) => sum + e.money.abs());
 
     if (total <= 0) return sections;
 
@@ -131,8 +133,7 @@ class _MyPieChartState extends State<MyPieChart>
       final data = widget.list.where((e) => e.type == i).toList();
       if (data.isEmpty) continue;
 
-      final sumType =
-      data.fold<int>(0, (s, e) => s + e.money.abs());
+      final sumType = data.fold<int>(0, (s, e) => s + e.money.abs());
 
       if (sumType <= 0) continue;
 
@@ -140,25 +141,24 @@ class _MyPieChartState extends State<MyPieChart>
       final isTouched = i == _touchedCategory;
 
       final key = listType[i]['title'] ?? data.first.typeName ?? 'other';
-      final title =
-      AppLocalizations.of(context).translate(key);
+      final title = AppLocalizations.of(context).translate(key);
 
       sections.add(
         PieChartSectionData(
           value: percent,
           color: paletteColors[i % paletteColors.length],
-          radius: ((MediaQuery.of(context).size.width - 64) * .22)
-              .clamp(44.0, 88.0).toDouble() * (.85 + .15 * progress) + (isTouched ? 8 : 0),
-          title: isTouched
-              ? '$title\n${percent.toStringAsFixed(1)}%'
-              : '',
+          radius:
+              ((MediaQuery.of(context).size.width - 64) * .22)
+                      .clamp(44.0, 88.0)
+                      .toDouble() *
+                  (.85 + .15 * progress) +
+              (isTouched ? 8 : 0),
+          title: isTouched ? '$title\n${percent.toStringAsFixed(1)}%' : '',
           titleStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: Colors.white,
-            shadows: [
-              Shadow(color: Colors.black38, blurRadius: 4),
-            ],
+            shadows: [Shadow(color: Colors.black38, blurRadius: 4)],
           ),
           badgeWidget: _Badge(
             listType[i]['image'],
@@ -175,11 +175,8 @@ class _MyPieChartState extends State<MyPieChart>
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge(
-      this.imgAsset, {
-        Key? key,
-        required this.isTouched,
-      }) : super(key: key);
+  const _Badge(this.imgAsset, {Key? key, required this.isTouched})
+    : super(key: key);
 
   final String? imgAsset;
   final bool isTouched;
@@ -204,9 +201,21 @@ class _Badge extends StatelessWidget {
           ),
         ],
       ),
-      child: imgAsset == null ? Icon(Icons.label_outline_rounded, color: AnalyticStyle.accent(context), size: 18)
-          : Image.asset(imgAsset!, fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(Icons.label_outline_rounded, color: AnalyticStyle.accent(context), size: 18)),
+      child: imgAsset == null
+          ? Icon(
+              Icons.label_outline_rounded,
+              color: AnalyticStyle.accent(context),
+              size: 18,
+            )
+          : Image.asset(
+              imgAsset!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.label_outline_rounded,
+                color: AnalyticStyle.accent(context),
+                size: 18,
+              ),
+            ),
     );
   }
 }

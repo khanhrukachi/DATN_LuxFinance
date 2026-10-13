@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
-// Thêm import AppLocalizations giống financial_chat_screen.dart.
 
 class MonthlyComparisonChart extends StatelessWidget {
   const MonthlyComparisonChart({

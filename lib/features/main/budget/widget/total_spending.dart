@@ -13,7 +13,7 @@ Widget shimmerAnimation() => Shimmer.fromColors(
 );
 
 class TotalSpending extends StatelessWidget {
-  const TotalSpending({Key? key, this.list}) : super(key: key);
+  const TotalSpending({super.key, this.list});
   final List<Spending>? list;
   @override
   Widget build(BuildContext context) {
