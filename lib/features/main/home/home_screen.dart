@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/function/extension.dart';
 import 'package:personal_financial_management/features/main/home/widget/home_style.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/features/main/home/widget/item_parent_widget.dart';
@@ -18,17 +17,13 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with TickerProviderStateMixin {
-  late TabController _monthController;
+class _HomePageState extends State<HomePage> {
+  int _selectedMonthIndex = 1;
   final List<DateTime> months = [];
 
   @override
   void initState() {
     super.initState();
-
-    _monthController = TabController(length: 19, vsync: this);
-    _monthController.index = 17;
 
     DateTime now = DateTime(DateTime.now().year, DateTime.now().month);
 
@@ -40,24 +35,19 @@ class _HomePageState extends State<HomePage>
       months.add(now);
     }
 
-    _monthController.addListener(() {
-      setState(() {});
-    });
   }
-
-  @override
-  void dispose() { _monthController.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return Scaffold(backgroundColor: HomeStyle.background(context),
-        body: Center(child: Text(AppLocalizations.of(context).translate('no_data'))));
+    if (user == null) {
+      return Scaffold(backgroundColor: HomeStyle.background(context),
+          body: Center(child: Text(AppLocalizations.of(context).translate('no_data'))));
+    }
     return Scaffold(
       backgroundColor: HomeStyle.background(context),
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot>(
-          // `info/<uid>.money` is the saved current balance for this user.
           stream: FirebaseFirestore.instance
               .collection('info')
               .doc(user.uid)
@@ -104,7 +94,7 @@ class _HomePageState extends State<HomePage>
                     .map((e) => Spending.fromFirebase(e))
                     .toList();
 
-                final selectedMonth = months[18 - _monthController.index];
+                final selectedMonth = months[_selectedMonthIndex];
                 final monthSpendingList = allSpendingList.where((e) {
                   return e.dateTime.year == selectedMonth.year &&
                       e.dateTime.month == selectedMonth.month;
@@ -134,48 +124,7 @@ class _HomePageState extends State<HomePage>
       slivers: [
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-        SliverToBoxAdapter(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(4),
-            decoration: HomeStyle.decoration(context),
-            height: 52,
-            child: TabBar(
-              controller: _monthController,
-              isScrollable: true,
-              splashBorderRadius: BorderRadius.circular(16),
-              labelColor: HomeStyle.ink,
-              unselectedLabelColor: HomeStyle.muted(context),
-              labelStyle: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16),
-              unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(gradient: HomeStyle.gradient, borderRadius: BorderRadius.circular(16)),
-              tabs: List.generate(19, (index) {
-                return SizedBox(
-                  width: MediaQuery.of(context).size.width / 4,
-                  child: Tab(
-                    text: index == 17
-                        ? AppLocalizations.of(context)
-                        .translate('this_month')
-                        .capitalize()
-                        : (index == 18
-                        ? AppLocalizations.of(context)
-                        .translate('next_month')
-                        .capitalize()
-                        : (index == 16
-                        ? AppLocalizations.of(context)
-                        .translate('last_month')
-                        .capitalize()
-                        : DateFormat("MM/yyyy")
-                        .format(months[18 - index]))),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
+        SliverToBoxAdapter(child: _monthSelector()),
 
         SliverToBoxAdapter(
           child: SummarySpending(
@@ -216,6 +165,88 @@ class _HomePageState extends State<HomePage>
           ),
         ),
       ],
+    );
+  }
+
+  void _changeMonth(int offset) {
+    final next = _selectedMonthIndex + offset;
+    if (next < 0 || next >= months.length) return;
+    setState(() => _selectedMonthIndex = next);
+  }
+
+  Widget _monthSelector() {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark
+        ? const Color(0xFF2DD8C6)
+        : const Color(0xFF14988F);
+    final canGoBack = _selectedMonthIndex < months.length - 1;
+    final canGoForward = _selectedMonthIndex > 0;
+
+    Widget arrow({
+      required IconData icon,
+      required String tooltip,
+      required bool enabled,
+      required VoidCallback onPressed,
+    }) => Material(
+      color: const Color(0xFF2DD8C6).withOpacity(.13),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: 42,
+        height: 42,
+        child: IconButton(
+          padding: EdgeInsets.zero,
+          tooltip: tooltip,
+          onPressed: enabled ? onPressed : null,
+          color: accent,
+          disabledColor: HomeStyle.muted(context).withOpacity(.35),
+          icon: Icon(icon, size: 24),
+        ),
+      ),
+    );
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(8),
+      decoration: HomeStyle.decoration(context),
+      child: Row(
+        children: [
+          arrow(
+            icon: Icons.chevron_left_rounded,
+            tooltip: MaterialLocalizations.of(context).previousMonthTooltip,
+            enabled: canGoBack,
+            onPressed: () => _changeMonth(1),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 42),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: HomeStyle.gradient,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                DateFormat('MM/yyyy').format(months[_selectedMonthIndex]),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: HomeStyle.ink,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          arrow(
+            icon: Icons.chevron_right_rounded,
+            tooltip: MaterialLocalizations.of(context).nextMonthTooltip,
+            enabled: canGoForward,
+            onPressed: () => _changeMonth(-1),
+          ),
+        ],
+      ),
     );
   }
 

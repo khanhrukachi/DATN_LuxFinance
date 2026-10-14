@@ -1,11 +1,14 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_save_action.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:flutter/services.dart';
 import '../widget/debt_helpers.dart';
-import '../widget/debt_category_widgets.dart';
+import '../widget/debt_category_presentation.dart';
+import '../widget/debt_category_icon.dart';
 
 class DebtPaymentEditor extends StatefulWidget {
   final Debt debt;
@@ -53,9 +56,7 @@ class _DebtPaymentEditorState extends State<DebtPaymentEditor> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        debtMessage(context, e.toString());
       }
     } finally {
       if (loadingVisible && mounted) {
@@ -74,20 +75,33 @@ class _DebtPaymentEditorState extends State<DebtPaymentEditor> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SpendingStyle.background(context),
+    backgroundColor: DebtStyle.background(context),
     appBar: AppBar(
+      centerTitle: false,
+      titleSpacing: 0,
+      leadingWidth: 54,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      leading: FinanceToolbarButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: Icons.arrow_back_rounded,
+        onPressed: saving ? null : () => Navigator.maybePop(context),
+      ),
       title: Text(
         DebtCategoryPresentation.title(
           context,
           DebtCategoryPresentation.paymentId(widget.debt.direction),
         ),
       ),
-      backgroundColor: SpendingStyle.background(context),
+      backgroundColor: DebtStyle.background(context),
       actions: [
-        SpendingSaveAction(
+        DebtSaveAction(
+          loading: saving,
           label: debtTranslate(context, 'save'),
           onPressed: saving ? null : save,
         ),
+        const SizedBox(width: 8),
       ],
     ),
     body: Form(
@@ -114,7 +128,7 @@ class _DebtPaymentEditorState extends State<DebtPaymentEditor> {
               LengthLimitingTextInputFormatter(12),
             ],
             keyboardType: TextInputType.number,
-            decoration: SpendingStyle.input(
+            decoration: DebtStyle.input(
               context,
               debtTranslate(context, 'debt_payment_amount'),
             ),
@@ -136,12 +150,13 @@ class _DebtPaymentEditorState extends State<DebtPaymentEditor> {
               icon: const Icon(Icons.done_all_rounded, size: 18),
               label: Text(debtTranslate(context, 'debt_pay_all')),
               style: OutlinedButton.styleFrom(
+                backgroundColor: DebtStyle.teal.withOpacity(.13),
                 side: BorderSide(
-                  color: SpendingStyle.accent(context).withOpacity(.65),
+                  color: DebtStyle.accent(context).withOpacity(.65),
                 ),
-                foregroundColor: SpendingStyle.accent(context),
+                foregroundColor: DebtStyle.accent(context),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
             ),
@@ -166,7 +181,7 @@ class _DebtPaymentEditorState extends State<DebtPaymentEditor> {
           TextFormField(
             controller: note,
             maxLength: 500,
-            decoration: SpendingStyle.input(
+            decoration: DebtStyle.input(
               context,
               debtTranslate(context, 'debt_note'),
             ),

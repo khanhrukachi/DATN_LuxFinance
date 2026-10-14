@@ -1,8 +1,9 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'widget/debt_summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -11,17 +12,18 @@ import 'package:personal_financial_management/controls/debt_reminder_service.dar
 import 'package:personal_financial_management/controls/wallet_firebase.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'widget/debt_helpers.dart';
-import 'widget/debt_loading_skeleton.dart';
-import 'widget/debt_category_widgets.dart';
+import 'widget/debt_screen_skeleton.dart';
+import 'widget/debt_category_presentation.dart';
+import 'widget/debt_category_icon.dart';
 import 'add/add_debt_screen.dart';
 import 'debt_detail_screen.dart';
 import 'debt_contacts_screen.dart';
 
 export 'debt_detail_screen.dart';
 export 'debt_contacts_screen.dart';
-export 'add/add_debt_payment_screen.dart';
-export 'widget/debt_form.dart' show DebtEditor;
-export 'widget/debt_contact_form.dart' show DebtContactEditor;
+export 'add/debt_payment_editor.dart' show DebtPaymentEditor;
+export 'widget/debt_editor.dart' show DebtEditor;
+export 'widget/debt_contact_editor.dart' show DebtContactEditor;
 export 'widget/debt_helpers.dart'
     show debtMoney, debtDate, debtStatus, roleName;
 export 'add/add_debt_screen.dart';
@@ -43,6 +45,7 @@ class _DebtBookScreenState extends State<DebtBookScreen>
   late final Stream<List<DebtContact>> contacts;
   late final Stream<int> balance;
   String search = '', direction = 'all', status = 'all';
+  final TextEditingController searchController = TextEditingController();
   bool exporting = false, checking = false;
   List<Debt> latest = [];
 
@@ -60,6 +63,7 @@ class _DebtBookScreenState extends State<DebtBookScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    searchController.dispose();
     super.dispose();
   }
 
@@ -87,9 +91,21 @@ class _DebtBookScreenState extends State<DebtBookScreen>
   }
 
   void message(String text) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-    }
+    if (mounted) debtMessage(context, text);
+  }
+
+  void openAddDebt() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddDebtScreen(service: service)),
+    );
+  }
+
+  void openContacts() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DebtContactsScreen(service: service)),
+    );
   }
 
   Future<void> perform(Future<void> Function() action) async {
@@ -191,34 +207,41 @@ class _DebtBookScreenState extends State<DebtBookScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SpendingStyle.background(context),
+    backgroundColor: DebtStyle.background(context),
     appBar: AppBar(
-      backgroundColor: SpendingStyle.background(context),
-      title: Text(debtTranslate(context, 'debt_book_title')),
+      automaticallyImplyLeading: false,
+      centerTitle: true,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: DebtStyle.background(context),
+      titleSpacing: 0,
+      leadingWidth: 76,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: FinanceToolbarButton(
+        tooltip: debtTranslate(context, 'debt_contacts_title'),
+        icon: Icons.people_alt_outlined,
+        onPressed: openContacts,
+      ),
+      title: Text(
+        debtTranslate(context, 'debt_book_title'),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       actions: [
-        IconButton(
+        FinanceToolbarButton(
           tooltip: debtTranslate(context, 'debt_add'),
-          icon: const Icon(Icons.add_circle_outline_rounded),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => AddDebtScreen(service: service)),
-          ),
+          icon: Icons.add_rounded,
+          onPressed: openAddDebt,
         ),
-        IconButton(
-          tooltip: debtTranslate(context, 'debt_contacts_title'),
-          icon: const Icon(Icons.people_outline),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => DebtContactsScreen(service: service),
-            ),
-          ),
-        ),
-        IconButton(
+        FinanceToolbarButton(
           tooltip: debtTranslate(context, 'debt_export_csv'),
-          icon: const Icon(Icons.ios_share),
+          icon: Icons.ios_share_rounded,
+          loading: exporting,
           onPressed: exporting ? null : export,
         ),
+        const SizedBox(width: 14),
       ],
     ),
     body: StreamBuilder<List<Debt>>(
@@ -237,13 +260,13 @@ class _DebtBookScreenState extends State<DebtBookScreen>
         final filtered = all
             .where(
               (d) =>
-                  (direction == 'all' || d.direction == direction) &&
-                  (status == 'all' ||
-                      (status == 'overdue' ? d.overdue : d.status == status)) &&
-                  '${d.contactName} ${d.note}'.toLowerCase().contains(
-                    search.toLowerCase(),
-                  ),
-            )
+          (direction == 'all' || d.direction == direction) &&
+              (status == 'all' ||
+                  (status == 'overdue' ? d.overdue : d.status == status)) &&
+              '${d.contactName} ${d.note}'.toLowerCase().contains(
+                search.toLowerCase(),
+              ),
+        )
             .toList();
         int total(String type) => all
             .where((d) => d.direction == type)
@@ -254,17 +277,55 @@ class _DebtBookScreenState extends State<DebtBookScreen>
             StreamBuilder<int>(
               stream: balance,
               builder: (context, w) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: SpendingStyle.decoration(context),
-                child: Text(
-                  w.hasError
-                      ? debtTranslate(context, 'debt_wallet_load_error')
-                      : '${debtTranslate(context, 'debt_wallet_balance')}: ${w.hasData ? debtMoney(w.data!) : '...'}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(18),
+                decoration: DebtStyle.decoration(context, hero: true),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: DebtStyle.accent(context).withOpacity(.13),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: DebtStyle.accent(context),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            debtTranslate(context, 'debt_wallet_balance'),
+                            style: TextStyle(
+                              color: DebtStyle.muted(context),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            w.hasError
+                                ? debtTranslate(context, 'debt_wallet_load_error')
+                                : w.hasData
+                                ? debtMoney(w.data!)
+                                : '...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: DebtStyle.text(context),
+                              fontSize: 21,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -276,82 +337,142 @@ class _DebtBookScreenState extends State<DebtBookScreen>
             ),
             const SizedBox(height: 16),
             TextField(
-              decoration: SpendingStyle.input(
+              controller: searchController,
+              decoration: DebtStyle.input(
                 context,
                 debtTranslate(context, 'debt_search'),
-                icon: Icons.search,
+                icon: Icons.search_rounded,
+              ).copyWith(
+                suffixIcon: search.isEmpty
+                    ? null
+                    : FinanceToolbarButton(
+                  tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
+                  onPressed: () {
+                    searchController.clear();
+                    setState(() => search = '');
+                  },
+                  icon: Icons.close_rounded,
+                ),
               ),
               onChanged: (v) => setState(() => search = v),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final entry in {
-                  'all': debtTranslate(context, 'debt_filter_all'),
-                  'lend': debtTranslate(context, 'debt_filter_lend'),
-                  'borrow': debtTranslate(context, 'debt_filter_borrow'),
-                }.entries)
-                  ChoiceChip(
-                    avatar: entry.key == 'all'
-                        ? null
-                        : DebtCategoryIcon(
-                            id: DebtCategoryPresentation.id(entry.key),
-                            size: 24,
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              decoration: DebtStyle.decoration(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.tune_rounded, size: 19, color: DebtStyle.accent(context)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _isEnglish(context) ? 'Filters' : 'Bộ lọc',
+                          style: TextStyle(
+                            color: DebtStyle.text(context),
+                            fontWeight: FontWeight.w700,
                           ),
-                    label: Text(
-                      entry.key == 'all'
-                          ? entry.value
-                          : DebtCategoryPresentation.title(
-                              context,
-                              DebtCategoryPresentation.id(entry.key),
+                        ),
+                      ),
+                      Text(
+                        '${filtered.length}/${all.length}',
+                        style: TextStyle(
+                          color: DebtStyle.muted(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final entry in {
+                          'all': debtTranslate(context, 'debt_filter_all'),
+                          'lend': debtTranslate(context, 'debt_filter_lend'),
+                          'borrow': debtTranslate(context, 'debt_filter_borrow'),
+                        }.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _DebtFilterChip(
+                              label: entry.key == 'all'
+                                  ? entry.value
+                                  : DebtCategoryPresentation.title(
+                                context,
+                                DebtCategoryPresentation.id(entry.key),
+                              ),
+                              icon: entry.key == 'all'
+                                  ? Icons.all_inclusive_rounded
+                                  : entry.key == 'lend'
+                                  ? Icons.call_received_rounded
+                                  : Icons.call_made_rounded,
+                              selected: direction == entry.key,
+                              onTap: () => setState(() => direction = entry.key),
                             ),
+                          ),
+                      ],
                     ),
-                    selected: direction == entry.key,
-                    onSelected: (_) => setState(() => direction = entry.key),
                   ),
-              ],
-            ),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final entry in {
-                  'all': debtTranslate(context, 'debt_status_all'),
-                  'unpaid': debtTranslate(context, 'debt_status_unpaid'),
-                  'partial': debtTranslate(context, 'debt_status_partial'),
-                  'paid': debtTranslate(context, 'debt_status_paid'),
-                  'overdue': debtTranslate(context, 'debt_status_overdue'),
-                }.entries)
-                  ChoiceChip(
-                    label: Text(entry.value),
-                    selected: status == entry.key,
-                    onSelected: (_) => setState(() => status = entry.key),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final entry in {
+                          'all': debtTranslate(context, 'debt_status_all'),
+                          'unpaid': debtTranslate(context, 'debt_status_unpaid'),
+                          'partial': debtTranslate(context, 'debt_status_partial'),
+                          'paid': debtTranslate(context, 'debt_status_paid'),
+                          'overdue': debtTranslate(context, 'debt_status_overdue'),
+                        }.entries)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _DebtFilterChip(
+                              label: entry.value,
+                              icon: entry.key == 'all'
+                                  ? Icons.filter_list_rounded
+                                  : entry.key == 'paid'
+                                  ? Icons.check_circle_outline_rounded
+                                  : entry.key == 'overdue'
+                                  ? Icons.schedule_rounded
+                                  : Icons.circle_outlined,
+                              selected: status == entry.key,
+                              onTap: () => setState(() => status = entry.key),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              '${filtered.length} ${debtTranslate(context, filtered.length == 1 ? 'debt_count_one' : 'debt_count_many')}',
-            ),
-            if (filtered.isEmpty)
+            const SizedBox(height: 14),
+            if (all.isEmpty)
+              _DebtEmptyState(onTap: openAddDebt)
+            else if (filtered.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(28),
                 child: Text(
                   debtTranslate(context, 'debt_empty'),
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: DebtStyle.muted(context)),
                 ),
               ),
             for (final d in filtered)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: Container(
-                  decoration: SpendingStyle.decoration(context),
+                  decoration: DebtStyle.decoration(context),
                   child: Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     clipBehavior: Clip.antiAlias,
                     child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       leading: DebtCategoryIcon(
                         id: DebtCategoryPresentation.id(d.direction),
                       ),
@@ -365,12 +486,13 @@ class _DebtBookScreenState extends State<DebtBookScreen>
                           '${d.direction == 'lend' ? debtTranslate(context, 'debt_to_collect') : debtTranslate(context, 'debt_to_pay')}: ${debtMoney(d.remaining)}\n${debtStatus(context, d)}${d.dueDate == null ? '' : ' · ${debtTranslate(context, 'debt_due_date')} ${debtDate(d.dueDate!)}'}',
                           style: TextStyle(
                             color: d.overdue
-                                ? SpendingStyle.danger
-                                : SpendingStyle.muted(context),
+                                ? DebtStyle.danger
+                                : DebtStyle.muted(context),
+                            height: 1.4,
                           ),
                         ),
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: Icon(Icons.chevron_right_rounded, color: DebtStyle.accent(context)),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -387,4 +509,120 @@ class _DebtBookScreenState extends State<DebtBookScreen>
       },
     ),
   );
+
+  bool _isEnglish(BuildContext context) =>
+      Localizations.localeOf(context).languageCode.toLowerCase().startsWith('en');
+
 }
+
+class _DebtFilterChip extends StatelessWidget {
+  const _DebtFilterChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = DebtStyle.accent(context);
+    return Material(
+      color: selected
+          ? DebtStyle.teal.withOpacity(DebtStyle.dark(context) ? .22 : .16)
+          : DebtStyle.background(context),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? accent.withOpacity(.45) : DebtStyle.teal.withOpacity(.12),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: selected ? accent : DebtStyle.muted(context)),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? accent : DebtStyle.text(context),
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DebtEmptyState extends StatelessWidget {
+  const _DebtEmptyState({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final english = Localizations.localeOf(context).languageCode.toLowerCase().startsWith('en');
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
+          decoration: DebtStyle.decoration(context),
+          child: Column(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: DebtStyle.teal.withOpacity(.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.receipt_long_rounded, size: 30, color: DebtStyle.accent(context)),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                english ? 'No debt records yet' : 'Chưa có khoản nợ nào',
+                style: TextStyle(
+                  color: DebtStyle.text(context),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                english ? 'Tap here to add a debt' : 'Nhấn vào đây để thêm khoản nợ',
+                style: TextStyle(
+                  color: DebtStyle.accent(context),
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Icon(Icons.add_circle_rounded, color: DebtStyle.accent(context), size: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

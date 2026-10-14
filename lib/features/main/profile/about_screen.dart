@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -16,31 +17,32 @@ class AboutPage extends StatelessWidget {
   }) {
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         side: BorderSide(color: ProfileStyle.teal.withOpacity(.16)),
       ),
       elevation: 0,
-      color: ProfileStyle.card(context), surfaceTintColor: Colors.transparent,
+      color: ProfileStyle.card(context),
+      surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         onTap: () async {
           if (await canLaunchUrlString(url)) {
-            await launchUrlString(
-              url,
-              mode: LaunchMode.externalApplication,
-            );
+            await launchUrlString(url, mode: LaunchMode.externalApplication);
           }
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 16,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: ProfileStyle.accent(context).withOpacity(.12),
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ProfileStyle.teal.withOpacity(.13),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: FaIcon(
                   icon,
                   color: ProfileStyle.accent(context),
@@ -57,10 +59,10 @@ class AboutPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey,
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 21,
+                color: ProfileStyle.accent(context),
               ),
             ],
           ),
@@ -71,91 +73,119 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    return ProfileSurface(child: Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
+    return ProfileSurface(
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: 0,
+          leadingWidth: 96,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          leading: FinanceToolbarButton(
+            onPressed: () => Navigator.pop(context),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            icon: Icons.arrow_back_rounded,
           ),
-        ),
-        title: Text(
-          AppLocalizations.of(context).translate('about'),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
+          title: Text(
+            AppLocalizations.of(context).translate('about'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 20,
-        ),
-        child: Column(
-          children: [
-            Container(width: double.infinity, padding: const EdgeInsets.all(24),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
                 decoration: ProfileStyle.decoration(context),
-                child: Column(children: [
-                  Container(width: 64, height: 64, padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(gradient: ProfileStyle.gradient, borderRadius: BorderRadius.circular(20)),
-                      child: Image.asset('assets/logo/logo.png')),
-                  const SizedBox(height: 16),
-                  Text('LuxFinance', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700,
-                      color: ProfileStyle.text(context))),
-                  const SizedBox(height: 8),
-                  Text('${AppLocalizations.of(context).translate('version')} 1.0.0',
-                      style: TextStyle(fontSize: 12, color: ProfileStyle.muted(context))),
-                  const SizedBox(height: 6),
-                  Text('${AppLocalizations.of(context).translate('developed_by')} Rukachi Team',
-                      textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: ProfileStyle.muted(context))),
-                ])),
-            const SizedBox(height: 20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: ProfileStyle.gradient,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Image.asset('assets/logo/logo.png'),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'LuxFinance',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: ProfileStyle.text(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${AppLocalizations.of(context).translate('version')} 1.0.0',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: ProfileStyle.muted(context),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${AppLocalizations.of(context).translate('developed_by')} Rukachi Team',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ProfileStyle.muted(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
 
-            // Facebook
-            _buildContactButton(
-              context: context,
-              color: const Color(0xFF4267B2),
-              icon: FontAwesomeIcons.facebookF,
-              label: "Facebook",
-              url: 'https://fb.com/phamquockhanh7352',
-            ),
+              // Facebook
+              _buildContactButton(
+                context: context,
+                color: const Color(0xFF4267B2),
+                icon: FontAwesomeIcons.facebookF,
+                label: "Facebook",
+                url: 'https://fb.com/phamquockhanh7352',
+              ),
 
-            // Twitter
-            _buildContactButton(
-              context: context,
-              color: const Color(0xFF1DA1F2),
-              icon: FontAwesomeIcons.twitter,
-              label: "Twitter",
-              url: 'https://twitter.com/rukachilocker',
-            ),
+              // Twitter
+              _buildContactButton(
+                context: context,
+                color: const Color(0xFF1DA1F2),
+                icon: FontAwesomeIcons.twitter,
+                label: "Twitter",
+                url: 'https://twitter.com/rukachilocker',
+              ),
 
-            // Telegram
-            _buildContactButton(
-              context: context,
-              color: const Color(0xFF0088CC),
-              icon: FontAwesomeIcons.telegram,
-              label: "Telegram",
-              url: 'https://t.me/rukachiofficial',
-            ),
+              // Telegram
+              _buildContactButton(
+                context: context,
+                color: const Color(0xFF0088CC),
+                icon: FontAwesomeIcons.telegram,
+                label: "Telegram",
+                url: 'https://t.me/rukachiofficial',
+              ),
 
-            // Email
-            _buildContactButton(
-              context: context,
-              color: Colors.red,
-              icon: FontAwesomeIcons.envelope,
-              label: "Email",
-              url:
-              'mailto:phamquockhanh.dev@gmail.com?subject=Spending Manager&body=Hello Phạm Quốc Khánh',
-            ),
+              // Email
+              _buildContactButton(
+                context: context,
+                color: Colors.red,
+                icon: FontAwesomeIcons.envelope,
+                label: "Email",
+                url:
+                    'mailto:phamquockhanh.dev@gmail.com?subject=Spending Manager&body=Hello Phạm Quốc Khánh',
+              ),
 
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
 }

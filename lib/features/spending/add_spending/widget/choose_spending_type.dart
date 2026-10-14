@@ -3,19 +3,17 @@ import 'package:personal_financial_management/features/spending/add_spending/wid
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
-class ChooseType extends StatefulWidget {
-  const ChooseType({super.key, required this.action});
-  final Function(int, int, String?, Map<String, String>) action;
+class ChooseSpendingType extends StatefulWidget {
+  const ChooseSpendingType({super.key, required this.action});
 
+  final Function(int, int, String?, Map<String, String>) action;
+  
   @override
-  State<ChooseType> createState() => _ChooseTypeState();
+  State<ChooseSpendingType> createState() => _ChooseSpendingTypeState();
 }
 
-class _ChooseTypeState extends State<ChooseType>
-    with SingleTickerProviderStateMixin {
-  late final TabController tabs;
+class _ChooseSpendingTypeState extends State<ChooseSpendingType> {
   final search = TextEditingController();
-  int selectedTab = 0;
 
   static const Map<String, String> _searchAliases = {
     'move': 'di chuyển di chuyen transportation transport move',
@@ -101,15 +99,10 @@ class _ChooseTypeState extends State<ChooseType>
   @override
   void initState() {
     super.initState();
-    tabs = TabController(length: 2, vsync: this);
-    tabs.addListener(() {
-      if (!tabs.indexIsChanging) setState(() => selectedTab = tabs.index);
-    });
   }
 
   @override
   void dispose() {
-    tabs.dispose();
     search.dispose();
     super.dispose();
   }
@@ -125,59 +118,32 @@ class _ChooseTypeState extends State<ChooseType>
         title: Text(_tr('choose_category')),
         centerTitle: false,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(122),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: SpendingStyle.card(context),
+          preferredSize: const Size.fromHeight(70),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: search,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: search.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () {
+                          search.clear();
+                          setState(() {});
+                        },
+                      ),
+                hintText: _tr('search_category'),
+                filled: true,
+                fillColor: SpendingStyle.card(context),
+                border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                ),
-                child: TabBar(
-                  controller: tabs,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    gradient: SpendingStyle.gradient,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  labelColor: SpendingStyle.ink,
-                  unselectedLabelColor: dark ? Colors.white70 : Colors.black54,
-                  tabs: [
-                    Tab(text: _tr('expense')),
-                    Tab(text: _tr('income')),
-                  ],
+                  borderSide: BorderSide.none,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                child: TextField(
-                  controller: search,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: search.text.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded),
-                            onPressed: () {
-                              search.clear();
-                              setState(() {});
-                            },
-                          ),
-                    hintText: _tr('search_category'),
-                    filled: true,
-                    fillColor: SpendingStyle.card(context),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -187,16 +153,6 @@ class _ChooseTypeState extends State<ChooseType>
 
   Widget _body(bool dark) {
     final keyword = _normalizeSearchText(search.text);
-    if (selectedTab == 1) {
-      final items = listType.where((e) {
-        return isSpendingCategory(e) &&
-            e['parent'] == 'income' &&
-            e['isParent'] == 'false' &&
-            _matchesSearch(e, keyword);
-      }).toList();
-      return _incomeGrid(items, dark);
-    }
-
     final groups = listType.where((e) {
       return isSpendingCategory(e) &&
           e['parent'] == 'expense' &&
@@ -253,52 +209,6 @@ class _ChooseTypeState extends State<ChooseType>
             children: children.map((e) => _childChip(e, color, dark)).toList(),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _incomeGrid(List<Map<String, String>> items, bool dark) {
-    if (items.isEmpty) return Center(child: Text(_tr('no_category')));
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.18,
-      ),
-      itemBuilder: (_, i) => _incomeCard(items[i], dark),
-    );
-  }
-
-  Widget _incomeCard(Map<String, String> item, bool dark) {
-    return Material(
-      color: SpendingStyle.card(context),
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _select(item, 1),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _iconBox(item['image'], SpendingStyle.accent(context), size: 48),
-              const SizedBox(height: 10),
-              Flexible(
-                child: Text(
-                  _title(item),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

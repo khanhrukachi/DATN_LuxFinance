@@ -1,7 +1,9 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_action_button.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import '../widget/debt_helpers.dart';
 import '../widget/debt_phone_field.dart';
@@ -12,10 +14,10 @@ class NewDebtContactDialog extends StatefulWidget {
   const NewDebtContactDialog({super.key, required this.service});
 
   @override
-  State<NewDebtContactDialog> createState() => NewDebtContactDialogState();
+  State<NewDebtContactDialog> createState() => _NewDebtContactDialogState();
 }
 
-class NewDebtContactDialogState extends State<NewDebtContactDialog> {
+class _NewDebtContactDialogState extends State<NewDebtContactDialog> {
   final name = TextEditingController(),
       phone = TextEditingController(),
       note = TextEditingController();
@@ -59,9 +61,7 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        debtMessage(context, e.toString());
       }
     } finally {
       if (loadingVisible && mounted) {
@@ -75,7 +75,7 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
   Widget build(BuildContext context) => PopScope(
     canPop: !saving,
     child: Dialog(
-      backgroundColor: SpendingStyle.card(context),
+      backgroundColor: DebtStyle.card(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: SingleChildScrollView(
@@ -100,9 +100,10 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
                           ),
                         ),
                       ),
-                      IconButton(
+                      FinanceToolbarButton(
+                        tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                         onPressed: saving ? null : () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icons.close_rounded,
                       ),
                     ],
                   ),
@@ -110,7 +111,7 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
                     debtTranslate(context, 'debt_contact_new_hint'),
                     style: TextStyle(
                       fontSize: 13,
-                      color: SpendingStyle.muted(context),
+                      color: DebtStyle.muted(context),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -119,7 +120,7 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
                     maxLength: 100,
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.next,
-                    decoration: SpendingStyle.input(
+                    decoration: DebtStyle.input(
                       context,
                       debtTranslate(context, 'debt_contact_name'),
                       icon: Icons.person_outline,
@@ -133,25 +134,25 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: role,
-                    decoration: SpendingStyle.input(
+                    decoration: DebtStyle.input(
                       context,
                       debtTranslate(context, 'debt_contact_role'),
                       icon: Icons.badge_outlined,
                     ),
                     items:
-                        ['person', 'customer', 'supplier', 'lender', 'borrower']
-                            .map(
-                              (r) => DropdownMenuItem(
-                                value: r,
-                                child: Text(roleName(context, r)),
-                              ),
-                            )
-                            .toList(),
+                    ['person', 'customer', 'supplier', 'lender', 'borrower']
+                        .map(
+                          (r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(roleName(context, r)),
+                      ),
+                    )
+                        .toList(),
                     onChanged: saving
                         ? null
                         : (v) {
-                            if (v != null) setState(() => role = v);
-                          },
+                      if (v != null) setState(() => role = v);
+                    },
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
@@ -159,14 +160,14 @@ class NewDebtContactDialogState extends State<NewDebtContactDialog> {
                     maxLength: 500,
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: SpendingStyle.input(
+                    decoration: DebtStyle.input(
                       context,
                       debtTranslate(context, 'debt_contact_note_optional'),
                       icon: Icons.notes_rounded,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SpendingActionButton(
+                  DebtActionButton(
                     label: debtTranslate(
                       context,
                       'debt_contact_save_and_select',

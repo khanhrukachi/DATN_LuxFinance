@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -30,12 +31,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return ProfileSurface(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(AppLocalizations.of(context).translate('account')),
+          titleSpacing: 0,
+          leadingWidth: 96,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          title: Text(
+            AppLocalizations.of(context).translate('account'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
           centerTitle: true,
           elevation: 0,
           backgroundColor: Colors.transparent,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          leading: FinanceToolbarButton(
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            icon: Icons.arrow_back_rounded,
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -287,8 +296,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       const SizedBox(height: 30),
 
                       // Nút lưu
-                      ProfileButton(
-                        text: AppLocalizations.of(context).translate('save'),
+                      FinanceActionButton(
+                        label: AppLocalizations.of(context).translate('save'),
                         onPressed: () async {
                           loadingAnimation(context);
                           await SpendingFirebase.updateInfo(
@@ -418,8 +427,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
               builder: (_, updateDialog) => ProfilePickerDialog(
                 title:
                     '${AppLocalizations.of(context).translate('choose')} $label',
-                footer: ProfileButton(
-                  text: AppLocalizations.of(context).translate('confirm'),
+                footer: FinanceActionButton(
+                  label: AppLocalizations.of(context).translate('confirm'),
                   onPressed: () {
                     onChanged(selected);
                     Navigator.pop(dialogContext);

@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -89,17 +90,25 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: SpendingStyle.background(context),
+        titleSpacing: 0,
+        leadingWidth: 54,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(AppLocalizations.of(context).translate('edit_spending')),
         centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.close_outlined),
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
           onPressed: _saving ? null : () => Navigator.pop(context),
         ),
         actions: [
-          SpendingSaveAction(
-            label: AppLocalizations.of(context).translate('save'),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('save'),
+            icon: Icons.check_rounded,
+            loading: _saving,
             onPressed: _saving ? null : updateSpending,
           ),
+          const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(100),
@@ -156,7 +165,7 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
                 icon: Icons.access_time,
                 color: SpendingStyle.accent(context),
                 text:
-                    "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}",
+                "${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}",
                 action: () async {
                   final time = await selectTime(
                     context: context,
@@ -228,10 +237,10 @@ class _EditSpendingPageState extends State<EditSpendingPage> {
       ),
       child: image == null && (widget.spending.image == null || checkPickImage)
           ? pickImageWidget(
-              image: (file) {
-                if (mounted && file != null) setState(() => image = file);
-              },
-            )
+        image: (file) {
+          if (mounted && file != null) setState(() => image = file);
+        },
+      )
           : showImage(),
     );
   }

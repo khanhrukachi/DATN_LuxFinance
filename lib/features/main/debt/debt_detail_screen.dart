@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_action_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'widget/debt_helpers.dart';
-import 'widget/debt_loading_skeleton.dart';
-import 'widget/debt_category_widgets.dart';
+import 'widget/debt_screen_skeleton.dart';
+import 'widget/debt_category_presentation.dart';
+import 'widget/debt_category_icon.dart';
 import 'widget/debt_detail_actions.dart';
-import 'add/add_debt_payment_screen.dart';
+import 'add/debt_payment_editor.dart';
 import 'edit/edit_debt_screen.dart';
 
 class DebtDetailScreen extends StatefulWidget {
@@ -35,13 +38,13 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
       await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          backgroundColor: SpendingStyle.card(c),
+          backgroundColor: DebtStyle.card(c),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
           icon: Icon(
             Icons.info_outline_rounded,
-            color: SpendingStyle.danger,
+            color: DebtStyle.danger,
             size: 30,
           ),
           title: Text(debtTranslate(context, 'debt_confirm_title')),
@@ -59,7 +62,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: SpendingStyle.danger,
+                backgroundColor: DebtStyle.danger,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -83,9 +86,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
       succeeded = true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        debtMessage(context, e.toString());
       }
     } finally {
       if (loadingVisible && mounted) {
@@ -107,10 +108,24 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SpendingStyle.background(context),
+    backgroundColor: DebtStyle.background(context),
     appBar: AppBar(
-      backgroundColor: SpendingStyle.background(context),
-      title: Text(debtTranslate(context, 'debt_detail')),
+      centerTitle: true,
+      titleSpacing: 0,
+      leadingWidth: 76,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      leading: FinanceToolbarButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: Icons.arrow_back_rounded,
+        onPressed: () => Navigator.maybePop(context),
+      ),
+      backgroundColor: DebtStyle.background(context),
+      title: Text(
+        debtTranslate(context, 'debt_detail'),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
     ),
     body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: stream,
@@ -134,7 +149,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: SpendingStyle.decoration(context, hero: true),
+                decoration: DebtStyle.decoration(context, hero: true),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -168,9 +183,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${d.direction == 'lend'
-                              ? debtTranslate(context, 'debt_to_collect')
-                              : debtTranslate(context, 'debt_to_pay')}: ${debtMoney(d.remaining)}',
+                      '${d.direction == 'lend' ? debtTranslate(context, 'debt_to_collect') : debtTranslate(context, 'debt_to_pay')}: ${debtMoney(d.remaining)}',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -189,7 +202,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                     const SizedBox(height: 12),
                     LinearProgressIndicator(
                       value: d.paid / d.amount,
-                      color: SpendingStyle.accent(context),
+                      color: DebtStyle.accent(context),
                     ),
                     if (d.note.isNotEmpty)
                       Padding(
@@ -201,7 +214,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
               ),
               const SizedBox(height: 16),
               if (d.remaining > 0)
-                SpendingActionButton(
+                DebtActionButton(
                   label: DebtCategoryPresentation.title(
                     context,
                     DebtCategoryPresentation.paymentId(d.direction),
@@ -240,7 +253,7 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
               for (final p in d.payments.reversed)
                 Container(
                   margin: const EdgeInsets.only(top: 10),
-                  decoration: SpendingStyle.decoration(context),
+                  decoration: DebtStyle.decoration(context),
                   child: Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
@@ -253,9 +266,9 @@ class _DebtDetailScreenState extends State<DebtDetailScreen> {
                       subtitle: Text(
                         '${debtDate(p.date)}${p.note.isEmpty ? '' : '\n${p.note}'}',
                       ),
-                      trailing: IconButton(
+                      trailing: FinanceToolbarButton(
                         tooltip: debtTranslate(context, 'debt_undo_payment'),
-                        icon: const Icon(Icons.undo),
+                        icon: Icons.undo_rounded,
                         onPressed: () async {
                           if (await confirm(
                             debtTranslate(context, 'debt_undo_confirm'),

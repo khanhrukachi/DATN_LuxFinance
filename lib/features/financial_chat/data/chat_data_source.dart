@@ -1,11 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class ChatSnapshot {
-  const ChatSnapshot(this.transactions, this.context);
-
-  final List<Map<String, dynamic>> transactions;
-  final Map<String, dynamic> context;
-}
+import '../models/chat_snapshot.dart';
 
 class ChatDataSource {
   ChatDataSource({FirebaseFirestore? firestore})

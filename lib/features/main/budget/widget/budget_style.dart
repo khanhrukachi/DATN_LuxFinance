@@ -49,6 +49,7 @@ class BudgetStyle {
             Expanded(
               child: Text(
                 message,
+                textAlign: TextAlign.justify,
                 style: TextStyle(
                   color: color,
                   fontSize: 14,

@@ -28,6 +28,14 @@ class BudgetPageState extends State<BudgetPage>
     fetchBudgets();
   }
 
+  Future<void> _addBudget() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddBudgetPage()),
+    );
+    if (result == true) await fetchBudgets();
+  }
+
   Future<void> fetchBudgets() async {
     if (!mounted) return;
 
@@ -71,16 +79,51 @@ class BudgetPageState extends State<BudgetPage>
     final double spentTotal = budgetItems.fold(0.0, (p, e) => p + e["spent"]);
     final double limitTotal = budgetItems.fold(0.0, (p, e) => p + e["limit"]);
     final double progress = limitTotal == 0 ? 0 : (spentTotal / limitTotal);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const teal = Color(0xFF2DD8C6);
+    final actionColor = isDark ? teal : const Color(0xFF14988F);
 
     return Scaffold(
       backgroundColor: BudgetStyle.background(context),
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('budget')),
+        title: Text(
+          AppLocalizations.of(context).translate('budget'),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         backgroundColor: BudgetStyle.background(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         automaticallyImplyLeading: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(left: 0, right: 16),
+            child: Tooltip(
+              message: AppLocalizations.of(context).translate('add_budget'),
+              child: Material(
+                color: teal.withOpacity(isDark ? .15 : .13),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: _addBudget,
+                  borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: actionColor,
+                      size: 21,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -172,22 +215,6 @@ class BudgetPageState extends State<BudgetPage>
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
                 color: BudgetStyle.muted(context),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              child: BudgetActionButton(
-                icon: Icons.add_rounded,
-                label: AppLocalizations.of(context).translate('add_budget'),
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AddBudgetPage()),
-                  );
-                  if (result == true) fetchBudgets();
-                },
               ),
             ),
           ],

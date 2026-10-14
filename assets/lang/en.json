@@ -94,6 +94,7 @@
   "total_assets": "Total assets",
   "cannot_open_spending": "Cannot open this transaction",
   "add_spending": "Add Spending",
+  "add_income": "Add Income",
   "edit_spending": "Edit Spending",
   "type": "Type",
   "note": "Note",

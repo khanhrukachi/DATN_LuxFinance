@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -40,12 +41,12 @@ class _ChatBoxState extends State<ChatBox> {
 
   bool _sameDraft(ChatTransactionDraft a, ChatTransactionDraft b) =>
       a.amount == b.amount &&
-      a.type == b.type &&
-      a.date == b.date &&
-      a.note == b.note &&
-      a.location == b.location &&
-      a.kind == b.kind &&
-      a.hasExplicitTime == b.hasExplicitTime;
+          a.type == b.type &&
+          a.date == b.date &&
+          a.note == b.note &&
+          a.location == b.location &&
+          a.kind == b.kind &&
+          a.hasExplicitTime == b.hasExplicitTime;
 
   void _retireDraft() {
     final active = _activeDraftMessage;
@@ -146,7 +147,7 @@ class _ChatBoxState extends State<ChatBox> {
         _confirm(active);
       } else {
         setState(
-          () => _messages.add(
+              () => _messages.add(
             ChatMessage(
               text: _say(
                 'Chưa có giao dịch đầy đủ để lưu. Bạn bổ sung thông tin nhé.',
@@ -322,7 +323,7 @@ class _ChatBoxState extends State<ChatBox> {
     } catch (_) {
       if (!mounted) return;
       setState(
-        () => _messages.add(
+            () => _messages.add(
           ChatMessage(
             text: _say(
               'Chưa lưu được giao dịch. Mình vẫn giữ bản nháp; bạn kiểm tra kết nối rồi nhấn Lưu hoặc nhập “lưu” để thử lại.',
@@ -384,7 +385,15 @@ class _ChatBoxState extends State<ChatBox> {
       scrolledUnderElevation: 0,
       backgroundColor: _pageColor,
       foregroundColor: _textColor,
-      titleSpacing: 8,
+      titleSpacing: 0,
+      centerTitle: false,
+      leadingWidth: 76,
+      surfaceTintColor: Colors.transparent,
+      leading: FinanceToolbarButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: Icons.arrow_back_rounded,
+        onPressed: _saving ? null : () => Navigator.maybePop(context),
+      ),
       title: Row(
         children: [
           _botAvatar(size: 40),
@@ -408,9 +417,9 @@ class _ChatBoxState extends State<ChatBox> {
                 Text(
                   _memory.isActive
                       ? _say(
-                          'Đang giữ một giao dịch chưa lưu',
-                          'One pending transaction',
-                        )
+                    'Đang giữ một giao dịch chưa lưu',
+                    'One pending transaction',
+                  )
                       : _t('transaction_chat_08'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -422,11 +431,12 @@ class _ChatBoxState extends State<ChatBox> {
         ],
       ),
       actions: [
-        IconButton(
+        FinanceToolbarButton(
           tooltip: _t('transaction_chat_09'),
           onPressed: _saving ? null : _clearChat,
-          icon: const Icon(Icons.delete_outline_rounded),
+          icon: Icons.delete_outline_rounded,
         ),
+        const SizedBox(width: 14),
       ],
     );
   }
@@ -461,23 +471,23 @@ class _ChatBoxState extends State<ChatBox> {
   Widget _buildSuggestions() {
     final suggestions = _memory.isActive
         ? (_activeDraftMessage != null
-              ? [
-                  _say('Lưu giao dịch', 'Save'),
-                  _say('Hủy', 'Cancel'),
-                  _say('Giao dịch mới', 'New transaction'),
-                ]
-              : (_memory.amount == null
-                    ? ['50k', '100k', _say('Hủy', 'Cancel')]
-                    : [
-                        _say('Đi chợ', 'Groceries'),
-                        _say('Ăn uống', 'Food'),
-                        _say('Lương', 'Salary'),
-                      ]))
+        ? [
+      _say('Lưu giao dịch', 'Save'),
+      _say('Hủy', 'Cancel'),
+      _say('Giao dịch mới', 'New transaction'),
+    ]
+        : (_memory.amount == null
+        ? ['50k', '100k', _say('Hủy', 'Cancel')]
         : [
-            _say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'),
-            _t('transaction_chat_taxi'),
-            _t('transaction_chat_salary'),
-          ];
+      _say('Đi chợ', 'Groceries'),
+      _say('Ăn uống', 'Food'),
+      _say('Lương', 'Salary'),
+    ]))
+        : [
+      _say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'),
+      _t('transaction_chat_taxi'),
+      _t('transaction_chat_salary'),
+    ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -614,8 +624,8 @@ class _ChatBoxState extends State<ChatBox> {
                         color: fromUser ? null : bubbleColor,
                         gradient: fromUser
                             ? const LinearGradient(
-                                colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
-                              )
+                          colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
+                        )
                             : null,
                         border: fromUser
                             ? null

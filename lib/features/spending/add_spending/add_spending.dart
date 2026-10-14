@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 
@@ -16,19 +17,36 @@ import 'package:personal_financial_management/features/spending/add_spending/wid
 import 'package:personal_financial_management/features/spending/add_spending/widget/more_button.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/pick_image_widget.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/remove_icon.dart';
+import 'package:personal_financial_management/main.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/models/spending.dart';
 
-import 'choose_type.dart';
+import 'widget/choose_spending_type.dart';
 
-class AddSpendingPage extends StatefulWidget {
-  const AddSpendingPage({super.key});
+const _incomeCategoryTitles = <String>{
+  'salary',
+  'revenue',
+  'other_income',
+  'earn_profit',
+  'debt_collection',
+  'money_transferred_to',
+  'borrow',
+};
 
-  @override
-  State<AddSpendingPage> createState() => _AddSpendingPageState();
+bool _isIncomeCategory(Map<String, String> category) {
+  return category['parent'] == 'income' ||
+      category['parentCategoryId'] == 'income' ||
+      _incomeCategoryTitles.contains(category['title']);
 }
 
-class _AddSpendingPageState extends State<AddSpendingPage> {
+class AddSpendingScreen extends StatefulWidget {
+  const AddSpendingScreen({super.key});
+
+  @override
+  State<AddSpendingScreen> createState() => _AddSpendingScreenState();
+}
+
+class _AddSpendingScreenState extends State<AddSpendingScreen> {
   final _money = TextEditingController();
   final _note = TextEditingController();
   final _location = TextEditingController();
@@ -62,20 +80,34 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: SpendingStyle.background(context),
-        title: Text(AppLocalizations.of(context).translate('add_spending')),
-        centerTitle: false,
+        titleSpacing: 0,
+        leadingWidth: 76,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text(
+          AppLocalizations.of(context).translate('add_spending'),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
         actions: [
-          SpendingSaveAction(
-            label: AppLocalizations.of(context).translate('save'),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('save'),
+            icon: Icons.check_rounded,
+            loading: _saving,
             onPressed: _saving
                 ? null
                 : () async {
                     await addingSpending();
                   },
           ),
+          const SizedBox(width: 16),
         ],
-        leading: IconButton(
-          icon: const Icon(Icons.close_outlined, size: 30),
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
           onPressed: _saving ? null : () => Navigator.pop(context),
         ),
         bottom: PreferredSize(
@@ -133,7 +165,7 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
                       onTap: () {
                         Navigator.of(context).push(
                           createRoute(
-                            screen: ChooseType(
+                            screen: ChooseSpendingType(
                               action: (index, coefficient, name, selectedItem) {
                                 setState(() {
                                   type = index;
@@ -340,6 +372,13 @@ class _AddSpendingPageState extends State<AddSpendingPage> {
     final raw = _money.text.replaceAll(RegExp(r'[^0-9]'), '');
     final money = int.tryParse(raw);
     if (type == null || type! < 0 || type! >= listType.length) {
+      SpendingStyle.showNotice(
+        context,
+        AppLocalizations.of(context).translate('please_select_type'),
+      );
+      return;
+    }
+    if (_isIncomeCategory(listType[type!])) {
       SpendingStyle.showNotice(
         context,
         AppLocalizations.of(context).translate('please_select_type'),

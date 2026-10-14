@@ -3,7 +3,7 @@ import 'package:personal_financial_management/controls/debt_reminder_service.dar
 import 'package:personal_financial_management/controls/notification_service.dart';
 import 'package:personal_financial_management/features/notification/notification_screen.dart';
 
-import '../debt_book_screen.dart';
+import 'debt_book_screen.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';

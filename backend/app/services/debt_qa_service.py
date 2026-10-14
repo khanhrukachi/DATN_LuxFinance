@@ -88,8 +88,8 @@ def window(q,today):
 
 class DebtQAService:
     revision='debt_qa_v1'
-    FOLLOWUP=re.compile(r'\b(nguoi do|anh ay|chi ay|ban ay|ho|con|vay|the|da tra|bao nhieu|khi nao|chi tiet|liet ke|lan cuoi|gan nhat|tat toan|ma doi tuong|ma khoan|tra chua|thanh toan chua|het chua)\b')
-    SIGNAL=re.compile(r'\b(so no|cong no|du no|no|vay|muon|tat toan|tra cho|tra toi|tra minh|cho toi vay|repay|debt|loan|borrow)\b')
+    FOLLOWUP=re.compile(r'\b(nguoi do|anh ay|chi ay|ban ay|ho|con|vay|the|da tra|bao nhieu|khi nao|chi tiet|liet ke|lan cuoi|gan nhat|tat toan|ma doi tuong|ma khoan|tra chua|thanh toan chua|het chua|owe|paid|payment|last month|last week)\b')
+    SIGNAL=re.compile(r'\b(so no|cong no|du no|no|vay|muon|tat toan|tra cho|tra toi|tra minh|cho toi vay|repay|repayment|pay back|paid back|owe|owes|debt|loan|borrow|lent|lending)\b')
     @classmethod
     def is_debt_question(cls, question, history=None):
         q=intent_fold(question)
@@ -168,6 +168,30 @@ class DebtQAService:
             if last[0] and usable(c.get('name','').split()[-1]) and last[0] in words and last[0] not in {'ai','toi','minh','no','vay','tra'}:matches.append((len(last[0]),cid))
         return [cid for _,cid in matches]
     def answer(self, *, question, snapshot, reference_date=None, history=None, contact_id=None, debt_id=None):
+        from .qa_language import detect_language, english_debt_answer, normalize_english_debt_question
+        language = detect_language(question)
+        if language == 'en':
+            question = normalize_english_debt_question(question)
+            history = [dict(item, content=normalize_english_debt_question(item.get('content', '')))
+                       if item.get('role') == 'user' else item for item in (history or [])]
+        result = self._answer(question=question, snapshot=snapshot, reference_date=reference_date,
+                              history=history, contact_id=contact_id, debt_id=debt_id)
+        result['language'] = language
+        result['serviceRevision'] = 'debt_qa_v2_bilingual'
+        if language == 'en':
+            result['answer'] = english_debt_answer(result)
+            if re.search(r'\b(liet ke|chi tiet|tong quan|phan tich|bao cao)\b', question):
+                rows = (result.get('evidence') or {}).get('debts') or []
+                if rows:
+                    result['answer'] += '\n' + '\n'.join(
+                        f"• {row.get('contactName')}: {row.get('direction', 'debt')}, principal {money(int(row.get('amount', 0)))}, "
+                        f"paid {money(int(row.get('paid', 0)))}, remaining {money(int(row.get('remaining', 0)))}."
+                        for row in rows[:20])
+            result['warnings'] = ['Some debt records may be incomplete or invalid; review the ledger before relying on these totals.'
+                                  for _ in result.get('warnings', [])]
+        return result
+
+    def _answer(self, *, question, snapshot, reference_date=None, history=None, contact_id=None, debt_id=None):
         today=reference_date or datetime.now(TZ).date()
         q=fold(question);previous=fold(self.previous(history))
         short_followup=bool(previous and self.SIGNAL.search(intent_fold(self.previous(history))) and not self.SIGNAL.search(intent_fold(question)) and self.FOLLOWUP.search(q))

@@ -10,8 +10,12 @@ Map<String, dynamic> reminderData(String? payload) {
   }
 }
 
-String reminderText(BuildContext context, String key) =>
-    AppLocalizations.of(context).translate('reminder_$key');
+String reminderText(BuildContext context, String key) {
+  if (key == 'filter_title') {
+    return Localizations.localeOf(context).languageCode == 'en' ? 'Filters' : 'Bộ lọc';
+  }
+  return AppLocalizations.of(context).translate('reminder_$key');
+}
 
 String reminderErrorText(BuildContext context, Object error) {
   if (error is StateError) return error.message.toString();

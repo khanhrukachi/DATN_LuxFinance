@@ -3,69 +3,10 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'chat_data_source.dart';
 
-class ChatApiException implements Exception {
-  const ChatApiException(
-    this.key, {
-    this.statusCode,
-    this.requestId,
-    this.serverCode,
-  });
-
-  final String key;
-  final int? statusCode;
-  final String? requestId;
-  final String? serverCode;
-
-  @override
-  String toString() =>
-      'ChatApiException($key, HTTP $statusCode, code=$serverCode, request=$requestId)';
-}
-
-class ChatReply {
-  const ChatReply(
-    this.answer,
-    this.intent,
-    this.warnings, {
-    this.evidence = const {},
-    this.needsInput = const [],
-    this.supportedExamples = const [],
-    this.requestId,
-  });
-
-  final String answer;
-  final String intent;
-  final List<String> warnings;
-  final Map<String, dynamic> evidence;
-  final List<String> needsInput;
-  final List<String> supportedExamples;
-  final String? requestId;
-
-  factory ChatReply.fromJson(Map<String, dynamic> json) {
-    return ChatReply(
-      json['answer']?.toString() ?? '',
-      json['intent']?.toString() ?? '',
-      (json['warnings'] is List ? json['warnings'] as List : const [])
-          .map((value) => value.toString())
-          .toSet()
-          .toList(),
-      needsInput: json['needsInput'] is List
-          ? (json['needsInput'] as List).map((v) => '$v').toList()
-          : const [],
-      supportedExamples: json['supportedExamples'] is List
-          ? (json['supportedExamples'] as List)
-                .map((v) => '$v')
-                .take(4)
-                .toList()
-          : const [],
-      requestId: json['requestId']?.toString(),
-      evidence: json['evidence'] is Map
-          ? Map<String, dynamic>.from(json['evidence'] as Map)
-          : const {},
-    );
-  }
-}
+import '../models/chat_reply.dart';
+import '../models/chat_snapshot.dart';
+import 'chat_api_exception.dart';
 
 class ChatApi {
   ChatApi({required this.baseUrl, http.Client? client, FirebaseAuth? auth})
@@ -84,7 +25,6 @@ class ChatApi {
         !const ['http', 'https'].contains(base.scheme)) {
       throw const ChatApiException('chat_bad_url');
     }
-    // Accept either an origin or an origin ending in /api/v1.
     var prefix = base.path.replaceAll(RegExp(r'/+$'), '');
     if (prefix.endsWith('/api/v1')) {
       prefix = prefix.substring(0, prefix.length - 7);

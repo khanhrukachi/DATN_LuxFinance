@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'debt_helpers.dart';
 
 class DebtDetailActions extends StatelessWidget {
@@ -25,7 +25,7 @@ class DebtDetailActions extends StatelessWidget {
               context,
               debtTranslate(context, 'debt_edit'),
               Icons.edit_rounded,
-              SpendingStyle.accent(context),
+              DebtStyle.accent(context),
               onEdit,
             ),
           ),
@@ -35,7 +35,7 @@ class DebtDetailActions extends StatelessWidget {
               context,
               debtTranslate(context, 'debt_delete'),
               Icons.delete_outline_rounded,
-              SpendingStyle.danger,
+              DebtStyle.danger,
               onDelete,
             ),
           ),
@@ -45,21 +45,21 @@ class DebtDetailActions extends StatelessWidget {
   );
 
   Widget _button(
-    BuildContext context,
-    String text,
-    IconData icon,
-    Color color,
-    VoidCallback action,
-  ) => Material(
-    color: color.withOpacity(.08),
-    borderRadius: BorderRadius.circular(16),
+      BuildContext context,
+      String text,
+      IconData icon,
+      Color color,
+      VoidCallback action,
+      ) => Material(
+    color: color.withOpacity(.13),
+    borderRadius: BorderRadius.circular(14),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: action,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withOpacity(.22)),
         ),
         child: Row(

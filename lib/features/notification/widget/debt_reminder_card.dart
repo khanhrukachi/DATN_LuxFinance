@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_category_icon.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_category_presentation.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:personal_financial_management/models/debt.dart';
 import 'package:intl/intl.dart';
-import 'package:personal_financial_management/features/main/debt/widget/debt_category_widgets.dart';
 import '../utils/reminder_helpers.dart';
 
 class DebtReminderCard extends StatelessWidget {
@@ -57,7 +58,11 @@ class DebtReminderCard extends StatelessWidget {
               ],
             )),
             const SizedBox(width:4),
-            Switch.adaptive(
+            if (isBusy)
+              Padding(padding: const EdgeInsets.all(12),
+                  child: SizedBox(width: 24, height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: SpendingStyle.accent(context))))
+            else Switch.adaptive(
               value:enabled,
               onChanged:isBusy || d.dueDate==null ? null : onChanged,
               activeTrackColor:SpendingStyle.teal,

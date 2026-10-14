@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,9 +13,9 @@ import 'package:personal_financial_management/core/constants/function/route_func
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/circle_text.dart';
 import 'package:personal_financial_management/features/spending/edit_spending/edit_spending_screen.dart';
+import 'package:personal_financial_management/features/spending/view_spending/view_image.dart';
 import 'package:personal_financial_management/models/spending.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
-import 'package:personal_financial_management/features/view_spending/view_image.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
@@ -63,7 +64,19 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
     if (!isValid) {
       return Scaffold(
         backgroundColor: SpendingStyle.background(context),
-        appBar: AppBar(title: const Text('Lỗi')),
+        appBar: AppBar(
+          title: const Text('Lỗi'),
+          centerTitle: false,
+          titleSpacing: 0,
+          leadingWidth: 54,
+          backgroundColor: SpendingStyle.background(context),
+          elevation: 0,
+          leading: FinanceToolbarButton(
+            icon: Icons.arrow_back_rounded,
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.maybePop(context),
+          ),
+        ),
         body: const Center(child: Text('Không thể mở giao dịch này')),
       );
     }
@@ -77,16 +90,20 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: SpendingStyle.background(context),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        centerTitle: false,
+        titleSpacing: 0,
+        leadingWidth: 54,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.ios_share_rounded,
-              color: SpendingStyle.accent(context),
-            ),
+          FinanceToolbarButton(
+            tooltip: Localizations.localeOf(context).languageCode == 'en' ? 'Share' : 'Chia sẻ',
+            icon: Icons.ios_share_rounded,
             onPressed: () async {
               if (!isValid) {
                 showInvalidSnackBar();
@@ -102,11 +119,9 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
               await Share.shareXFiles([XFile(file.path)]);
             },
           ),
-          IconButton(
-            icon: Icon(
-              Icons.edit_outlined,
-              color: SpendingStyle.accent(context),
-            ),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('edit_spending'),
+            icon: Icons.edit_outlined,
             onPressed: () {
               if (!isValid) {
                 showInvalidSnackBar();
@@ -135,11 +150,10 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(
-              Icons.delete_outline_rounded,
-              color: SpendingStyle.danger,
-            ),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('delete'),
+            icon: Icons.delete_outline_rounded,
+            color: SpendingStyle.danger,
             onPressed: () {
               if (!isValid) {
                 showInvalidSnackBar();
@@ -148,6 +162,7 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
               showConfirmDialog();
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
@@ -177,26 +192,26 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
                             ),
                             child: typeConfig['image'] == null
                                 ? Icon(
-                                    Icons.category_outlined,
-                                    color: SpendingStyle.accent(context),
-                                  )
+                              Icons.category_outlined,
+                              color: SpendingStyle.accent(context),
+                            )
                                 : Image.asset(
-                                    typeConfig['image']!,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      Icons.category_outlined,
-                                      color: SpendingStyle.accent(context),
-                                    ),
-                                  ),
+                              typeConfig['image']!,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.category_outlined,
+                                color: SpendingStyle.accent(context),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               spending!.type == 41 ||
-                                      spending!.categoryId == 'custom'
+                                  spending!.categoryId == 'custom'
                                   ? (spending!.typeName ?? '')
                                   : AppLocalizations.of(
-                                      context,
-                                    ).translate(typeConfig['title'] ?? 'other'),
+                                context,
+                              ).translate(typeConfig['title'] ?? 'other'),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -209,8 +224,8 @@ class _ViewSpendingPageState extends State<ViewSpendingPage> {
                       Text(
                         NumberFormat.currency(
                           locale:
-                              Localizations.localeOf(context).languageCode ==
-                                  'vi'
+                          Localizations.localeOf(context).languageCode ==
+                              'vi'
                               ? 'vi_VN'
                               : 'en_US',
                           symbol: '₫',

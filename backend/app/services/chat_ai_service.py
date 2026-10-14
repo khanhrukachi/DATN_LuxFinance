@@ -107,6 +107,9 @@ class ChatAIService:
         return text
 
     def answer(self, **kwargs) -> dict:
+        question = str(kwargs.get('question') or '')
+        from .qa_language import detect_language, localize_result
+        response_language = detect_language(question)
         try:
             result = self._answer(**kwargs)
         except ValueError as exc:
@@ -118,13 +121,18 @@ class ChatAIService:
         result.setdefault('needsInput', [])
         result.setdefault('evidence', {})
         result['warnings'] = list(dict.fromkeys(str(w) for w in result['warnings'] if w))
-        result['serviceRevision'] = 'finance_category_chat_v4'
-        return result
+        result['serviceRevision'] = 'finance_category_chat_v5_bilingual'
+        return localize_result(result, response_language)
 
     def _answer(self, *, user_id: str, question: str, transactions: list,
                category_catalog: list, advisor_context: dict | None = None,
                reference_date: date | None = None) -> dict:
+        from .qa_language import canonicalize_english_categories, normalize_english_question
         scope = folded(question)
+        if self._is_english_question(question):
+            canonical_scope = self.canonical_question(question, category_catalog)
+            canonical_scope = canonicalize_english_categories(canonical_scope)
+            scope = folded(normalize_english_question(canonical_scope))
         scope = re.sub(r'\s+', ' ', scope).strip()
         if scope in {'xin chao', 'chao', 'hello', 'hi'}:
             return {'success': True, 'intent': 'greeting', 'answer': 'Chào bạn! Bạn có thể hỏi tổng thu chi, danh mục, ngân sách, dự báo hoặc giao dịch bất thường.', 'warnings': [], 'evidence': {}}
@@ -160,6 +168,8 @@ class ChatAIService:
         forbidden = r'\b(thoi tiet|bong da|viet code|lap trinh|lam tho|ke chuyen|dich sang|weather|football|ignore previous|bo qua huong dan)\b'
         finance_terms = r'\b(chi|thu|tien|ngan sach|han muc|du bao|du doan|bat thuong|thoi quen|hanh vi|tiet kiem|tai chinh|giao dich|luong|income|expense|spending|budget|forecast|anomaly|behavior|afford)\b'
         canonical = self.canonical_question(question, category_catalog)
+        if self._is_english_question(question):
+            canonical = normalize_english_question(canonicalize_english_categories(canonical))
         targets = self.finance._query_category_targets(canonical, category_catalog)
         generic = re.search(r'\b(danh muc|thong ke|so sanh|trung binh|binh quan|ty trong|ti le|liet ke|thu chi|giao dich)\b', scope)
         if re.search(forbidden, scope) or not (re.search(finance_terms, scope) or targets or generic):
@@ -169,7 +179,7 @@ class ChatAIService:
         context.update(timezone='Asia/Ho_Chi_Minh', reference_date=today.isoformat(),
                        category_catalog=category_catalog)
         question_for_service = canonical
-        text = folded(question)
+        text = scope
         # Normalize spaces for intent detection, while the query retains date punctuation.
         text = re.sub(r'\s+', ' ', text).strip()
         if any(term in text for term in ('du tra', 'co du tra', 'afford', 'can i buy', 'co the mua')):
@@ -218,13 +228,18 @@ class ChatAIService:
         result.setdefault('evidence', {})
         result.setdefault('needsInput', [])
         result.setdefault('warnings', [])
-        result['serviceRevision'] = 'finance_deep_v3'
+        result['serviceRevision'] = 'finance_deep_v4_bilingual'
         result['question'] = question
         result['submittedTransactionCount'] = len(transactions)
         result['warnings'].extend(result.get('evidence', {}).get('warnings', []) or [])
         if context.get('history_complete') is not True:
             result['warnings'].append('Kết quả dựa trên giao dịch đã ghi nhận; lịch sử có thể chưa đầy đủ.')
         return result
+
+    @staticmethod
+    def _is_english_question(question: str) -> bool:
+        from .qa_language import detect_language
+        return detect_language(question) == 'en'
 
     def _financial_overview(self, uid, txs, today, catalog, context, question=''):
         from datetime import timedelta

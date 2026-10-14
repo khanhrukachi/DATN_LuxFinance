@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
+import 'package:personal_financial_management/features/main/debt/widget/debt_save_action.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'debt_helpers.dart';
 import 'debt_phone_field.dart';
@@ -63,10 +65,7 @@ class _DebtContactEditorState extends State<DebtContactEditor> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) debtMessage(context, e.toString());
     } finally {
       if (loadingVisible && mounted)
         Navigator.of(context, rootNavigator: true).pop();
@@ -76,22 +75,36 @@ class _DebtContactEditorState extends State<DebtContactEditor> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SpendingStyle.background(context),
+    backgroundColor: DebtStyle.background(context),
     appBar: AppBar(
+      centerTitle: true,
+      titleSpacing: 0,
+      leadingWidth: 76,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      leading: FinanceToolbarButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: Icons.arrow_back_rounded,
+        onPressed: busy ? null : () => Navigator.maybePop(context),
+      ),
       title: Text(
         widget.contact == null
             ? debtTranslate(context, 'debt_contact_add')
             : debtTranslate(context, 'debt_contact_edit'),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       ),
-      backgroundColor: SpendingStyle.background(context),
+      backgroundColor: DebtStyle.background(context),
       actions: [
-        SpendingSaveAction(
+        DebtSaveAction(
+          loading: busy,
           label: debtTranslate(
             context,
             widget.contact == null ? 'save' : 'debt_update',
           ),
           onPressed: busy ? null : save,
         ),
+        const SizedBox(width: 14),
       ],
     ),
     body: AbsorbPointer(
@@ -104,7 +117,7 @@ class _DebtContactEditorState extends State<DebtContactEditor> {
             TextFormField(
               controller: name,
               maxLength: 100,
-              decoration: SpendingStyle.input(
+              decoration: DebtStyle.input(
                 context,
                 debtTranslate(context, 'debt_contact_name'),
                 icon: Icons.person_outline,
@@ -118,7 +131,7 @@ class _DebtContactEditorState extends State<DebtContactEditor> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: role,
-              decoration: SpendingStyle.input(
+              decoration: DebtStyle.input(
                 context,
                 debtTranslate(context, 'debt_contact_role'),
               ),
@@ -137,7 +150,7 @@ class _DebtContactEditorState extends State<DebtContactEditor> {
               controller: note,
               maxLength: 500,
               maxLines: 3,
-              decoration: SpendingStyle.input(
+              decoration: DebtStyle.input(
                 context,
                 debtTranslate(context, 'debt_note'),
               ),

@@ -96,12 +96,12 @@ async def ask(request: ChatRequest, raw_request: Request, uid: str = Depends(aut
 
 @router.get('/capabilities')
 def capabilities():
-    return {'status':'ok','revision':'finance_category_chat_v4','currency':'VND',
+    return {'status':'ok','revision':'finance_category_chat_v5_bilingual','languages':['vi','en'],'currency':'VND',
             'capabilities':['category_definition','category_summary','category_average',
               'category_share','category_comparison','period_comparison','transaction_details',
               'budget_status','spending_forecast','behavior_analysis','anomaly_analysis',
               'financial_recommendations','payment_capacity'],
             'forecastDays':{'min':1,'max':30},'maxTransactions':10000,
-            'debtRevision':'debt_qa_v1','debtSource':'authenticated_firestore',
+            'debtRevision':'debt_qa_v2_bilingual','debtLanguages':['vi','en'],'debtSource':'authenticated_firestore',
             'debtCapabilities':['totals','people','person_balance','payments','payment_count','last_payment','due_dates','overdue','upcoming','settled','partial','unpaid','no_due_date','ranking','wallet_capacity','historical_balance','followups'],
             'debtWrites':False,'debtMaxRecords':10000}

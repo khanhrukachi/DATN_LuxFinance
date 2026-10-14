@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -93,87 +94,51 @@ class NotificationItem extends StatelessWidget {
           child: const Icon(Icons.delete_rounded, color: Colors.white),
         ),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          decoration: BoxDecoration(
-            color: notification.isRead
-                ? Theme.of(context).cardColor
-                : color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 6),
+      child: Material(
+        color: notification.isRead ? SpendingStyle.card(context) : color.withOpacity(.08),
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: notification.isRead
+                  ? SpendingStyle.teal.withOpacity(.16) : color.withOpacity(.25)),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(color: color.withOpacity(.13),
+                    borderRadius: BorderRadius.circular(14)),
+                child: Icon(_icon(), color: color),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Thanh màu bên trái (chưa đọc)
-              if (!notification.isRead)
-                Container(
-                  width: 5,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(18),
-                    ),
-                  ),
-                ),
-
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: color.withOpacity(0.15),
-                        child: Icon(_icon(), color: color),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _content(context, notification.title, 'test_title'),
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: notification.isRead
-                                    ? FontWeight.w500
-                                    : FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _content(context, notification.body, 'test_body'),
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              _formatTime(context, notification.createdAt),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Text(
+                    _content(context, notification.title, 'test_title'),
+                    style: TextStyle(fontSize: 15, height: 1.4,
+                        fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.w800),
+                  )),
+                  if (!notification.isRead)
+                    Padding(padding: const EdgeInsets.only(left: 8, top: 6),
+                        child: Icon(Icons.circle, size: 8, color: color)),
+                ]),
+                const SizedBox(height: 7),
+                Text(_content(context, notification.body, 'test_body'),
+                    style: TextStyle(fontSize: 13, height: 1.5,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(.8))),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Icon(Icons.schedule_rounded, size: 13, color: SpendingStyle.muted(context)),
+                  const SizedBox(width: 5),
+                  Expanded(child: Text(_formatTime(context, notification.createdAt),
+                      style: TextStyle(fontSize: 11, color: SpendingStyle.muted(context)))),
+                ]),
+              ])),
+            ]),
           ),
         ),
       ),

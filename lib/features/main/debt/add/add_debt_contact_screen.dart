@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
-import '../widget/debt_contact_form.dart';
+import '../widget/debt_contact_editor.dart';
 
 class AddDebtContactScreen extends StatelessWidget {
   final DebtFirebase service;

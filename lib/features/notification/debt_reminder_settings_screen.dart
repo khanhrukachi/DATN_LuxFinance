@@ -1,3 +1,4 @@
+import 'widget/reminder_navigation_button.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
@@ -70,7 +71,16 @@ class _DebtReminderSettingsScreenState
     backgroundColor: SpendingStyle.background(context),
     appBar: AppBar(
       backgroundColor: SpendingStyle.background(context),
-      title: Text(reminderText(context, 'debt_settings_title')),
+      centerTitle: false,
+      titleSpacing: 0,
+      leadingWidth: 48,
+      leading: BackButton(color: SpendingStyle.accent(context)),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      title: Text(reminderText(context, 'debt_settings_title'),
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     ),
     body: StreamBuilder<List<Debt>>(
       stream: stream,
@@ -82,17 +92,20 @@ class _DebtReminderSettingsScreenState
         final active = s.data!.where((d) => d.remaining > 0).toList();
         if (active.isEmpty) {
           return Center(
-            child: Text(reminderText(context, 'no_debts_to_remind')),
+            child: Padding(padding: const EdgeInsets.all(24),
+                child: ReminderInfoPanel(icon: Icons.notifications_off_outlined,
+                    title: reminderText(context, 'no_debts_to_remind'))),
           );
         }
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: SpendingStyle.decoration(context, hero: true),
-              child: Text(reminderText(context, 'debt_settings_note')),
+            ReminderInfoPanel(
+              icon: Icons.notifications_active_outlined,
+              title: reminderText(context, 'debt_settings_note'),
+              hero: true,
             ),
+            const SizedBox(height: 4),
             for (final d in active)
               DebtReminderCard(
                 debt: d,

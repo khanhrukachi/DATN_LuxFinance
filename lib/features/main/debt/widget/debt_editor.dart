@@ -1,13 +1,15 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'package:personal_financial_management/core/constants/function/loading_animation.dart';
 import 'package:flutter/services.dart';
 import 'debt_helpers.dart';
-import 'debt_loading_skeleton.dart';
-import 'debt_category_widgets.dart';
-import 'debt_contact_picker.dart';
+import 'debt_save_action.dart';
+import 'debt_screen_skeleton.dart';
+import 'debt_type_selector.dart';
+import 'debt_contact_select_field.dart';
 
 class DebtEditor extends StatefulWidget {
   final DebtFirebase service;
@@ -73,7 +75,20 @@ class _DebtEditorState extends State<DebtEditor> {
   }
 
   Future<void> save(List<DebtContact> list) async {
+    final parsedAmount = int.tryParse(amount.text) ?? 0;
+    final hasSelectedContact =
+        contactId != null && list.any((contact) => contact.id == contactId);
+
+    if (!hasSelectedContact) {
+      debtMessage(context, debtTranslate(context, 'debt_contact_required'));
+      return;
+    }
+    if (parsedAmount <= 0) {
+      debtMessage(context, debtTranslate(context, 'debt_amount_required'));
+      return;
+    }
     if (!form.currentState!.validate()) return;
+
     setState(() => busy = true);
     loadingAnimation(context);
     var loadingVisible = true;
@@ -106,9 +121,7 @@ class _DebtEditorState extends State<DebtEditor> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        debtMessage(context, e.toString());
       }
     } finally {
       if (loadingVisible && mounted) {
@@ -120,18 +133,31 @@ class _DebtEditorState extends State<DebtEditor> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SpendingStyle.background(context),
+    backgroundColor: DebtStyle.background(context),
     appBar: AppBar(
-      backgroundColor: SpendingStyle.background(context),
+      centerTitle: true,
+      titleSpacing: 0,
+      leadingWidth: 76,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      leading: FinanceToolbarButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: Icons.arrow_back_rounded,
+        onPressed: busy ? null : () => Navigator.maybePop(context),
+      ),
+      backgroundColor: DebtStyle.background(context),
       title: Text(
         widget.debt == null
             ? debtTranslate(context, 'debt_add')
             : debtTranslate(context, 'debt_edit'),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       ),
       actions: [
         StreamBuilder<List<DebtContact>>(
           stream: widget.service.watchContacts(),
-          builder: (context, s) => SpendingSaveAction(
+          builder: (context, s) => DebtSaveAction(
+            loading: busy,
             label: debtTranslate(
               context,
               widget.debt == null ? 'save' : 'debt_update',
@@ -139,6 +165,7 @@ class _DebtEditorState extends State<DebtEditor> {
             onPressed: busy || !s.hasData ? null : () => save(s.data!),
           ),
         ),
+        const SizedBox(width: 14),
       ],
     ),
     body: StreamBuilder<List<DebtContact>>(
@@ -163,7 +190,7 @@ class _DebtEditorState extends State<DebtEditor> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: SpendingStyle.decoration(context),
+                  decoration: DebtStyle.decoration(context),
                   child: Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
@@ -191,7 +218,7 @@ class _DebtEditorState extends State<DebtEditor> {
                             FilteringTextInputFormatter.digitsOnly,
                             LengthLimitingTextInputFormatter(12),
                           ],
-                          decoration: SpendingStyle.input(
+                          decoration: DebtStyle.input(
                             context,
                             debtTranslate(context, 'debt_amount'),
                             icon: Icons.payments_outlined,
@@ -222,8 +249,11 @@ class _DebtEditorState extends State<DebtEditor> {
                           onTap: () => pick(true),
                           trailing: due == null
                               ? null
-                              : IconButton(
-                                  icon: const Icon(Icons.clear),
+                              : FinanceToolbarButton(
+                                  tooltip: MaterialLocalizations.of(
+                                    context,
+                                  ).deleteButtonTooltip,
+                                  icon: Icons.close_rounded,
                                   onPressed: () => setState(() => due = null),
                                 ),
                         ),
@@ -265,7 +295,7 @@ class _DebtEditorState extends State<DebtEditor> {
                           controller: note,
                           maxLines: 3,
                           maxLength: 500,
-                          decoration: SpendingStyle.input(
+                          decoration: DebtStyle.input(
                             context,
                             debtTranslate(context, 'debt_note'),
                             icon: Icons.edit_note,

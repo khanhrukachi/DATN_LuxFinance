@@ -1,3 +1,4 @@
+import 'widget/reminder_navigation_button.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -38,7 +39,7 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
           DateTime.tryParse(
             reminderData(old.payload)['scheduledAt']?.toString() ?? '',
           )?.toLocal() ??
-          time;
+              time;
     }
   }
 
@@ -63,7 +64,7 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
     );
     if (hour != null && mounted) {
       setState(
-        () => time = DateTime(
+            () => time = DateTime(
           date.year,
           date.month,
           date.day,
@@ -141,11 +142,20 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
     backgroundColor: SpendingStyle.background(context),
     appBar: AppBar(
       backgroundColor: SpendingStyle.background(context),
+      centerTitle: false,
+      titleSpacing: 0,
+      leadingWidth: 48,
+      leading: BackButton(color: SpendingStyle.accent(context)),
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
       title: Text(
         reminderText(
           context,
           widget.existing == null ? 'add_title' : 'edit_title',
         ),
+        maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       ),
     ),
     body: AbsorbPointer(
@@ -153,29 +163,35 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
       child: Form(
         key: form,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            TextFormField(
-              controller: title,
-              maxLength: 100,
-              decoration: SpendingStyle.input(
-                context,
-                reminderText(context, 'title_field'),
-                icon: Icons.notifications_outlined,
-              ),
-              validator: (v) => v == null || v.trim().isEmpty
-                  ? reminderText(context, 'title_required')
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: body,
-              maxLength: 500,
-              maxLines: 3,
-              decoration: SpendingStyle.input(
-                context,
-                reminderText(context, 'message_field'),
-              ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: SpendingStyle.decoration(context),
+              child: Column(children: [
+                TextFormField(
+                  controller: title,
+                  maxLength: 100,
+                  decoration: SpendingStyle.input(
+                    context,
+                    reminderText(context, 'title_field'),
+                    icon: Icons.notifications_outlined,
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? reminderText(context, 'title_required')
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: body,
+                  maxLength: 500,
+                  maxLines: 3,
+                  decoration: SpendingStyle.input(
+                    context,
+                    reminderText(context, 'message_field'),
+                  ),
+                ),
+              ]),
             ),
             const SizedBox(height: 12),
             Container(
@@ -185,9 +201,12 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
                 borderRadius: BorderRadius.circular(20),
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
-                  leading: const Icon(Icons.event_available),
+                  leading: SpendingFieldIcon(icon: Icons.event_available_rounded),
+                  trailing: Icon(Icons.edit_calendar_rounded, color: SpendingStyle.accent(context)),
                   title: Text(reminderText(context, 'schedule_time')),
-                  subtitle: Text(DateFormat('dd/MM/yyyy · HH:mm').format(time)),
+                  subtitle: Padding(padding: const EdgeInsets.only(top: 6),
+                      child: Text(DateFormat('dd/MM/yyyy · HH:mm').format(time),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: SpendingStyle.accent(context)))),
                   onTap: pick,
                 ),
               ),
@@ -195,6 +214,7 @@ class _ManualReminderScreenState extends State<ManualReminderScreen> {
             const SizedBox(height: 20),
             SpendingActionButton(
               label: reminderText(context, 'save_schedule'),
+              icon: Icons.check_rounded,
               onPressed: saving ? null : save,
             ),
           ],

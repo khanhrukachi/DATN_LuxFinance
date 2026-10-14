@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -277,11 +278,11 @@ class _ProfilePageState extends State<ProfilePage> {
   );
 
   Widget _menuIcon(FaIconData icon, bool dark) => Container(
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: _teal.withOpacity(.10),
+      color: _teal.withOpacity(.13),
       borderRadius: BorderRadius.circular(14),
     ),
     child: FaIcon(icon, color: _accent(dark), size: 21),
@@ -294,7 +295,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }) => Material(
     color: _card(dark),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(14),
       side: BorderSide(color: _teal.withOpacity(.16)),
     ),
     clipBehavior: Clip.antiAlias,
@@ -325,7 +326,8 @@ class _ProfilePageState extends State<ProfilePage> {
           )),
         ),
         const SizedBox(width: 8),
-        Icon(Icons.chevron_right_rounded, size: 22, color: _accent(isDarkMode)),
+        FinanceToolbarButton(icon: Icons.chevron_right_rounded,
+            tooltip: text, onPressed: action),
       ],
     ),
   );
@@ -366,12 +368,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildLogoutButton(bool isDarkMode) => Material(
     color: Colors.transparent,
 
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(14),
     clipBehavior: Clip.antiAlias,
     child: Ink(
       decoration: BoxDecoration(
         gradient: _gradient,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
         onTap: () async {

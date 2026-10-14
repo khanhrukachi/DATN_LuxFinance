@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:personal_financial_management/core/constants/function/route_function.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/features/analytic/analytic_screen.dart';
+import 'package:personal_financial_management/features/financial_chat/utils/build_chat_catalog.dart';
 import 'package:personal_financial_management/features/main/debt/debt_book_screen.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/features/main/widget/main_style.dart';
@@ -12,10 +13,10 @@ import 'package:personal_financial_management/features/main/home/home_screen.dar
 import 'package:personal_financial_management/features/main/budget/budget_screen.dart';
 import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:personal_financial_management/features/notification/notification_screen.dart';
+import 'package:personal_financial_management/features/spending/add_spending/add_income.dart';
 import 'package:personal_financial_management/features/spending/add_spending/add_spending.dart';
 import 'package:personal_financial_management/features/main/profile/profile_screen.dart';
 import 'package:personal_financial_management/features/financial_chat/financial_chat_screen.dart';
-import 'package:personal_financial_management/features/financial_chat/widget/chat_catalog.dart';
 import 'package:personal_financial_management/features/spending/chat_box/chat_box.dart';
 import 'package:personal_financial_management/features/spending/chat_box/widget/chat_firebase_adapter.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
@@ -102,19 +103,16 @@ class _MainPageState extends State<MainPage>
     _closeMenu();
     await Navigator.of(
       context,
-    ).push(createRoute(screen: const AddSpendingPage()));
+    ).push(createRoute(screen: const AddSpendingScreen()));
   }
 
-  Future<void> _openAddBudget() async {
+  Future<void> _openAddIncome() async {
     _closeMenu();
-    final result = await Navigator.of(
+    await Navigator.of(
       context,
-    ).push(createRoute(screen: const AddBudgetPage()));
-    if (!mounted) return;
-    if (result == true) {
-      budgetKey.currentState?.fetchBudgets();
-    }
+    ).push(createRoute(screen: const AddIncomeScreen()));
   }
+
 
   Future<void> _openAddDebt() async {
     _closeMenu();
@@ -429,9 +427,9 @@ class _MainPageState extends State<MainPage>
                       const SizedBox(width: 68),
                       Expanded(
                         child: _createActionButton(
-                          label: _t('Thêm ngân sách', 'Add budget'),
-                          icon: Icons.add_chart_rounded,
-                          onTap: _openAddBudget,
+                          label: _t('Thêm thu nhập', 'Add Income'),
+                          icon: Icons.add_circle_outline_rounded,
+                          onTap: _openAddIncome,
                         ),
                       ),
                     ],

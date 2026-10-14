@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 import 'package:personal_financial_management/controls/spending_firebase.dart';
@@ -39,7 +40,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
     if (isLoading) return;
     final limit =
         int.tryParse(limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ??
-        0;
+            0;
     if (limit <= 0) {
       _showSnack(AppLocalizations.of(context).translate('invalid_limit'));
       return;
@@ -229,19 +230,32 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
       backgroundColor: BudgetStyle.background(context),
       appBar: AppBar(
         backgroundColor: BudgetStyle.background(context),
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        centerTitle: true,
+        titleSpacing: 0,
+        leadingWidth: 76,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
+          onPressed: isLoading ? null : () => Navigator.maybePop(context),
+        ),
         title: Text(
           AppLocalizations.of(context).translate('edit_budget'),
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
+            fontSize: 18
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('delete'),
+            icon: Icons.delete_outline_rounded,
+            color: Colors.red,
             onPressed: isLoading ? null : _deleteBudget,
           ),
+          const SizedBox(width: 8),
         ],
         elevation: 0,
       ),
@@ -261,7 +275,7 @@ class _EditBudgetPageState extends State<EditBudgetPage> {
                   const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
-                    child: BudgetActionButton(
+                    child: FinanceActionButton(
                       onPressed: isLoading ? null : _updateBudget,
                       label: AppLocalizations.of(
                         context,

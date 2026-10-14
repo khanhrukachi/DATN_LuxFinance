@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:personal_financial_management/core/constants/function/debt_phone_validator.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class DebtPhoneField extends StatefulWidget {
@@ -51,7 +51,7 @@ class _DebtPhoneFieldState extends State<DebtPhoneField> {
     },
     onFieldSubmitted: widget.onSubmitted,
     decoration:
-        SpendingStyle.input(
+        DebtStyle.input(
           context,
           tr('debt_phone_optional'),
           icon: Icons.phone_outlined,

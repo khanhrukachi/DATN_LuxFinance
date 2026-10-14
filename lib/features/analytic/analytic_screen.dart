@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/analytic/chart/column_chart.dart';
 import 'package:personal_financial_management/features/analytic/chart/pie_chart.dart';
 import 'package:personal_financial_management/features/analytic/search/search_screen.dart';
@@ -80,10 +81,11 @@ class _AnalyticPageState extends State<AnalyticPage>
   bool checkDate(DateTime dateTime) {
     if (_tabController.index == 0) {
       int weekDay = now.weekday;
-      DateTime firstDay =
-      DateTime(now.year, now.month, now.day).subtract(
-        Duration(days: weekDay - 1),
-      );
+      DateTime firstDay = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: weekDay - 1));
       DateTime lastDay = firstDay.add(const Duration(days: 6));
 
       return (dateTime.isAfter(firstDay) && dateTime.isBefore(lastDay)) ||
@@ -103,22 +105,39 @@ class _AnalyticPageState extends State<AnalyticPage>
     return Scaffold(
       backgroundColor: AnalyticStyle.background(context),
       appBar: AppBar(
+        titleSpacing: 0,
+        leadingWidth: 76,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          tooltip: 'Trở về',
-          onPressed: () => Navigator.of(context).pop(),
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
+          onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(
           AppLocalizations.of(context).translate('analytic'),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         actions: [
-          Padding(padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
-            child: Material(color: AnalyticStyle.teal.withOpacity(.10),
-              borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
-              child: IconButton(icon: Icon(Icons.search_rounded, color: AnalyticStyle.accent(context)),
-                  onPressed: () => Navigator.of(context).push(createRoute(
-                      screen: const SearchPage(), begin: const Offset(1, 0)))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+            child: Material(
+              color: AnalyticStyle.teal.withOpacity(.10),
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.antiAlias,
+              child: IconButton(
+                icon: Icon(
+                  Icons.search_rounded,
+                  color: AnalyticStyle.accent(context),
+                ),
+                onPressed: () => Navigator.of(context).push(
+                  createRoute(
+                    screen: const SearchPage(),
+                    begin: const Offset(1, 0),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -133,15 +152,22 @@ class _AnalyticPageState extends State<AnalyticPage>
 
   Widget _body() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return Center(child: Text(AppLocalizations.of(context).translate('no_data')));
+    if (user == null)
+      return Center(
+        child: Text(AppLocalizations.of(context).translate('no_data')),
+      );
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection("data")
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text(
-            AppLocalizations.of(context).translate('something_went_wrong')));
+        if (snapshot.hasError)
+          return Center(
+            child: Text(
+              AppLocalizations.of(context).translate('something_went_wrong'),
+            ),
+          );
         if (!snapshot.hasData) {
           return const AnalyticPageLoading(itemCount: 6);
         }
@@ -160,8 +186,14 @@ class _AnalyticPageState extends State<AnalyticPage>
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection("spending").snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.hasError) return Center(child: Text(
-                AppLocalizations.of(context).translate('something_went_wrong')));
+            if (snapshot.hasError)
+              return Center(
+                child: Text(
+                  AppLocalizations.of(
+                    context,
+                  ).translate('something_went_wrong'),
+                ),
+              );
             if (!snapshot.hasData) {
               return const AnalyticPageLoading(itemCount: 6);
             }
@@ -183,14 +215,13 @@ class _AnalyticPageState extends State<AnalyticPage>
               child: Column(
                 children: [
                   _showChart(classify),
-                  if (spendingList.isNotEmpty)
-                    TotalReport(list: spendingList),
+                  if (spendingList.isNotEmpty) TotalReport(list: spendingList),
                   chart
                       ? showListSpendingPie(list: classify)
                       : ShowListSpendingColumn(
-                    spendingList: classify,
-                    index: _tabController.index,
-                  ),
+                          spendingList: classify,
+                          index: _tabController.index,
+                        ),
                 ],
               ),
             );
@@ -207,8 +238,10 @@ class _AnalyticPageState extends State<AnalyticPage>
       surfaceTintColor: Colors.transparent,
       margin: const EdgeInsets.symmetric(vertical: 8),
       color: AnalyticStyle.card(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AnalyticStyle.teal.withOpacity(.16))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: AnalyticStyle.teal.withOpacity(.16)),
+      ),
       child: Column(
         children: [
           const SizedBox(height: 12),
@@ -228,12 +261,12 @@ class _AnalyticPageState extends State<AnalyticPage>
 
           list.isNotEmpty
               ? (chart
-              ? MyPieChart(list: list)
-              : ColumnChart(
-            index: _tabController.index,
-            list: list,
-            dateTime: now,
-          ))
+                    ? MyPieChart(list: list)
+                    : ColumnChart(
+                        index: _tabController.index,
+                        list: list,
+                        dateTime: now,
+                      ))
               : _emptyChart(),
 
           tabBarChart(controller: _chartController),

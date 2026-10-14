@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_financial_management/models/debt.dart';
 import 'package:intl/intl.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 
 String debtTranslate(BuildContext context, String key) =>
     AppLocalizations.of(context).translate(key);
@@ -30,3 +31,7 @@ String roleName(BuildContext context, String role) => debtTranslate(
       }[role] ??
       'debt_role_person',
 );
+
+void debtMessage(BuildContext context, String message, {bool warning = false}) {
+  DebtStyle.showNotice(context, message, warningNotice: warning);
+}

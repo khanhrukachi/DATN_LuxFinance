@@ -1,204 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/models/debt.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'package:shimmer/shimmer.dart';
-import 'debt_helpers.dart';
-import '../add/new_debt_contact_dialog.dart';
-
-export 'debt_detail_actions.dart';
-
-class DebtContactSelectField extends StatelessWidget {
-  final DebtFirebase service;
-  final DebtContact? selected;
-  final bool enabled;
-  final ValueChanged<DebtContact> onChanged;
-
-  const DebtContactSelectField({
-    Key? key,
-    required this.service,
-    this.selected,
-    required this.enabled,
-    required this.onChanged,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => FormField<String>(
-    key: ValueKey(selected?.id),
-    initialValue: selected?.id,
-    validator: (v) => v == null || v.isEmpty
-        ? debtTranslate(context, 'debt_contact_required')
-        : null,
-    builder: (field) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          debtTranslate(context, 'debt_contact'),
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Material(
-          color: SpendingStyle.background(context),
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: !enabled
-                ? null
-                : () async {
-                    FocusScope.of(context).unfocus();
-                    final contact = await showModalBottomSheet<DebtContact>(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      backgroundColor: SpendingStyle.card(context),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      builder: (ctx) {
-                        final media = MediaQuery.of(ctx);
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: media.viewInsets.bottom,
-                          ),
-                          child: SizedBox(
-                            height:
-                                (media.size.height - media.viewInsets.bottom) *
-                                .8,
-                            child: DebtContactPicker(
-                              service: service,
-                              selectedId: selected?.id,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                    if (contact == null) return;
-                    if (!field.mounted) return;
-                    field.didChange(contact.id);
-                    onChanged(contact);
-                  },
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: field.hasError
-                      ? SpendingStyle.danger
-                      : SpendingStyle.teal.withOpacity(.2),
-                ),
-              ),
-              child: Row(
-                children: [
-                  _ContactAvatar(
-                    name: selected?.name ?? '',
-                    selected: selected != null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          selected?.name ??
-                              debtTranslate(
-                                context,
-                                'debt_select_or_add_person',
-                              ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          selected == null
-                              ? debtTranslate(context, 'debt_name_and_phone')
-                              : selected!.phone.isEmpty
-                              ? debtTranslate(context, 'debt_selected_contact')
-                              : selected!.phone,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: SpendingStyle.muted(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    enabled
-                        ? Icons.expand_more_rounded
-                        : Icons.lock_outline_rounded,
-                    color: SpendingStyle.accent(context),
-                    size: 22,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (field.hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 7, left: 4),
-            child: Text(
-              field.errorText!,
-              style: const TextStyle(color: SpendingStyle.danger, fontSize: 12),
-            ),
-          ),
-        if (!enabled)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              debtTranslate(context, 'debt_contact_locked'),
-              style: TextStyle(
-                fontSize: 12,
-                color: SpendingStyle.muted(context),
-              ),
-            ),
-          ),
-        const SizedBox(height: 16),
-      ],
-    ),
-  );
-}
-
-class _ContactAvatar extends StatelessWidget {
-  final String name;
-  final bool selected;
-
-  const _ContactAvatar({required this.name, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 44,
-    height: 44,
-    decoration: BoxDecoration(
-      color: SpendingStyle.teal.withOpacity(.14),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    alignment: Alignment.center,
-    child: name.trim().isEmpty
-        ? Icon(
-            Icons.person_add_alt_1_outlined,
-            color: SpendingStyle.accent(context),
-          )
-        : Text(
-            String.fromCharCode(name.trim().runes.first).toUpperCase(),
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: SpendingStyle.accent(context),
-            ),
-          ),
-  );
-}
+import 'package:personal_financial_management/features/main/debt/widget/debt_helpers.dart';
+import 'package:personal_financial_management/features/main/debt/add/new_debt_contact_dialog.dart';
+import 'debt_action_button.dart';
+import 'debt_contact_avatar.dart';
 
 class DebtContactPicker extends StatefulWidget {
   final DebtFirebase service;
@@ -255,7 +63,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: SpendingStyle.muted(context).withOpacity(.25),
+                color: DebtStyle.muted(context).withOpacity(.25),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -279,7 +87,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
                           debtTranslate(context, 'debt_picker_subtitle'),
                           style: TextStyle(
                             fontSize: 12,
-                            color: SpendingStyle.muted(context),
+                            color: DebtStyle.muted(context),
                           ),
                         ),
                       ],
@@ -298,7 +106,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
               child: TextField(
                 controller: search,
                 onChanged: (_) => setState(() {}),
-                decoration: SpendingStyle.input(
+                decoration: DebtStyle.input(
                   context,
                   debtTranslate(context, 'debt_picker_search'),
                   icon: Icons.search_rounded,
@@ -308,7 +116,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: SpendingActionButton(
+              child: DebtActionButton(
                 label: debtTranslate(context, 'debt_picker_add'),
                 icon: Icons.person_add_alt_1_rounded,
                 onPressed: adding ? null : add,
@@ -339,8 +147,8 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
           if (!s.hasData) {
             return SliverToBoxAdapter(
               child: Shimmer.fromColors(
-                baseColor: SpendingStyle.card(context),
-                highlightColor: SpendingStyle.teal.withOpacity(.18),
+                baseColor: DebtStyle.card(context),
+                highlightColor: DebtStyle.teal.withOpacity(.18),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                   child: Column(
@@ -379,7 +187,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
                       Icon(
                         Icons.people_outline_rounded,
                         size: 40,
-                        color: SpendingStyle.accent(context),
+                        color: DebtStyle.accent(context),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -404,8 +212,8 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Material(
                     color: selected
-                        ? SpendingStyle.teal.withOpacity(.12)
-                        : SpendingStyle.background(context),
+                        ? DebtStyle.teal.withOpacity(.12)
+                        : DebtStyle.background(context),
                     borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
                     child: ListTile(
@@ -413,7 +221,7 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
                         horizontal: 12,
                         vertical: 6,
                       ),
-                      leading: _ContactAvatar(name: c.name),
+                      leading: DebtContactAvatar(name: c.name),
                       title: Text(
                         c.name,
                         maxLines: 2,
@@ -430,11 +238,11 @@ class _DebtContactPickerState extends State<DebtContactPicker> {
                       trailing: selected
                           ? Icon(
                               Icons.check_circle_rounded,
-                              color: SpendingStyle.accent(context),
+                              color: DebtStyle.accent(context),
                             )
                           : Icon(
                               Icons.chevron_right_rounded,
-                              color: SpendingStyle.muted(context),
+                              color: DebtStyle.muted(context),
                             ),
                       onTap: () => Navigator.pop(context, c),
                     ),

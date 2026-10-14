@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/circle_text.dart';
@@ -30,7 +31,7 @@ class _AddFriendPageState extends State<AddFriendPage> {
     colors.addAll(
       List.generate(
         widget.friends.length,
-        (i) => i < widget.colors.length ? widget.colors[i] : SpendingStyle.teal,
+            (i) => i < widget.colors.length ? widget.colors[i] : SpendingStyle.teal,
       ),
     );
     super.initState();
@@ -60,16 +61,27 @@ class _AddFriendPageState extends State<AddFriendPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: SpendingStyle.background(context),
+        titleSpacing: 0,
+        leadingWidth: 54,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         title: Text(tr.translate('add_friends')),
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
+          onPressed: () => Navigator.maybePop(context),
+        ),
         actions: [
-          SpendingSaveAction(
-            label: tr.translate('done'),
+          FinanceToolbarButton(
+            tooltip: tr.translate('done'),
+            icon: Icons.check_rounded,
             onPressed: () {
               widget.action(friends, colors);
               Navigator.pop(context);
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Padding(
@@ -83,19 +95,17 @@ class _AddFriendPageState extends State<AddFriendPage> {
               onFieldSubmitted: (_) => _addFriend(),
               cursorColor: SpendingStyle.accent(context),
               decoration:
-                  SpendingStyle.input(
-                    context,
-                    tr.translate('add_friends'),
-                    icon: Icons.person_add_alt_1_rounded,
-                  ).copyWith(
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        Icons.add_rounded,
-                        color: SpendingStyle.accent(context),
-                      ),
-                      onPressed: _addFriend,
-                    ),
-                  ),
+              SpendingStyle.input(
+                context,
+                tr.translate('add_friends'),
+                icon: Icons.person_add_alt_1_rounded,
+              ).copyWith(
+                suffixIcon: FinanceToolbarButton(
+                  tooltip: tr.translate('add_friends'),
+                  icon: Icons.add_rounded,
+                  onPressed: _addFriend,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             Expanded(

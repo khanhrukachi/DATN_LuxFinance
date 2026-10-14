@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'debt_helpers.dart';
 
 class DebtSummaryCard extends StatelessWidget {
@@ -18,14 +18,14 @@ class DebtSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = SpendingStyle.dark(context);
+    final dark = DebtStyle.dark(context);
     final collectColor = dark
         ? const Color(0xFF62DCA5)
         : const Color(0xFF168353);
     final payColor = dark ? const Color(0xFFFFAB72) : const Color(0xFFC75D22);
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: SpendingStyle.decoration(context),
+      decoration: DebtStyle.decoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,7 +34,7 @@ class DebtSummaryCard extends StatelessWidget {
               Icon(
                 Icons.account_balance_wallet_outlined,
                 size: 21,
-                color: SpendingStyle.accent(context),
+                color: DebtStyle.accent(context),
               ),
               const SizedBox(width: 9),
               Expanded(
@@ -43,7 +43,7 @@ class DebtSummaryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: SpendingStyle.text(context),
+                    color: DebtStyle.text(context),
                   ),
                 ),
               ),
@@ -75,7 +75,7 @@ class DebtSummaryCard extends StatelessWidget {
                 Icons.schedule_rounded,
                 overdueCount,
                 'debt_overdue_count',
-                overdueCount > 0 ? payColor : SpendingStyle.muted(context),
+                overdueCount > 0 ? payColor : DebtStyle.muted(context),
               ),
               _status(
                 context,

@@ -101,14 +101,14 @@ class _ReminderScheduleScreenState extends State<ReminderScheduleScreen> {
 
   bool daily(PendingNotificationRequest p) =>
       p.id == 2000000001 ||
-      reminderData(p.payload)['source'] == 'daily_spending';
+          reminderData(p.payload)['source'] == 'daily_spending';
 
   String kind(PendingNotificationRequest p) =>
       reminderData(p.payload)['source'] == 'debt_local'
-      ? 'debt'
-      : daily(p)
-      ? 'daily'
-      : 'other';
+          ? 'debt'
+          : daily(p)
+          ? 'daily'
+          : 'other';
 
   Future<void> configureDaily() async {
     if (!active) return;
@@ -248,176 +248,176 @@ class _ReminderScheduleScreenState extends State<ReminderScheduleScreen> {
       backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
         backgroundColor: SpendingStyle.background(context),
-        title: Text(reminderText(context, 'schedule_title')),
+        centerTitle: false,
+        titleSpacing: 0,
+        leadingWidth: 48,
+        leading: BackButton(color: SpendingStyle.accent(context)),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text(reminderText(context, 'schedule_title'),
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
         actions: [
-          IconButton(
+          ReminderToolbarButton(
             tooltip: reminderText(context, 'sync_debt_reminders'),
-            onPressed: busy
+            onPressed: busy || !active
                 ? null
                 : () => execute(() async {
-                    await DebtReminderService.instance.refreshSafely(uid);
-                    final err = DebtReminderService.instance.lastError;
-                    if (err != null) throw StateError(err);
-                  }),
-            icon: const Icon(Icons.sync),
+              await DebtReminderService.instance.refreshSafely(uid);
+              final err = DebtReminderService.instance.lastError;
+              if (err != null) throw StateError(err);
+            }),
+            icon: Icons.sync_rounded,
+            loading: busy,
           ),
+          ReminderToolbarButton(
+            tooltip: reminderText(context, 'add_title'),
+            icon: Icons.add_rounded,
+            onPressed: busy || !active ? null : () async {
+              await Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ManualReminderScreen()));
+              if (mounted) load();
+            },
+          ),
+          const SizedBox(width: 8),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: SpendingStyle.teal,
-        foregroundColor: SpendingStyle.ink,
-        onPressed: busy || !active
-            ? null
-            : () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ManualReminderScreen(),
-                  ),
-                );
-                if (mounted) load();
-              },
-        child: const Icon(Icons.add_alarm),
       ),
       body: loading
           ? reminderLoadingSkeleton(context)
           : error != null
           ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(error!, textAlign: TextAlign.center),
-                    TextButton(
-                      onPressed: load,
-                      child: Text(reminderText(context, 'try_again')),
-                    ),
-                  ],
-                ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(error!, textAlign: TextAlign.center),
+              TextButton(
+                onPressed: load,
+                child: Text(reminderText(context, 'try_again')),
               ),
-            )
+            ],
+          ),
+        ),
+      )
           : RefreshIndicator(
-              onRefresh: load,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        onRefresh: load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          children: [
+            ReminderInfoPanel(
+              icon: Icons.alarm_on_rounded,
+              title: reminderText(context, 'pending_count')
+                  .replaceAll('{count}', items.length.toString()),
+              subtitle: reminderText(context, 'device_schedule_note'),
+              hero: true,
+            ),
+            const SizedBox(height: 14),
+            ReminderNavigationButton(
+              title: reminderText(context, 'manage_debt_reminders'),
+              subtitle: reminderText(context, 'debt_reminders_button_hint'),
+              enabled: canManageDebtReminders,
+              onTap: !canManageDebtReminders ? null : () async {
+                await Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const DebtReminderSettingsScreen()));
+                if (mounted) load();
+              },
+            ),
+            const SizedBox(height: 12),
+            SpendingActionButton(
+              label: reminderText(context, 'set_daily_reminder'),
+              icon: Icons.schedule_rounded,
+              onPressed: busy || !active ? null : configureDaily,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: SpendingStyle.decoration(context),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: SpendingStyle.decoration(context, hero: true),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          reminderText(
-                            context,
-                            'pending_count',
-                          ).replaceAll('{count}', items.length.toString()),
-                          style: const TextStyle(
-                            fontSize: 23,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(reminderText(context, 'device_schedule_note')),
-                        const SizedBox(height: 14),
-                        ReminderNavigationButton(
-                          title: reminderText(context, 'manage_debt_reminders'),
-                          subtitle: reminderText(
-                            context,
-                            'debt_reminders_button_hint',
-                          ),
-                          enabled: canManageDebtReminders,
-                          onTap: !canManageDebtReminders
-                              ? null
-                              : () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const DebtReminderSettingsScreen(),
-                                    ),
-                                  );
-                                  if (mounted) load();
-                                },
-                        ),
-                        const SizedBox(height: 12),
-                        SpendingActionButton(
-                          label: reminderText(context, 'set_daily_reminder'),
-                          icon: Icons.schedule,
-                          onPressed: busy ? null : configureDaily,
-                        ),
-                      ],
-                    ),
-                  ),
+                  Row(children: [
+                    Icon(Icons.tune_rounded, size: 19, color: SpendingStyle.accent(context)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(reminderText(context, 'filter_title'),
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+                    Text('${filtered.length}/${items.length}',
+                        style: TextStyle(fontSize: 12, color: SpendingStyle.muted(context))),
+                  ]),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(children: [
                       for (final entry in {
                         'all': reminderText(context, 'filter_all'),
                         'debt': reminderText(context, 'filter_debt'),
                         'daily': reminderText(context, 'filter_daily'),
                         'other': reminderText(context, 'filter_other'),
                       }.entries)
-                        ChoiceChip(
-                          label: Text(entry.value),
-                          selected: filter == entry.key,
-                          onSelected: (_) => setState(() => filter = entry.key),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ReminderFilterChip(
+                            label: entry.value,
+                            icon: entry.key == 'all' ? Icons.all_inclusive_rounded
+                                : entry.key == 'debt' ? Icons.menu_book_rounded
+                                : entry.key == 'daily' ? Icons.update_rounded : Icons.alarm_outlined,
+                            selected: filter == entry.key,
+                            onTap: () => setState(() => filter = entry.key),
+                          ),
                         ),
-                    ],
+                    ]),
                   ),
-                  if (filtered.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(
-                        reminderText(context, 'no_matching_schedules'),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  for (final p in filtered)
-                    ReminderScheduleTile(
-                      notification: p,
-                      kind: kind(p),
-                      timing: timing(p),
-                      onCancel: busy ? null : () => cancel(p),
-                      onTap: kind(p) == 'debt'
-                          ? () {
-                              final id = reminderData(
-                                p.payload,
-                              )['debtId']?.toString();
-                              if (id != null && active) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => DebtDetailScreen(
-                                      service: DebtFirebase(userId: uid),
-                                      id: id,
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          : daily(p)
-                          ? configureDaily
-                          : reminderData(p.payload)['source'] ==
-                                'manual_reminder'
-                          ? () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ManualReminderScreen(existing: p),
-                                ),
-                              );
-                              if (mounted) load();
-                            }
-                          : null,
-                    ),
                 ],
               ),
             ),
+            if (filtered.isEmpty) ...[
+              const SizedBox(height: 16),
+              ReminderInfoPanel(icon: Icons.alarm_off_rounded,
+                  title: reminderText(context, 'no_matching_schedules')),
+            ],
+            for (final p in filtered)
+              ReminderScheduleTile(
+                notification: p,
+                kind: kind(p),
+                timing: timing(p),
+                onCancel: busy ? null : () => cancel(p),
+                onTap: kind(p) == 'debt'
+                    ? () {
+                  final id = reminderData(
+                    p.payload,
+                  )['debtId']?.toString();
+                  if (id != null && active) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DebtDetailScreen(
+                          service: DebtFirebase(userId: uid),
+                          id: id,
+                        ),
+                      ),
+                    );
+                  }
+                }
+                    : daily(p)
+                    ? configureDaily
+                    : reminderData(p.payload)['source'] ==
+                    'manual_reminder'
+                    ? () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ManualReminderScreen(existing: p),
+                    ),
+                  );
+                  if (mounted) load();
+                }
+                    : null,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

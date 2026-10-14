@@ -1,3 +1,4 @@
+import 'widget/reminder_navigation_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/features/main/debt/debt_book_screen.dart';
@@ -53,7 +54,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     });
     if (_uid == null) return;
     _subscription = _service.getNotificationsStream().listen(
-      (items) {
+          (items) {
         if (!mounted || generation != _generation) return;
         setState(() {
           _notifications = items;
@@ -196,46 +197,32 @@ class _NotificationScreenState extends State<NotificationScreen> {
       backgroundColor: SpendingStyle.background(context),
       appBar: AppBar(
         backgroundColor: SpendingStyle.background(context),
-        title: Text(_text('title')),
         centerTitle: true,
+        titleSpacing: 0,
+        leadingWidth: 48,
+        leading: BackButton(color: SpendingStyle.accent(context)),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text(_text('title'), maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
         actions: [
-          IconButton(
+          ReminderToolbarButton(
             tooltip: _text('schedule_tooltip'),
-            icon: const Icon(Icons.alarm_outlined),
-            onPressed: _uid == null
-                ? null
-                : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ReminderScheduleScreen(),
-                    ),
-                  ),
+            icon: Icons.alarm_outlined,
+            onPressed: _uid == null ? null : () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReminderScheduleScreen()),
+            ),
           ),
           if (kDebugMode)
-            IconButton(
-              tooltip: _text('test_tooltip'),
-              onPressed: _uid == null || _testing ? null : _testNotification,
-              icon: _testing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.add_alert_outlined),
-            ),
-          IconButton(
+          ReminderToolbarButton(
             tooltip: _text('mark_all'),
-            onPressed: _uid == null || unread == 0 || _markingAll
-                ? null
-                : _markAllRead,
-            icon: _markingAll
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.done_all_rounded),
+            icon: Icons.done_all_rounded,
+            loading: _markingAll,
+            onPressed: _uid == null || unread == 0 || _markingAll ? null : _markAllRead,
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: _buildBody(),
@@ -264,33 +251,65 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
     if (_notifications.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.notifications_none_rounded,
-              size: 80,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: SpendingStyle.teal.withOpacity(.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    size: 38,
+                    color: SpendingStyle.accent(context),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _text('empty'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.5,
+                    color: SpendingStyle.muted(context),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(_text('empty')),
-          ],
+          ),
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _notifications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final notification = _notifications[index];
-        return NotificationItem(
-          key: ValueKey(notification.id),
-          notification: notification,
-          onTap: () => _open(notification),
-          onDelete: () => _delete(notification),
-        );
-      },
+    final unread = _notifications.where((n) => !n.isRead).length;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        ReminderInfoPanel(
+          icon: Icons.notifications_active_outlined,
+          title: _text('unread_summary').replaceAll('{count}', unread.toString()),
+          subtitle: _text('total_summary').replaceAll('{count}', _notifications.length.toString()),
+          hero: true,
+        ),
+        const SizedBox(height: 16),
+        for (final notification in _notifications)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: NotificationItem(
+              key: ValueKey(notification.id),
+              notification: notification,
+              onTap: () => _open(notification),
+              onDelete: () => _delete(notification),
+            ),
+          ),
+      ],
     );
   }
 }

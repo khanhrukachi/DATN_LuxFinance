@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -21,18 +22,30 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return ProfileSurface(
       child: Scaffold(
         appBar: AppBar(
+          titleSpacing: 0,
+          leadingWidth: 82,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          title: Text(AppLocalizations.of(context).translate('account')),
-          leading: IconButton(
+          title: Text(
+            AppLocalizations.of(context).translate('account'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          leading: FinanceToolbarButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            icon: Icons.arrow_back_rounded,
           ),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.edit, size: 30),
+            FinanceToolbarButton(
+              tooltip: Localizations.localeOf(context).languageCode == 'en'
+                  ? 'Edit profile'
+                  : 'Chỉnh sửa hồ sơ',
+              icon: Icons.edit_outlined,
               onPressed: () => Navigator.pushNamed(context, '/edit_profile'),
             ),
+            const SizedBox(width: 16),
           ],
         ),
         body: FutureBuilder<DocumentSnapshot>(

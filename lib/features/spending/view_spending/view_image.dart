@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
 
@@ -95,14 +96,14 @@ class _ViewImageImageState extends State<ViewImage> {
                   children: [
                     _control(
                       Icons.arrow_back_rounded,
-                      () => Navigator.pop(context),
+                          () => Navigator.pop(context),
                       tooltip: MaterialLocalizations.of(
                         context,
                       ).backButtonTooltip,
                     ),
                     _control(
                       Icons.zoom_out_map_rounded,
-                      () => controller.value = Matrix4.identity(),
+                          () => controller.value = Matrix4.identity(),
                     ),
                   ],
                 ),
@@ -115,14 +116,12 @@ class _ViewImageImageState extends State<ViewImage> {
   );
 
   Widget _control(IconData icon, VoidCallback action, {String? tooltip}) =>
-      Material(
-        color: SpendingStyle.card(context).withOpacity(.94),
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: IconButton(
-          onPressed: action,
-          tooltip: tooltip,
-          icon: Icon(icon, color: SpendingStyle.accent(context)),
-        ),
+      FinanceToolbarButton(
+        icon: icon,
+        onPressed: action,
+        tooltip: tooltip ?? (Localizations.localeOf(context).languageCode == 'en'
+            ? 'Reset zoom' : 'Đặt lại thu phóng'),
+        color: SpendingStyle.accent(context),
+        surfaceColor: SpendingStyle.card(context).withOpacity(.94),
       );
 }

@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 
@@ -41,7 +42,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
 
     final limit =
         int.tryParse(_limitController.text.replaceAll(RegExp(r'[.,\s]'), '')) ??
-        0;
+            0;
 
     if (limit <= 0) {
       _showSnack('budget_limit_must_be_greater_than_zero');
@@ -133,7 +134,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       context,
       isEnglish
           ? 'This budget overlaps an existing parent or subcategory budget. Edit the existing budget or choose another category.'
-          : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con đã có. Hãy sửa ngân sách hiện tại hoặc chọn danh mục khác.',
+          : 'Danh mục này bị trùng phạm vi với ngân sách cha hoặc con đã có. Hãy sửa ngân sách đã có hiện tại hoặc chọn danh mục khác.',
       warningNotice: true,
     );
   }
@@ -148,7 +149,15 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: BudgetStyle.background(context),
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        titleSpacing: 0,
+        leadingWidth: 78,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
+          onPressed: isLoading ? null : () => Navigator.maybePop(context),
+        ),
         title: Text(
           AppLocalizations.of(context).translate('add_budget'),
           style: TextStyle(
@@ -157,7 +166,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
             fontSize: 18,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
       ),
 
       body: SingleChildScrollView(
@@ -176,7 +185,7 @@ class _AddBudgetPageState extends State<AddBudgetPage> {
                   const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
-                    child: BudgetActionButton(
+                    child: FinanceActionButton(
                       onPressed: isLoading ? null : _saveBudget,
                       label: AppLocalizations.of(
                         context,

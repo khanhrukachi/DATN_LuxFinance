@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/features/spending/add_spending/widget/spending_style.dart';
+import 'package:personal_financial_management/features/main/debt/debt_style.dart';
 import 'package:shimmer/shimmer.dart';
 
 Widget debtScreenSkeleton(BuildContext context) {
-  final baseColor = SpendingStyle.card(context);
-  final highlightColor = SpendingStyle.teal.withOpacity(.18);
+  final baseColor = DebtStyle.card(context);
+  final highlightColor = DebtStyle.teal.withOpacity(.18);
 
   Widget placeholder({
     double? width,
