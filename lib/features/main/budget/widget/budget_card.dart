@@ -157,7 +157,13 @@ class BudgetCard extends StatelessWidget {
               tr.translate('budget_limit'),
               icon: Icons.payments_outlined,
               hint: '2,000,000',
-            ).copyWith(suffixText: '₫'),
+            ).copyWith(
+              suffixText: '₫',
+              hintStyle: TextStyle(
+                color: Theme.of(context).hintColor.withValues(alpha: 0.4),
+                fontWeight: FontWeight.w400,
+              ),
+            ),
           ),
         ],
       ),
