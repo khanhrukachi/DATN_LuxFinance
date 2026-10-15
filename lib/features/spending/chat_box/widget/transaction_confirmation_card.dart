@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-import 'chat_intent.dart';
+import '../model/chat_intent.dart';
+import 'chat_detail_row.dart';
+import 'package:personal_financial_management/core/constants/list.dart';
 
 class TransactionConfirmationCard extends StatelessWidget {
   final ChatTransactionDraft draft;
@@ -16,8 +18,6 @@ class TransactionConfirmationCard extends StatelessWidget {
     required this.onCancel,
   });
 
-  String _t(BuildContext context, String key) =>
-      AppLocalizations.of(context).translate(key);
 
   @override
   Widget build(BuildContext context) {
@@ -44,40 +44,30 @@ class TransactionConfirmationCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _t(context, 'transaction_chat_15'),
+              AppLocalizations.of(context).translate('financial_secretary_confirmation_title'),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 10),
-            _row(
-              context,
-              _t(context, 'transaction_chat_16'),
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_transaction_type'),
               isIncome
-                  ? _t(context, 'transaction_chat_17')
-                  : _t(context, 'transaction_chat_18'),
+                  ? AppLocalizations.of(context).translate('financial_secretary_income')
+                  : AppLocalizations.of(context).translate('financial_secretary_expense'),
             ),
-            _row(context, _t(context, 'transaction_chat_19'), money),
-            _row(context, _t(context, 'transaction_chat_20'), draft.typeName),
-            _row(
-              context,
-              _t(context, 'transaction_chat_21'),
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_amount'), money),
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_category'), AppLocalizations.of(context).translate(listType[draft.type]['title'] ?? 'financial_secretary_unknown_category')),
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_date'),
               DateFormat('dd/MM/yyyy').format(draft.date),
             ),
-            _row(
-              context,
-              _t(context, 'transaction_chat_22'),
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_time'),
               draft.hasExplicitTime
                   ? DateFormat('HH:mm').format(draft.date)
-                  : '—',
+                  : AppLocalizations.of(context).translate('financial_secretary_not_provided'),
             ),
-            _row(
-              context,
-              _t(context, 'transaction_chat_23'),
-              draft.location.isEmpty ? '—' : draft.location,
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_location'),
+              draft.location.isEmpty ? AppLocalizations.of(context).translate('financial_secretary_not_provided') : draft.location,
             ),
-            _row(
-              context,
-              _t(context, 'transaction_chat_24'),
-              draft.note.isEmpty ? '—' : draft.note,
+            ChatDetailRow(AppLocalizations.of(context).translate('financial_secretary_note'),
+              draft.note.isEmpty ? AppLocalizations.of(context).translate('financial_secretary_not_provided') : draft.note,
             ),
             const SizedBox(height: 10),
             Row(
@@ -85,7 +75,7 @@ class TransactionConfirmationCard extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: onCancel,
-                    child: Text(_t(context, 'transaction_chat_25')),
+                    child: Text(AppLocalizations.of(context).translate('financial_secretary_cancel')),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -96,7 +86,7 @@ class TransactionConfirmationCard extends StatelessWidget {
                       foregroundColor: const Color(0xFF073D43),
                     ),
                     onPressed: onConfirm,
-                    child: Text(_t(context, 'transaction_chat_26')),
+                    child: Text(AppLocalizations.of(context).translate('financial_secretary_save_transaction')),
                   ),
                 ),
               ],
@@ -107,19 +97,4 @@ class TransactionConfirmationCard extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 88,
-            child: Text(label, style: const TextStyle(color: Colors.grey)),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(height: 1.4))),
-        ],
-      ),
-    );
-  }
 }

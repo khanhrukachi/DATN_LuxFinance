@@ -4,7 +4,7 @@ import '../models/chat_snapshot.dart';
 
 class ChatDataSource {
   ChatDataSource({FirebaseFirestore? firestore})
-    : db = firestore ?? FirebaseFirestore.instance;
+      : db = firestore ?? FirebaseFirestore.instance;
   final FirebaseFirestore db;
   String? _cachedUid;
   DateTime? _cachedAt;
@@ -17,7 +17,7 @@ class ChatDataSource {
   }
 
   Future<ChatSnapshot> load(String uid, {bool forceRefresh = false}) async {
-    if (uid.trim().isEmpty) throw StateError('chat_login');
+    if (uid.trim().isEmpty) throw StateError('financial_chat_login_required');
     if (!forceRefresh &&
         _cachedUid == uid &&
         _cached != null &&
@@ -35,7 +35,7 @@ class ChatDataSource {
       if (cursor != null) query = query.startAfterDocument(cursor);
       final page = await query.get();
       documents.addAll(page.docs);
-      if (documents.length > 10000) throw StateError('chat_history_limit');
+      if (documents.length > 10000) throw StateError('financial_chat_history_limit');
       if (page.docs.length < 500) break;
       cursor = page.docs.last;
     }
@@ -61,7 +61,7 @@ class ChatDataSource {
         'dateTime': date.toUtc().toIso8601String(),
         'note': row['note']?.toString() ?? '',
         'merchant':
-            row['merchant']?.toString() ?? row['location']?.toString() ?? '',
+        row['merchant']?.toString() ?? row['location']?.toString() ?? '',
         if (row['isTransfer'] is bool) 'isTransfer': row['isTransfer'],
         if (row['categoryId'] != null)
           'categoryId': row['categoryId'].toString(),

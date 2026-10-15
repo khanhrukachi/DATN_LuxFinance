@@ -29,7 +29,6 @@ class MonthlyComparisonChart extends StatelessWidget {
         : previous.abs();
 
     final textColor = Theme.of(context).colorScheme.onSurface;
-    final localizations = AppLocalizations.of(context);
 
     return Container(
       width: double.infinity,
@@ -45,7 +44,7 @@ class MonthlyComparisonChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            localizations.translate('chat_comparison_chart'),
+            AppLocalizations.of(context).translate('financial_chat_comparison_chart'),
             style: TextStyle(
               color: textColor,
               fontWeight: FontWeight.w700,
@@ -54,14 +53,14 @@ class MonthlyComparisonChart extends StatelessWidget {
           const SizedBox(height: 8),
           MonthlyComparisonBar(
             label:
-                '${(evidence['previous'] as Map)['startDate'] ?? ''} → ${(evidence['previous'] as Map)['endDate'] ?? ''}',
+                AppLocalizations.of(context).translate('financial_chat_previous_period').replaceAll('{start}', '${(evidence['previous'] as Map)['startDate'] ?? ''}').replaceAll('{end}', '${(evidence['previous'] as Map)['endDate'] ?? ''}'),
             amount: previous,
             maximum: maximum,
             color: const Color(0xFF00A8CC),
           ),
           MonthlyComparisonBar(
             label:
-                '${(evidence['current'] as Map)['startDate'] ?? ''} → ${(evidence['current'] as Map)['endDate'] ?? ''}',
+                AppLocalizations.of(context).translate('financial_chat_current_period').replaceAll('{start}', '${(evidence['current'] as Map)['startDate'] ?? ''}').replaceAll('{end}', '${(evidence['current'] as Map)['endDate'] ?? ''}'),
             amount: current,
             maximum: maximum,
             color: const Color(0xFF2DD8C6),

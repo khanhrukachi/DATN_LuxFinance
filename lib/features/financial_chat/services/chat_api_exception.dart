@@ -1,10 +1,10 @@
 class ChatApiException implements Exception {
   const ChatApiException(
-    this.key, {
-    this.statusCode,
-    this.requestId,
-    this.serverCode,
-  });
+      this.key, {
+        this.statusCode,
+        this.requestId,
+        this.serverCode,
+      });
 
   final String key;
   final int? statusCode;

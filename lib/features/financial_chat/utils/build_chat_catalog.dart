@@ -1,8 +1,8 @@
 /// Preserve the original listType positions, including section headers.
 List<Map<String, dynamic>> buildChatCatalog(
-  List<Map<String, String>> listType,
-  String Function(String) translate,
-) {
+    List<Map<String, String>> listType,
+    String Function(String) translate,
+    ) {
   return [
     for (var i = 0; i < listType.length; i++)
       {
@@ -13,11 +13,11 @@ List<Map<String, dynamic>> buildChatCatalog(
         'index': i,
         'display_name': translate(listType[i]['title'] ?? ''),
         'parent':
-            listType[i]['parentCategoryId'] ??
+        listType[i]['parentCategoryId'] ??
             listType[i]['parent'] ??
             _parents[listType[i]['title']],
         'isParent':
-            listType[i]['isParent'] == 'true' ||
+        listType[i]['isParent'] == 'true' ||
             const {
               'expense',
               'expense_living',

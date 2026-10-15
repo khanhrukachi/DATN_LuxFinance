@@ -24,7 +24,6 @@ class ChatComposer extends StatelessWidget {
     final background = dark
         ? const Color(0xFF0E1C22)
         : const Color(0xFFF3F9FA);
-    String translate(String key) => AppLocalizations.of(context).translate(key);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       decoration: BoxDecoration(
@@ -45,7 +44,7 @@ class ChatComposer extends StatelessWidget {
                   maxLines: 4,
                   maxLength: 2000,
                   decoration: InputDecoration(
-                    hintText: translate('chat_hint'),
+                    hintText: AppLocalizations.of(context).translate('financial_chat_input_hint'),
                     counterText: '',
                     filled: true,
                     fillColor: background,
@@ -66,7 +65,7 @@ class ChatComposer extends StatelessWidget {
                 valueListenable: controller,
                 builder: (context, value, _) {
                   final isEnabled = canSubmit && value.text.trim().isNotEmpty;
-                  final label = translate('chat_send');
+                  final label = AppLocalizations.of(context).translate('financial_chat_send_message');
                   return Semantics(
                     label: label,
                     button: true,
@@ -100,7 +99,7 @@ class ChatComposer extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            translate('chat_footer'),
+            AppLocalizations.of(context).translate('financial_chat_footer'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,

@@ -1,21 +1,22 @@
-import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
+export 'widget/chat_message.dart';
+
+import 'widget/chat_composer.dart';
+import 'widget/chat_saving_status.dart';
+import 'widget/chat_welcome.dart';
+import 'widget/chat_message_bubble.dart';
+import 'widget/chat_message_list.dart';
+import 'widget/chat_suggestions.dart';
+import 'widget/chat_header.dart';
+import 'widget/chat_style.dart';
+import 'widget/chat_message.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-import 'widget/chat_intent.dart';
-import 'widget/chat_parser.dart';
-import 'widget/transaction_confirmation_card.dart';
-
-class ChatMessage {
-  final String text;
-  final bool fromUser;
-  final ChatTransactionDraft? draft;
-
-  const ChatMessage({required this.text, required this.fromUser, this.draft});
-}
+import 'model/chat_intent.dart';
+import 'utils/chat_parser.dart';
 
 class ChatBox extends StatefulWidget {
   final Future<void> Function(ChatTransactionDraft draft) onCreateTransaction;
@@ -36,9 +37,6 @@ class _ChatBoxState extends State<ChatBox> {
   final ChatConversationMemory _memory = ChatConversationMemory();
   ChatMessage? _activeDraftMessage;
 
-  String _say(String vi, String en) =>
-      Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
-
   bool _sameDraft(ChatTransactionDraft a, ChatTransactionDraft b) =>
       a.amount == b.amount &&
           a.type == b.type &&
@@ -54,10 +52,7 @@ class _ChatBoxState extends State<ChatBox> {
     final index = _messages.indexOf(active);
     if (index >= 0) {
       _messages[index] = ChatMessage(
-        text: _say(
-          'Bản nháp đã được cập nhật hoặc hủy.',
-          'Draft updated or cancelled.',
-        ),
+        text: AppLocalizations.of(context).translate('financial_secretary_draft_retired'),
         fromUser: false,
       );
     }
@@ -71,21 +66,8 @@ class _ChatBoxState extends State<ChatBox> {
   Timer? _savingTimer;
   int _dotCount = 1;
 
-  bool get _dark => Theme.of(context).brightness == Brightness.dark;
-
-  Color get _pageColor =>
-      _dark ? const Color(0xFF0E1C22) : const Color(0xFFF3F9FA);
-
-  Color get _cardColor => _dark ? const Color(0xFF172A30) : Colors.white;
-
-  Color get _textColor => _dark ? Colors.white : const Color(0xFF16343C);
-
-  Color get _mutedColor => _dark ? Colors.white60 : const Color(0xFF687386);
-
-  String _t(String key) => AppLocalizations.of(context).translate(key);
-
   String get _greeting {
-    return _t('transaction_chat_01');
+    return AppLocalizations.of(context).translate('financial_secretary_greeting');
   }
 
   @override
@@ -149,10 +131,7 @@ class _ChatBoxState extends State<ChatBox> {
         setState(
               () => _messages.add(
             ChatMessage(
-              text: _say(
-                'Chưa có giao dịch đầy đủ để lưu. Bạn bổ sung thông tin nhé.',
-                'No complete transaction to save yet. Please add the missing details.',
-              ),
+              text: AppLocalizations.of(context).translate('financial_secretary_incomplete_transaction'),
               fromUser: false,
             ),
           ),
@@ -168,10 +147,7 @@ class _ChatBoxState extends State<ChatBox> {
         _memory.clear();
         _messages.add(
           ChatMessage(
-            text: _say(
-              'Đã xóa giao dịch đang nhập. Bạn muốn ghi khoản thu/chi nào tiếp theo?',
-              'Pending transaction cleared. What would you like to record next?',
-            ),
+            text: AppLocalizations.of(context).translate('financial_secretary_pending_cleared'),
             fromUser: false,
           ),
         );
@@ -183,10 +159,7 @@ class _ChatBoxState extends State<ChatBox> {
         if (previous != null && _sameDraft(previous, result.draft!)) {
           _messages.add(
             ChatMessage(
-              text: _say(
-                'Thông tin không thay đổi. Bạn nhấn Lưu giao dịch hoặc nhập “lưu”; muốn sửa thì nhập số tiền, danh mục, ngày/giờ mới.',
-                'Details are unchanged. Tap Save, type save, or enter corrected details.',
-              ),
+              text: AppLocalizations.of(context).translate('financial_secretary_details_unchanged'),
               fromUser: false,
             ),
           );
@@ -194,10 +167,7 @@ class _ChatBoxState extends State<ChatBox> {
         }
         _retireDraft();
         final message = ChatMessage(
-          text: _say(
-            'Mình đã ghép thông tin. Bạn kiểm tra rồi lưu nhé. Có thể nhập tiếp để sửa số tiền, danh mục hoặc ngày/giờ.',
-            'Your details are ready. Review and save, or enter a correction.',
-          ),
+          text: AppLocalizations.of(context).translate('financial_secretary_review_prompt'),
           fromUser: false,
           draft: result.draft,
         );
@@ -206,7 +176,7 @@ class _ChatBoxState extends State<ChatBox> {
       } else {
         _messages.add(
           ChatMessage(
-            text: result.question ?? result.error ?? _t('transaction_chat_03'),
+            text: result.question ?? result.error ?? AppLocalizations.of(context).translate('financial_secretary_parse_failed'),
             fromUser: false,
           ),
         );
@@ -237,7 +207,7 @@ class _ChatBoxState extends State<ChatBox> {
       _memory.clear();
       _activeDraftMessage = null;
       _messages[index] = ChatMessage(
-        text: _t('transaction_chat_04'),
+        text: AppLocalizations.of(context).translate('financial_secretary_draft_cancelled'),
         fromUser: false,
       );
     });
@@ -271,7 +241,6 @@ class _ChatBoxState extends State<ChatBox> {
     });
 
     try {
-      // Đưa dòng trạng thái đang lưu vào vùng nhìn thấy.
       await WidgetsBinding.instance.endOfFrame;
 
       if (mounted) {
@@ -303,17 +272,14 @@ class _ChatBoxState extends State<ChatBox> {
 
         setState(() {
           _messages[index] = ChatMessage(
-            text: _t('transaction_chat_05').replaceAll('{amount}', money),
+            text: AppLocalizations.of(context).translate('financial_secretary_save_success').replaceAll('{amount}', money),
             fromUser: false,
           );
           _memory.clear();
           _activeDraftMessage = null;
           _messages.add(
             ChatMessage(
-              text: _say(
-                'Hôm nay bạn còn chi tiêu hoặc nhận khoản tiền nào nữa không? Kể mình để ghi tiếp nhé.',
-                'Any other expenses or income today? Tell me to record the next transaction.',
-              ),
+              text: AppLocalizations.of(context).translate('financial_secretary_next_transaction_prompt'),
               fromUser: false,
             ),
           );
@@ -325,10 +291,7 @@ class _ChatBoxState extends State<ChatBox> {
       setState(
             () => _messages.add(
           ChatMessage(
-            text: _say(
-              'Chưa lưu được giao dịch. Mình vẫn giữ bản nháp; bạn kiểm tra kết nối rồi nhấn Lưu hoặc nhập “lưu” để thử lại.',
-              'Save failed. Your draft is kept; check your connection and retry Save.',
-            ),
+            text: AppLocalizations.of(context).translate('financial_secretary_save_failed_draft_kept'),
             fromUser: false,
           ),
         ),
@@ -338,7 +301,7 @@ class _ChatBoxState extends State<ChatBox> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text(_t('transaction_chat_06')),
+          content: Text(AppLocalizations.of(context).translate('financial_secretary_save_error')),
         ),
       );
     } finally {
@@ -360,8 +323,8 @@ class _ChatBoxState extends State<ChatBox> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _pageColor,
-      appBar: _buildAppBar(),
+      backgroundColor: ChatStyle(context).pageColor,
+      appBar: ChatHeader(saving: _saving, hasPendingTransaction: _memory.isActive, onBack: () { Navigator.maybePop(context); }, onClear: _clearChat),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _focusInput,
@@ -369,451 +332,35 @@ class _ChatBoxState extends State<ChatBox> {
           top: false,
           child: Column(
             children: [
-              _buildSuggestions(),
-              Expanded(child: _buildMessages()),
-              _buildComposer(),
+              ChatSuggestions(memory: _memory, hasDraft: _activeDraftMessage != null, saving: _saving, onSelected: _useSuggestion),
+              Expanded(child: ChatMessageList(
+                controller: _scrollController,
+                messageCount: _messages.length,
+                messageBuilder: (context, index) {
+                  final message = _messages[index];
+                  return KeyedSubtree(key: ObjectKey(message), child: _buildMessage(message));
+                },
+              )),
+              ChatComposer(controller: _controller, focusNode: _focusNode, saving: _saving, onSend: _send),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      backgroundColor: _pageColor,
-      foregroundColor: _textColor,
-      titleSpacing: 0,
-      centerTitle: false,
-      leadingWidth: 76,
-      surfaceTintColor: Colors.transparent,
-      leading: FinanceToolbarButton(
-        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-        icon: Icons.arrow_back_rounded,
-        onPressed: _saving ? null : () => Navigator.maybePop(context),
-      ),
-      title: Row(
-        children: [
-          _botAvatar(size: 40),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _t('transaction_chat_07'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _memory.isActive
-                      ? _say(
-                    'Đang giữ một giao dịch chưa lưu',
-                    'One pending transaction',
-                  )
-                      : _t('transaction_chat_08'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: _mutedColor, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        FinanceToolbarButton(
-          tooltip: _t('transaction_chat_09'),
-          onPressed: _saving ? null : _clearChat,
-          icon: Icons.delete_outline_rounded,
-        ),
-        const SizedBox(width: 14),
-      ],
-    );
-  }
-
-  Widget _botAvatar({double size = 34}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00D2FF).withOpacity(0.22),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Icon(
-        Icons.insights_rounded,
-        color: const Color(0xFF073D43),
-        size: size * 0.53,
-      ),
-    );
-  }
-
-  Widget _buildSuggestions() {
-    final suggestions = _memory.isActive
-        ? (_activeDraftMessage != null
-        ? [
-      _say('Lưu giao dịch', 'Save'),
-      _say('Hủy', 'Cancel'),
-      _say('Giao dịch mới', 'New transaction'),
-    ]
-        : (_memory.amount == null
-        ? ['50k', '100k', _say('Hủy', 'Cancel')]
-        : [
-      _say('Đi chợ', 'Groceries'),
-      _say('Ăn uống', 'Food'),
-      _say('Lương', 'Salary'),
-    ]))
-        : [
-      _say('Hôm nay đi chợ lúc 7h30', 'Groceries today at 7:30'),
-      _t('transaction_chat_taxi'),
-      _t('transaction_chat_salary'),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        children: List.generate(suggestions.length, (index) {
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index == suggestions.length - 1 ? 0 : 8,
-            ),
-            child: ActionChip(
-              onPressed: _saving
-                  ? null
-                  : () => _useSuggestion(suggestions[index]),
-              avatar: Icon(
-                index == 2 ? Icons.payments_rounded : Icons.add_circle_outline,
-                size: 16,
-                color: _dark ? Colors.tealAccent : const Color(0xFF008F7A),
-              ),
-              label: Text(suggestions[index]),
-              labelStyle: TextStyle(color: _textColor, fontSize: 12),
-              backgroundColor: _cardColor,
-              side: BorderSide(color: _dark ? Colors.white12 : Colors.black12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildMessages() {
-    return ListView.builder(
-      controller: _scrollController,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-      itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        final message = _messages[index];
-
-        return KeyedSubtree(
-          key: ObjectKey(message),
-          child: _buildMessage(message),
-        );
-      },
     );
   }
 
   Widget _buildMessage(ChatMessage message) {
-    if (_messages.isNotEmpty &&
-        identical(message, _messages.first) &&
-        !message.fromUser &&
-        message.draft == null) {
-      return Container(
-        margin: const EdgeInsets.only(bottom: 24, top: 8),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: _dark
-                ? [const Color(0xFF163A46), const Color(0xFF16463F)]
-                : [const Color(0xFFE1F7FF), const Color(0xFFDCF9F1)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: const Color(0xFF2DD8C6).withOpacity(.18)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _botAvatar(size: 54),
-            const SizedBox(height: 20),
-            Text(
-              _t('transaction_chat_07'),
-              style: TextStyle(
-                color: _textColor,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _greeting,
-              textAlign: TextAlign.justify,
-              style: TextStyle(color: _mutedColor, height: 1.6),
-            ),
-          ],
-        ),
-      );
+    if (_messages.isNotEmpty && identical(message, _messages.first) &&
+        !message.fromUser && message.draft == null) {
+      return ChatWelcome(greeting: _greeting);
     }
-    final fromUser = message.fromUser;
-    final isSavingThisMessage = identical(_savingMessage, message);
-
-    final bubbleColor = fromUser ? const Color(0xFF2DD8C6) : _cardColor;
-
-    return Align(
-      alignment: fromUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.86,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 14),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: fromUser
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6, left: 4),
-                      child: Text(
-                        _t(
-                          fromUser
-                              ? 'transaction_chat_you'
-                              : 'transaction_chat_assistant',
-                        ),
-                        style: TextStyle(fontSize: 11, color: _mutedColor),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: fromUser ? null : bubbleColor,
-                        gradient: fromUser
-                            ? const LinearGradient(
-                          colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
-                        )
-                            : null,
-                        border: fromUser
-                            ? null
-                            : Border.all(color: _textColor.withOpacity(.08)),
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(20),
-                          topRight: const Radius.circular(20),
-                          bottomLeft: Radius.circular(fromUser ? 20 : 5),
-                          bottomRight: Radius.circular(fromUser ? 5 : 20),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(
-                              _dark ? 0.12 : 0.06,
-                            ),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        message.text,
-                        textAlign: TextAlign.justify,
-                        style: TextStyle(
-                          color: fromUser
-                              ? const Color(0xFF073D43)
-                              : _textColor,
-                          height: 1.4,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    if (message.draft != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: AbsorbPointer(
-                          absorbing: _saving,
-                          child: ExcludeFocus(
-                            excluding: _saving,
-                            child: Opacity(
-                              opacity: _saving ? 0.65 : 1,
-                              child: TransactionConfirmationCard(
-                                draft: message.draft!,
-                                onCancel: () => _cancel(message),
-                                onConfirm: () => _confirm(message),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (isSavingThisMessage) _buildSavingStatus(),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSavingStatus() {
-    final color = _dark ? Colors.tealAccent : const Color(0xFF008F7A);
-
-    return Padding(
-      key: _savingStatusKey,
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-      child: Semantics(
-        liveRegion: true,
-        label: _t('transaction_chat_10'),
-        child: ExcludeSemantics(
-          child: Row(
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: color),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  _t('transaction_chat_11'),
-                  style: TextStyle(
-                    color: _textColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 24,
-                child: Text(
-                  List.filled(_dotCount, '.').join(),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComposer() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(
-            top: BorderSide(color: _dark ? Colors.white10 : Colors.black12),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                enabled: !_saving,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
-                style: TextStyle(color: _textColor, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: _saving
-                      ? _t('transaction_chat_12')
-                      : _t('transaction_chat_13'),
-                  hintStyle: TextStyle(color: _mutedColor, fontSize: 13),
-                  prefixIcon: Icon(Icons.edit_note_rounded, color: _mutedColor),
-                  filled: true,
-                  fillColor: _pageColor,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 13,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide(
-                      color: _dark ? Colors.white10 : Colors.black12,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF2DD8C6),
-                      width: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 9),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF00D2FF), Color(0xFF2DD8C6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: IconButton(
-                tooltip: _t('transaction_chat_14'),
-                onPressed: _saving ? null : _send,
-                color: const Color(0xFF073D43),
-                disabledColor: Colors.white54,
-                icon: const Icon(Icons.arrow_upward_rounded),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ChatMessageBubble(
+      message: message,
+      saving: _saving,
+      isSaving: identical(_savingMessage, message),
+      onCancel: () => _cancel(message),
+      onConfirm: () => _confirm(message),
+      savingStatus: ChatSavingStatus(key: _savingStatusKey, dotCount: _dotCount),
     );
   }
 }

@@ -14,21 +14,23 @@ class ChatAmountInputDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
     final titleKey = field == 'available_balance'
-        ? 'chat_available_balance_title'
-        : 'chat_target_amount_title';
+        ? 'financial_chat_available_balance_title'
+        : 'financial_chat_target_amount_title';
     return AlertDialog(
-      title: Text(localizations.translate(titleKey)),
+      title: Text(AppLocalizations.of(context).translate(titleKey)),
       content: TextField(
         controller: controller,
         keyboardType: TextInputType.number,
-        decoration: const InputDecoration(suffixText: 'VND'),
+        decoration: InputDecoration(
+          suffixText: AppLocalizations.of(context).translate('financial_chat_currency_code'),
+          hintText: AppLocalizations.of(context).translate('financial_chat_amount_hint'),
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(localizations.translate('chat_skip')),
+          child: Text(AppLocalizations.of(context).translate('financial_chat_skip')),
         ),
         TextButton(
           onPressed: () {
@@ -39,7 +41,7 @@ class ChatAmountInputDialog extends StatelessWidget {
               Navigator.pop(context, amount);
             }
           },
-          child: Text(localizations.translate('chat_confirm')),
+          child: Text(AppLocalizations.of(context).translate('financial_chat_confirm')),
         ),
       ],
     );

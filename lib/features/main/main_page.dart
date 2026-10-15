@@ -11,14 +11,13 @@ import 'package:personal_financial_management/controls/debt_firebase.dart';
 import 'package:personal_financial_management/features/main/widget/main_style.dart';
 import 'package:personal_financial_management/features/main/home/home_screen.dart';
 import 'package:personal_financial_management/features/main/budget/budget_screen.dart';
-import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
 import 'package:personal_financial_management/features/notification/notification_screen.dart';
 import 'package:personal_financial_management/features/spending/add_spending/add_income.dart';
 import 'package:personal_financial_management/features/spending/add_spending/add_spending.dart';
 import 'package:personal_financial_management/features/main/profile/profile_screen.dart';
 import 'package:personal_financial_management/features/financial_chat/financial_chat_screen.dart';
 import 'package:personal_financial_management/features/spending/chat_box/chat_box.dart';
-import 'package:personal_financial_management/features/spending/chat_box/widget/chat_firebase_adapter.dart';
+import 'package:personal_financial_management/features/spending/chat_box/services/chat_firebase_adapter.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 class MainPage extends StatefulWidget {
@@ -68,8 +67,6 @@ class _MainPageState extends State<MainPage>
     super.dispose();
   }
 
-  String _t(String vi, String en) =>
-      Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
 
   void _toggleMenu() {
     if (_isMenuOpen) {
@@ -94,7 +91,7 @@ class _MainPageState extends State<MainPage>
   void _openFinancialChat() {
     final catalog = buildChatCatalog(
       listType,
-      (key) => AppLocalizations.of(context).translate(key),
+          (key) => AppLocalizations.of(context).translate(key),
     );
     _openPage(FinancialChatScreen(categoryCatalog: catalog));
   }
@@ -190,12 +187,12 @@ class _MainPageState extends State<MainPage>
         floatingActionButton: Semantics(
           button: true,
           label: _isMenuOpen
-              ? _t('Đóng tiện ích', 'Close shortcuts')
-              : _t('Mở tiện ích', 'Open shortcuts'),
+              ? AppLocalizations.of(context).translate('main_close_shortcuts')
+              : AppLocalizations.of(context).translate('main_open_shortcuts'),
           child: FloatingActionButton(
             heroTag: 'main_utilities',
             onPressed: _toggleMenu,
-            tooltip: _t('Tiện ích', 'Shortcuts'),
+            tooltip: AppLocalizations.of(context).translate('main_shortcuts'),
             elevation: _isMenuOpen ? 8 : 3,
             backgroundColor: MainStyle.cyan,
             foregroundColor: MainStyle.ink,
@@ -240,23 +237,23 @@ class _MainPageState extends State<MainPage>
               children: [
                 _tabItem(
                   0,
-                  _t('Trang chủ', 'Home'),
+                  AppLocalizations.of(context).translate('main_home'),
                   const FaIcon(FontAwesomeIcons.house),
                 ),
                 _tabItem(
                   1,
-                  _t('Ngân sách', 'Budget'),
+                  AppLocalizations.of(context).translate('main_budget'),
                   const Icon(Icons.account_balance_wallet_rounded),
                 ),
                 const SizedBox(width: 64),
                 _tabItem(
                   2,
-                  _t('Sổ nợ', 'Debt book'),
+                  AppLocalizations.of(context).translate('main_debt_book'),
                   const Icon(Icons.menu_book_rounded),
                 ),
                 _tabItem(
                   3,
-                  _t('Tài khoản', 'Account'),
+                  AppLocalizations.of(context).translate('main_account'),
                   const FaIcon(FontAwesomeIcons.user),
                 ),
               ],
@@ -305,6 +302,7 @@ class _MainPageState extends State<MainPage>
                     Text(
                       label,
                       maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 10,
@@ -327,32 +325,32 @@ class _MainPageState extends State<MainPage>
   Widget _buildArcMenu(double progress) {
     final actions = <_ArcAction>[
       _ArcAction(
-        _t('Phân tích', 'Analytics'),
+        AppLocalizations.of(context).translate('main_analytics'),
         Icons.bar_chart_rounded,
-        () => _openPage(const AnalyticPage()),
+            () => _openPage(const AnalyticPage()),
       ),
       _ArcAction(
-        _t('Hỏi đáp thu chi', 'Finance Q&A'),
+        AppLocalizations.of(context).translate('financial_chat_title'),
         Icons.question_answer_rounded,
         _openFinancialChat,
       ),
       _ArcAction(
-        _t('Trợ lý thu chi', 'Finance assistant'),
+        AppLocalizations.of(context).translate('financial_secretary_title'),
         Icons.smart_toy_rounded,
-        () => _openPage(
+            () => _openPage(
           ChatBox(onCreateTransaction: ChatFirebaseAdapter.addDraft),
         ),
       ),
       _ArcAction(
-        _t('Thông báo', 'Notifications'),
+        AppLocalizations.of(context).translate('main_notifications'),
         Icons.notifications_rounded,
-        () => _openPage(const NotificationScreen()),
+            () => _openPage(const NotificationScreen()),
       ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final tileWidth = math.min(92.0, width * .22);
+        final tileWidth = math.min(130.0, width * .30);
         final radius = math.min(185.0, width * .36);
         final arcLift = 42.0 * progress;
         // Lift the shortcut arc above the separate create-action row.
@@ -374,11 +372,11 @@ class _MainPageState extends State<MainPage>
             for (var i = 0; i < actions.length; i++)
               Positioned(
                 left:
-                    width / 2 +
+                width / 2 +
                     math.cos(angles[i] * math.pi / 180) * radius * progress -
                     tileWidth / 2,
                 bottom:
-                    18 +
+                18 +
                     math.sin(angles[i] * math.pi / 180) * radius * progress -
                     40 +
                     arcLift,
@@ -400,7 +398,7 @@ class _MainPageState extends State<MainPage>
                 child: Transform.translate(
                   offset: Offset(0, 18 * (1 - progress)),
                   child: _createActionButton(
-                    label: _t('Thêm sổ nợ', 'Add debt'),
+                    label: AppLocalizations.of(context).translate('main_add_debt'),
                     icon: Icons.menu_book_rounded,
                     onTap: _openAddDebt,
                   ),
@@ -419,7 +417,7 @@ class _MainPageState extends State<MainPage>
                     children: [
                       Expanded(
                         child: _createActionButton(
-                          label: _t('Thêm chi tiêu', 'Add expense'),
+                          label: AppLocalizations.of(context).translate('main_add_expense'),
                           icon: Icons.remove_circle_outline_rounded,
                           onTap: _openAddSpending,
                         ),
@@ -427,7 +425,7 @@ class _MainPageState extends State<MainPage>
                       const SizedBox(width: 68),
                       Expanded(
                         child: _createActionButton(
-                          label: _t('Thêm thu nhập', 'Add Income'),
+                          label: AppLocalizations.of(context).translate('main_add_income'),
                           icon: Icons.add_circle_outline_rounded,
                           onTap: _openAddIncome,
                         ),
@@ -476,7 +474,8 @@ class _MainPageState extends State<MainPage>
               Flexible(
                 child: Text(
                   label,
-                  maxLines: 2,
+                  maxLines: 1,
+                  softWrap: false,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -541,7 +540,8 @@ class _MainPageState extends State<MainPage>
                   child: Text(
                     action.label,
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: 1,
+                    softWrap: false,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: MainStyle.text(context),
@@ -618,7 +618,7 @@ class _ArcGuidePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ArcGuidePainter oldDelegate) =>
       oldDelegate.progress != progress ||
-      oldDelegate.radius != radius ||
-      oldDelegate.lift != lift ||
-      oldDelegate.color != color;
+          oldDelegate.radius != radius ||
+          oldDelegate.lift != lift ||
+          oldDelegate.color != color;
 }

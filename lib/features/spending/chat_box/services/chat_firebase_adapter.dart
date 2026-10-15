@@ -2,7 +2,7 @@ import 'package:personal_financial_management/controls/spending_firebase.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 import 'package:personal_financial_management/models/spending.dart';
 
-import 'chat_intent.dart';
+import '../model/chat_intent.dart';
 
 class ChatFirebaseAdapter {
   static Future<void> addDraft(ChatTransactionDraft draft) async {

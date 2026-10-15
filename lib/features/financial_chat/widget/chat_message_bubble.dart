@@ -11,11 +11,13 @@ class ChatMessageBubble extends StatelessWidget {
     required this.message,
     required this.onExampleTap,
     required this.exampleEnabled,
+    this.categoryCatalog = const [],
   });
 
   final ChatMessage message;
   final ValueChanged<String> onExampleTap;
   final bool exampleEnabled;
+  final List<Map<String, dynamic>> categoryCatalog;
 
   static const _teal = Color(0xFF2DD8C6);
   static const _gradient = LinearGradient(
@@ -27,7 +29,6 @@ class ChatMessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    String translate(String key) => AppLocalizations.of(context).translate(key);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final card = dark ? const Color(0xFF172A30) : Colors.white;
     final error = message.errorKey != null;
@@ -57,7 +58,7 @@ class ChatMessageBubble extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
                 child: Text(
-                  translate(message.user ? 'chat_you' : 'chat_assistant'),
+                  AppLocalizations.of(context).translate(message.user ? 'financial_chat_you' : 'financial_chat_assistant'),
                   style: TextStyle(
                     fontSize: 11,
                     color: colors.onSurface.withOpacity(.6),
@@ -79,9 +80,9 @@ class ChatMessageBubble extends StatelessWidget {
                   children: [
                     SelectableText(
                       error
-                          ? translate(message.errorKey!)
+                          ? AppLocalizations.of(context).translate(message.errorKey!)
                           : message.text.isEmpty
-                          ? translate('chat_no_answer')
+                          ? AppLocalizations.of(context).translate('financial_chat_no_answer')
                           : message.text,
                       textAlign: TextAlign.left,
                       style: TextStyle(color: foreground, height: 1.55),
@@ -95,7 +96,7 @@ class ChatMessageBubble extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        translate('chat_notes'),
+                        AppLocalizations.of(context).translate('financial_chat_notes'),
                         style: TextStyle(
                           color: foreground,
                           fontWeight: FontWeight.w600,
@@ -105,7 +106,7 @@ class ChatMessageBubble extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            '• $warning',
+                            AppLocalizations.of(context).translate('financial_chat_warning_item').replaceAll('{warning}', warning),
                             textAlign: TextAlign.justify,
                             style: TextStyle(
                               color: foreground.withOpacity(.75),
@@ -117,7 +118,7 @@ class ChatMessageBubble extends StatelessWidget {
                     ],
                     if (!message.user && message.evidence.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      ChatEvidenceCard(evidence: message.evidence),
+                      ChatEvidenceCard(evidence: message.evidence, categoryCatalog: categoryCatalog),
                     ],
                     for (final example in message.examples)
                       TextButton(

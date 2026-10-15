@@ -1,13 +1,13 @@
 class ChatReply {
   const ChatReply(
-    this.answer,
-    this.intent,
-    this.warnings, {
-    this.evidence = const {},
-    this.needsInput = const [],
-    this.supportedExamples = const [],
-    this.requestId,
-  });
+      this.answer,
+      this.intent,
+      this.warnings, {
+        this.evidence = const {},
+        this.needsInput = const [],
+        this.supportedExamples = const [],
+        this.requestId,
+      });
 
   final String answer;
   final String intent;
@@ -30,9 +30,9 @@ class ChatReply {
           : const [],
       supportedExamples: json['supportedExamples'] is List
           ? (json['supportedExamples'] as List)
-                .map((value) => '$value')
-                .take(4)
-                .toList()
+          .map((value) => '$value')
+          .take(4)
+          .toList()
           : const [],
       requestId: json['requestId']?.toString(),
       evidence: json['evidence'] is Map

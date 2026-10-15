@@ -1,12 +1,12 @@
 class ChatMessage {
   const ChatMessage(
-    this.text, {
-    this.user = false,
-    this.errorKey,
-    this.warnings = const [],
-    this.evidence = const {},
-    this.examples = const [],
-  });
+      this.text, {
+        this.user = false,
+        this.errorKey,
+        this.warnings = const [],
+        this.evidence = const {},
+        this.examples = const [],
+      });
 
   final String text;
   final bool user;

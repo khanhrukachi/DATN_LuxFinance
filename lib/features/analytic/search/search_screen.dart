@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Filter;
 import 'package:diacritic/diacritic.dart';
@@ -152,21 +153,68 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final result = _all.where(_matches).toList();
     return ProfileSurface(child: Scaffold(
-      appBar: AppBar(titleSpacing: 0,
-          leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded), onPressed: () => Navigator.pop(context)),
-          title: TextField(controller: _searchController, onChanged: _search,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (value) { _debounce?.cancel(); setState(() => _query = value); },
-              decoration: ProfileStyle.input(context, tr('search'), icon: Icons.search_rounded,
-                  suffix: IconButton(icon: const Icon(Icons.close_rounded), onPressed: () {
-                    _debounce?.cancel(); _searchController.clear(); setState(() => _query = '');
-                  })).copyWith(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10))),
-          actions: [IconButton(icon: const Icon(Icons.tune_rounded), onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => FilterPage(filter: filter,
-                action: (value) {
-                  if (mounted) setState(() { filter = value.copyWith(); _query = _searchController.text; });
-                })));
-          })]),
+      appBar: AppBar(
+        titleSpacing: 0,
+        leadingWidth: 74,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: Icons.arrow_back_rounded,
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: TextField(
+          controller: _searchController,
+          onChanged: _search,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) {
+            _debounce?.cancel();
+            setState(() => _query = value);
+          },
+          decoration: ProfileStyle.input(
+            context,
+            tr('search'),
+            icon: Icons.search_rounded,
+            suffix: FinanceToolbarButton(
+              tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
+              icon: Icons.close_rounded,
+              onPressed: () {
+                _debounce?.cancel();
+                _searchController.clear();
+                setState(() => _query = '');
+              },
+            ),
+          ).copyWith(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        ),
+        actions: [
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('filter'),
+            icon: Icons.tune_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FilterPage(
+                    filter: filter,
+                    action: (value) {
+                      if (mounted) {
+                        setState(() {
+                          filter = value.copyWith();
+                          _query = _searchController.text;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 13),
+        ],
+      ),
       body: Column(children: [
         if (_loading) LinearProgressIndicator(color: ProfileStyle.accent(context), minHeight: 3),
         if (_loading) Padding(padding: const EdgeInsets.all(8), child: Text(tr('search_loading_partial'),

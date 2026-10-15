@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 
 import 'data/chat_data_source.dart';
@@ -10,6 +9,8 @@ import 'models/chat_message.dart';
 import 'services/chat_api.dart';
 import 'services/chat_api_exception.dart';
 import 'widget/chat_amount_input_dialog.dart';
+import 'widget/chat_app_bar.dart';
+import 'utils/chat_category_label.dart';
 import 'widget/chat_category_picker_sheet.dart';
 import 'widget/chat_composer.dart';
 import 'widget/chat_message_bubble.dart';
@@ -53,8 +54,6 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
   Color get _background =>
       _dark ? const Color(0xFF0E1C22) : const Color(0xFFF3F9FA);
 
-  String _t(String key) => AppLocalizations.of(context).translate(key);
-
   @override
   void initState() {
     super.initState();
@@ -97,34 +96,34 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
 
   void _notice(String key) => ScaffoldMessenger.of(
     context,
-  ).showSnackBar(SnackBar(content: Text(_t(key))));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).translate(key))));
 
   String _errorKey(Object error) {
     if (error is ChatApiException) return error.key;
-    if (error is TimeoutException) return 'chat_timeout';
+    if (error is TimeoutException) return 'financial_chat_timeout';
     if (error is FirebaseException) {
       return error.code == 'permission-denied'
-          ? 'chat_firestore_permission'
+          ? 'financial_chat_firestore_permission'
           : error.code == 'unavailable'
-          ? 'chat_firestore_unavailable'
-          : 'chat_firestore_error';
+          ? 'financial_chat_firestore_unavailable'
+          : 'financial_chat_firestore_error';
     }
-    if (error is StateError && error.message.toString().startsWith('chat_')) {
+    if (error is StateError && error.message.toString().startsWith('financial_chat_')) {
       return error.message.toString();
     }
-    return 'chat_unexpected_error';
+    return 'financial_chat_unexpected_error';
   }
 
   Future<void> _send([String? preset, bool retry = false]) async {
     final question = (preset ?? _input.text).trim();
     if (_busy || _checking || _sessionChanged || question.isEmpty) return;
     if (question.length > 2000) {
-      _notice('chat_limit');
+      _notice('financial_chat_question_length_limit');
       return;
     }
     final uid = _uid;
     if (uid == null) {
-      _notice('chat_login');
+      _notice('financial_chat_login_required');
       return;
     }
     final history = _messages
@@ -157,7 +156,8 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
         uid: uid,
         question: question,
         snapshot: snapshot,
-        catalog: widget.categoryCatalog,
+        catalog: _localizedCatalog(context),
+        languageCode: Localizations.localeOf(context).languageCode,
         history: history,
         additionalContext: _confirmedContext,
       );
@@ -221,6 +221,18 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
     _confirmedContext.remove('target_amount');
   }
 
+  List<Map<String, dynamic>> _localizedCatalog(BuildContext context) => [
+    for (final category in widget.categoryCatalog)
+      {
+        ...category,
+        'display_name': chatCategoryLabel(
+          context,
+          category['title'] ?? category['id'],
+          catalog: widget.categoryCatalog,
+        ),
+      },
+  ];
+
   void _chooseCategory() {
     showModalBottomSheet<void>(
       context: context,
@@ -232,9 +244,9 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       builder: (_) => ChatCategoryPickerSheet(
-        categoryCatalog: widget.categoryCatalog,
+        categoryCatalog: _localizedCatalog(context),
         onSelect: (name) {
-          _input.text = _t('chat_category_question').replaceAll('{name}', name);
+          _input.text = AppLocalizations.of(context).translate('financial_chat_category_question').replaceAll('{name}', name);
           _input.selection = TextSelection.collapsed(offset: _input.text.length);
         },
       ),
@@ -245,55 +257,23 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _background,
-      appBar: AppBar(
+      appBar: ChatAppBar(
         backgroundColor: _background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        centerTitle: true,
-        titleSpacing: 0,
-        leadingWidth: 76,
-        leading: FinanceToolbarButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          icon: Icons.arrow_back_rounded,
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: Text(
-          Localizations.localeOf(context).languageCode == 'en'
-              ? 'Financial Assistant'
-              : 'Trợ lý tài chính',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          FinanceToolbarButton(
-            tooltip: Localizations.localeOf(context).languageCode == 'en'
-                ? 'Choose category' : 'Chọn danh mục',
-            icon: Icons.category_outlined,
-            onPressed: !_busy && !_sessionChanged ? _chooseCategory : null,
-          ),
-          FinanceToolbarButton(
-            tooltip: Localizations.localeOf(context).languageCode == 'en'
-                ? 'Clear conversation' : 'Xóa cuộc trò chuyện',
-            icon: Icons.delete_outline_rounded,
-            onPressed: _busy || _sessionChanged || _messages.isEmpty ? null : () => setState(() {
-              _messages.clear();
-              _retryQuestion = null;
-              _confirmedContext.clear();
-            }),
-          ),
-          const SizedBox(width: 16),
-        ],
+        onBack: () { Navigator.maybePop(context); },
+        onChooseCategory: _chooseCategory,
+        canChooseCategory: !_busy && !_sessionChanged,
+        canClear: !_busy && !_sessionChanged && _messages.isNotEmpty,
+        onClear: () => setState(() {
+          _messages.clear();
+          _retryQuestion = null;
+          _confirmedContext.clear();
+        }),
       ),
       body: _sessionChanged
           ? Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(_t('chat_session')),
+          child: Text(AppLocalizations.of(context).translate('financial_chat_session_changed')),
         ),
       )
           : SafeArea(
@@ -310,19 +290,20 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                   if (index < _messages.length) {
                     return ChatMessageBubble(
                       message: _messages[index],
+                      categoryCatalog: _localizedCatalog(context),
                       exampleEnabled: !_busy,
                       onExampleTap: (example) => _send(example),
                     );
                   }
                   return ChatThinkingIndicator(
-                    label: _t('chat_loading'),
+                    label: AppLocalizations.of(context).translate('financial_chat_analyzing'),
                   );
                 },
               ),
             ),
             if (_retryQuestion != null && !_busy)
               ChatRetryButton(
-                label: _t('chat_retry'),
+                label: AppLocalizations.of(context).translate('financial_chat_retry'),
                 onTap: () => _send(_retryQuestion, true),
               ),
             ChatComposer(

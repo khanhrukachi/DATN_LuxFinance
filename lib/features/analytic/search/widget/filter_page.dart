@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:personal_financial_management/features/main/profile/widget/profile_style.dart';
 import 'package:currency_text_input_formatter/currency_text_input_formatter.dart';
 import 'package:flutter/material.dart';
@@ -64,18 +65,23 @@ class _FilterPageState extends State<FilterPage> {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context).translate('filter')),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+        titleSpacing: 0,
+        leadingWidth: 74,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: FinanceToolbarButton(
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+          icon: Icons.close_rounded,
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          TextButton(
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('search'),
+            icon: Icons.search_rounded,
             onPressed: _applyFilter,
-            child: Text(
-              AppLocalizations.of(context).translate('search'),
-              style: const TextStyle(fontSize: 16),
-            ),
-          )
+          ),
+          const SizedBox(width: 13),
         ],
       ),
       body: ListView(

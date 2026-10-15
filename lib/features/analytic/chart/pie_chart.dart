@@ -39,20 +39,12 @@ class _MyPieChartState extends State<MyPieChart>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final categoryIds = <int>[
-      for (int i = 0; i < listType.length; i++)
-        if (![0, 10, 21, 27, 35, 38].contains(i) &&
-            widget.list.any((e) => e.type == i && e.money != 0))
-          i,
-    ];
+    final totals = _categoryTotals();
+    final categoryIds = totals.keys.toList()..sort();
+    final total = totals.values.fold<int>(0, (sum, amount) => sum + amount);
     if (!categoryIds.contains(_touchedCategory)) _touchedCategory = null;
 
-    final sections = _buildSections(
-      progress: _controller.value,
-      context: context,
-    );
-
-    if (sections.isEmpty) {
+    if (categoryIds.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -86,10 +78,10 @@ class _MyPieChartState extends State<MyPieChart>
                 touchCallback: (event, response) {
                   final index = response?.touchedSection?.touchedSectionIndex;
                   final int? category =
-                      event.isInterestedForInteractions &&
-                          index != null &&
-                          index >= 0 &&
-                          index < categoryIds.length
+                  event.isInterestedForInteractions &&
+                      index != null &&
+                      index >= 0 &&
+                      index < categoryIds.length
                       ? categoryIds[index]
                       : null;
                   if (mounted && category != _touchedCategory) {
@@ -104,6 +96,9 @@ class _MyPieChartState extends State<MyPieChart>
               sections: _buildSections(
                 progress: _controller.value,
                 context: context,
+                categoryIds: categoryIds,
+                totals: totals,
+                total: total,
               ),
             ),
             // Never interpolate sections against a different badge list.
@@ -115,32 +110,55 @@ class _MyPieChartState extends State<MyPieChart>
     );
   }
 
+  // Group headers are metadata, not fixed positions in listType.
+  // Keep leaf categories such as salary even when their index changes.
+  static const _groupTitles = <String>{
+    'expense',
+    'expense_living',
+    'expense_fixed',
+    'expense_unexpected',
+    'income',
+    'investment_saving',
+    'loan_borrow',
+    'current_money',
+    'new_group',
+  };
+
+  Map<int, int> _categoryTotals() {
+    final totals = <int, int>{};
+    for (final transaction in widget.list) {
+      final index = transaction.type;
+      if (index < 0 || index >= listType.length) continue;
+
+      final category = listType[index];
+      final title = category['title'];
+      final isParent = category['isParent'].toString().toLowerCase() == 'true';
+      if (isParent || _groupTitles.contains(title)) continue;
+
+      final amount = transaction.money.abs();
+      if (amount == 0) continue;
+      totals.update(index, (value) => value + amount, ifAbsent: () => amount);
+    }
+    return totals;
+  }
+
   List<PieChartSectionData> _buildSections({
     required double progress,
     required BuildContext context,
+    required List<int> categoryIds,
+    required Map<int, int> totals,
+    required int total,
   }) {
     final List<PieChartSectionData> sections = [];
 
-    if (widget.list.isEmpty) return sections;
-
-    final total = widget.list.fold<int>(0, (sum, e) => sum + e.money.abs());
-
     if (total <= 0) return sections;
 
-    for (int i = 0; i < listType.length; i++) {
-      if ([0, 10, 21, 27, 35, 38].contains(i)) continue;
-
-      final data = widget.list.where((e) => e.type == i).toList();
-      if (data.isEmpty) continue;
-
-      final sumType = data.fold<int>(0, (s, e) => s + e.money.abs());
-
-      if (sumType <= 0) continue;
-
+    for (final i in categoryIds) {
+      final sumType = totals[i]!;
       final percent = (sumType / total) * 100;
       final isTouched = i == _touchedCategory;
 
-      final key = listType[i]['title'] ?? data.first.typeName ?? 'other';
+      final key = listType[i]['title'] ?? 'other';
       final title = AppLocalizations.of(context).translate(key);
 
       sections.add(
@@ -148,10 +166,10 @@ class _MyPieChartState extends State<MyPieChart>
           value: percent,
           color: paletteColors[i % paletteColors.length],
           radius:
-              ((MediaQuery.of(context).size.width - 64) * .22)
-                      .clamp(44.0, 88.0)
-                      .toDouble() *
-                  (.85 + .15 * progress) +
+          ((MediaQuery.of(context).size.width - 64) * .22)
+              .clamp(44.0, 88.0)
+              .toDouble() *
+              (.85 + .15 * progress) +
               (isTouched ? 8 : 0),
           title: isTouched ? '$title\n${percent.toStringAsFixed(1)}%' : '',
           titleStyle: const TextStyle(
@@ -176,7 +194,7 @@ class _MyPieChartState extends State<MyPieChart>
 
 class _Badge extends StatelessWidget {
   const _Badge(this.imgAsset, {Key? key, required this.isTouched})
-    : super(key: key);
+      : super(key: key);
 
   final String? imgAsset;
   final bool isTouched;
@@ -203,19 +221,19 @@ class _Badge extends StatelessWidget {
       ),
       child: imgAsset == null
           ? Icon(
-              Icons.label_outline_rounded,
-              color: AnalyticStyle.accent(context),
-              size: 18,
-            )
+        Icons.label_outline_rounded,
+        color: AnalyticStyle.accent(context),
+        size: 18,
+      )
           : Image.asset(
-              imgAsset!,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
-                Icons.label_outline_rounded,
-                color: AnalyticStyle.accent(context),
-                size: 18,
-              ),
-            ),
+        imgAsset!,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.label_outline_rounded,
+          color: AnalyticStyle.accent(context),
+          size: 18,
+        ),
+      ),
     );
   }
 }

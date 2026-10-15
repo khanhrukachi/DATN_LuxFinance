@@ -1,3 +1,4 @@
+import 'package:personal_financial_management/core/constants/function/finance_toolbar_button.dart';
 import 'package:flutter/material.dart';
 import 'package:personal_financial_management/features/main/budget/widget/budget_style.dart';
 import 'package:personal_financial_management/features/main/budget/add_budget/add_budget_screen.dart';
@@ -80,8 +81,6 @@ class BudgetPageState extends State<BudgetPage>
     final double limitTotal = budgetItems.fold(0.0, (p, e) => p + e["limit"]);
     final double progress = limitTotal == 0 ? 0 : (spentTotal / limitTotal);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const teal = Color(0xFF2DD8C6);
-    final actionColor = isDark ? teal : const Color(0xFF14988F);
 
     return Scaffold(
       backgroundColor: BudgetStyle.background(context),
@@ -97,32 +96,16 @@ class BudgetPageState extends State<BudgetPage>
         backgroundColor: BudgetStyle.background(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         automaticallyImplyLeading: false,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(left: 0, right: 16),
-            child: Tooltip(
-              message: AppLocalizations.of(context).translate('add_budget'),
-              child: Material(
-                color: teal.withOpacity(isDark ? .15 : .13),
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  onTap: _addBudget,
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: Icon(
-                      Icons.add_rounded,
-                      color: actionColor,
-                      size: 21,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          FinanceToolbarButton(
+            tooltip: AppLocalizations.of(context).translate('add_budget'),
+            icon: Icons.add_rounded,
+            onPressed: _addBudget,
           ),
+          const SizedBox(width: 13),
         ],
       ),
       body: SafeArea(

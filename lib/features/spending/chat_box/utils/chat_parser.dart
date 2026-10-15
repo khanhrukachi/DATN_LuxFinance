@@ -1,55 +1,51 @@
 import 'package:flutter/widgets.dart';
+import 'package:personal_financial_management/setting/localization/app_localizations.dart';
 import 'package:personal_financial_management/core/constants/list.dart';
 
 import 'category_matcher.dart';
-import 'chat_intent.dart';
+import '../model/chat_intent.dart';
 
 /// Bộ phân tích câu nhập giao dịch dạng tự nhiên.
 /// Hỗ trợ số tiền, ngày tương đối/ngày cụ thể, giờ, địa điểm và ghi chú.
 class ChatParser {
-  static const Map<String, List<String>> _categoryLabels = {
-    'market': ['Đi chợ / siêu thị', 'Groceries'],
-    'eating': ['Ăn uống', 'Food and drinks'],
-    'move': ['Đi lại', 'Transport'],
-    'rent_house': ['Tiền nhà', 'Rent'],
-    'water_money': ['Tiền nước', 'Water bill'],
-    'telephone_fee': ['Cước điện thoại', 'Phone bill'],
-    'electricity_bill': ['Tiền điện', 'Electricity bill'],
-    'gas_money': ['Tiền gas', 'Cooking gas'],
-    'tv_money': ['Truyền hình', 'Television'],
-    'internet_money': ['Internet', 'Internet'],
-    'repair_and_decorate_the_house': [
-      'Sửa chữa và trang trí nhà',
-      'Home repairs and decoration',
-    ],
-    'vehicle_maintenance': ['Bảo dưỡng xe', 'Vehicle maintenance'],
-    'physical_examination': ['Y tế', 'Healthcare'],
-    'insurance': ['Bảo hiểm', 'Insurance'],
-    'education': ['Giáo dục', 'Education'],
-    'housewares': ['Đồ gia dụng', 'Household goods'],
-    'personal_belongings': ['Đồ cá nhân', 'Personal belongings'],
-    'pet': ['Thú cưng', 'Pets'],
-    'other_costs': ['Chi phí khác', 'Other expenses'],
-    'sport': ['Thể thao', 'Sports'],
-    'beautify': ['Làm đẹp', 'Beauty'],
-    'gifts_donations': ['Quà tặng và từ thiện', 'Gifts and donations'],
-    'online_services': ['Dịch vụ trực tuyến', 'Online services'],
-    'fun_play': ['Giải trí', 'Entertainment'],
-    'invest': ['Đầu tư', 'Investments'],
-    'debt_collection': ['Thu nợ', 'Debt collection'],
-    'borrow': ['Đi vay', 'Borrowing'],
-    'loan': ['Cho vay', 'Lending'],
-    'pay': ['Trả nợ', 'Debt repayment'],
-    'pay_interest': ['Trả lãi', 'Interest paid'],
-    'earn_profit': ['Thu lợi nhuận', 'Profit received'],
-    'salary': ['Lương', 'Salary'],
-    'other_income': ['Thu nhập khác', 'Other income'],
+  static const Set<String> _categoryKeys = {
+    'market',
+    'eating',
+    'move',
+    'rent_house',
+    'water_money',
+    'telephone_fee',
+    'electricity_bill',
+    'gas_money',
+    'tv_money',
+    'internet_money',
+    'repair_and_decorate_the_house',
+    'vehicle_maintenance',
+    'physical_examination',
+    'insurance',
+    'education',
+    'housewares',
+    'personal_belongings',
+    'pet',
+    'other_costs',
+    'sport',
+    'beautify',
+    'gifts_donations',
+    'online_services',
+    'fun_play',
+    'invest',
+    'debt_collection',
+    'borrow',
+    'loan',
+    'pay',
+    'pay_interest',
+    'earn_profit',
+    'salary',
+    'other_income',
   };
 
   static String categoryLabel(String key, BuildContext context) {
-    final labels = _categoryLabels[key];
-    if (labels == null) return key;
-    return labels[Localizations.localeOf(context).languageCode == 'vi' ? 0 : 1];
+    return AppLocalizations.of(context).translate(key);
   }
 
   static String normalize(String value) => _fold(value);
@@ -63,7 +59,7 @@ class ChatParser {
   ).hasMatch(_fold(value));
 
   static bool isSave(String value) => RegExp(
-    r'^(luu|luu giao dich|xac nhan|save|confirm)$',
+    r'^(luu|luu giao dich|xac nhan|save|save transaction|confirm)$',
   ).hasMatch(_fold(value));
 
   /// Merge explicit fields only; an amount reply never resets date or category.
@@ -76,22 +72,14 @@ class ChatParser {
     final folded = _fold(text);
     if (RegExp(r'^(chao|xin chao|hello|hi|cam on|thanks)$').hasMatch(folded)) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Bạn kể khoản thu hoặc chi muốn ghi nhé. Ví dụ: hôm nay đi chợ lúc 7h30.',
-          'Tell me what you want to record, for example: groceries today at 7:30.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_record_example_prompt'),
       );
     }
     if (RegExp(
       r'\b(bao nhieu|nhu nao|the nao|thong ke|so sanh|du bao|tong quan|how much|compare|forecast)\b',
     ).hasMatch(folded)) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Khung chat này giúp ghi giao dịch. Để hỏi thống kê, bạn mở Chat tài chính. Bạn muốn ghi thêm khoản nào?',
-          'This chat records transactions. Open Financial Chat for analysis. What would you like to record?',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_analysis_guidance'),
       );
     }
     // Metadata is text, never a second transaction amount or category.
@@ -102,17 +90,13 @@ class ChatParser {
         RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]').hasMatch(folded);
     final match = metadataOnly ? null : CategoryMatcher.find(text);
     if (match != null &&
-        (!_categoryLabels.containsKey(match.key) ||
+        (!_categoryKeys.contains(match.key) ||
             !listType.any(
               (item) =>
                   item['title'] == match.key && item['isParent'] != 'true',
             ))) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Bạn chọn một danh mục thu/chi cụ thể giúp mình nhé.',
-          'Please choose a specific income or expense category.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_specific_category_prompt'),
       );
     }
     final parsedDate = metadataOnly ? null : _date(text);
@@ -126,11 +110,7 @@ class ChatParser {
     if (!metadataOnly &&
         ((hasDate && parsedDate == null) || (hasTime && parsedTime == null))) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Ngày hoặc giờ chưa hợp lệ. Mình vẫn giữ thông tin trước đó; bạn nhập lại ngày/giờ nhé.',
-          'Invalid date or time. Your previous details are kept; please correct it.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_invalid_datetime_kept'),
       );
     }
     final amount = metadataOnly ? null : _amount(text);
@@ -140,11 +120,7 @@ class ChatParser {
               r'^0+(?:[.,]0+)?\s*(?:k|tr|d|dong)?$',
             ).hasMatch(folded))) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Số tiền cần lớn hơn 0. Bạn nhập lại số tiền nhé.',
-          'The amount must be greater than zero. Please enter it again.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_positive_amount_required'),
       );
     }
     final noteUpdate = RegExp(
@@ -162,13 +138,9 @@ class ChatParser {
         locationUpdate == null &&
         location.isEmpty) {
       return ChatParseResult.question(
-        _t(
-          context,
-          memory.isActive
-              ? 'Mình đang giữ giao dịch trước. Bạn bổ sung số tiền, danh mục, ngày/giờ, hoặc nhập “hủy”.'
-              : 'Bạn muốn ghi khoản gì? Ví dụ: đi chợ, ăn uống, taxi hoặc nhận lương.',
-          'Please enter an amount, category, date/time, or type cancel.',
-        ),
+        memory.isActive
+              ? AppLocalizations.of(context).translate('financial_secretary_pending_details_prompt')
+              : AppLocalizations.of(context).translate('financial_secretary_transaction_prompt'),
       );
     }
     // Freeze the default day on the first accepted turn (including midnight).
@@ -191,7 +163,7 @@ class ChatParser {
       ).firstMatch(_foldKeepingOffsets(text))!;
       memory.note = text.substring(prefix.end).trim();
     } else if (match != null && memory.note.isEmpty) {
-      memory.note = _cleanNote(text);
+      memory.note = _cleanNote(text, context);
     }
     memory.turns.add(text);
     if (memory.turns.length > 20) memory.turns.removeAt(0);
@@ -199,22 +171,14 @@ class ChatParser {
       final income =
           memory.categoryKey != null && _isIncome(memory.categoryKey!);
       return ChatParseResult.question(
-        _t(
-          context,
-          income
-              ? 'Bạn đã nhận được bao nhiêu tiền? Ví dụ: 12tr hoặc 12.000.000đ.'
-              : 'Bạn đã chi hết bao nhiêu tiền? Ví dụ: 50k hoặc 50.000đ.',
-          income ? 'How much did you receive?' : 'How much did you spend?',
-        ),
+        income
+              ? AppLocalizations.of(context).translate('financial_secretary_income_amount_prompt')
+              : AppLocalizations.of(context).translate('financial_secretary_expense_amount_prompt'),
       );
     }
     if (memory.categoryKey == null) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Mình đã giữ số tiền. Khoản này là gì: đi chợ, ăn uống, taxi, lương…?',
-          'I have the amount. What is it for: groceries, food, taxi, salary…?',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_category_for_amount_prompt'),
       );
     }
     final key = memory.categoryKey!;
@@ -242,11 +206,7 @@ class ChatParser {
     final text = raw.trim();
     if (text.isEmpty) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Bạn muốn ghi khoản thu/chi nào?',
-          'What income or expense would you like to record?',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_empty_input_prompt'),
       );
     }
 
@@ -254,36 +214,22 @@ class ChatParser {
     if (match != null &&
         (match.key == 'current_money' || match.key == 'new_group')) {
       return ChatParseResult.question(
-        _t(
-          context,
-          match.key == 'current_money'
-              ? 'Số dư không phải khoản thu/chi mới. Bạn hãy dùng màn hình quản lý số dư.'
-              : 'Nhóm tùy chỉnh cần tên nhóm và loại thu/chi. Bạn hãy chọn nhóm trong màn hình thêm giao dịch.',
-          match.key == 'current_money'
-              ? 'A balance is not a new transaction. Please use the balance screen.'
-              : 'A custom category needs a name and income/expense direction. Please select it on the transaction screen.',
-        ),
+        match.key == 'current_money'
+              ? AppLocalizations.of(context).translate('financial_secretary_balance_guidance')
+              : AppLocalizations.of(context).translate('financial_secretary_custom_category_guidance'),
       );
     }
 
     final amount = _amount(text);
     if (amount == null || amount <= 0) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Bạn chưa nhập số tiền. Ví dụ: đi chợ mua đồ hết 50k lúc 17h30 ngày 9/8.',
-          'Please enter an amount, for example: groceries 50k at 17:30 on 9/8.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_missing_amount_prompt'),
       );
     }
 
     if (match == null) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Khoản này thuộc danh mục nào? Ví dụ: ăn uống, đi lại hoặc mua sắm.',
-          'Which category is this? For example: eating, transport or shopping.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_category_prompt'),
       );
     }
 
@@ -291,13 +237,9 @@ class ChatParser {
     final typeIndex = listType.indexWhere(
       (item) => item['title'] == match.key && item['isParent'] != 'true',
     );
-    if (typeIndex < 0 || !_categoryLabels.containsKey(match.key)) {
+    if (typeIndex < 0 || !_categoryKeys.contains(match.key)) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Danh mục này chưa được cấu hình. Bạn hãy chọn danh mục trong màn hình thêm giao dịch.',
-          'This category is not configured. Please select it on the transaction screen.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_category_unavailable'),
       );
     }
 
@@ -312,11 +254,7 @@ class ChatParser {
         RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
     if ((hasDate && date == null) || (hasTime && time == null)) {
       return ChatParseResult.question(
-        _t(
-          context,
-          'Ngày hoặc giờ chưa hợp lệ. Bạn kiểm tra lại giúp mình nhé.',
-          'Invalid date or time. Please check your transaction.',
-        ),
+        AppLocalizations.of(context).translate('financial_secretary_invalid_datetime'),
       );
     }
 
@@ -334,7 +272,7 @@ class ChatParser {
         type: typeIndex,
         typeName: categoryLabel(match.key, context),
         date: _mergeDateAndTime(date ?? DateTime.now(), time),
-        note: _cleanNote(text),
+        note: _cleanNote(text, context),
         location: _location(text),
         hasExplicitTime: time != null,
         kind: _isIncome(match.key)
@@ -656,7 +594,7 @@ class ChatParser {
     return result;
   }
 
-  static String _cleanNote(String text) {
+  static String _cleanNote(String text, BuildContext context) {
     final explicit = RegExp(
       r'(?:ghi chu|note)\s*[:：]\s*(.+)$',
     ).firstMatch(_foldKeepingOffsets(text));
@@ -710,7 +648,7 @@ class ChatParser {
     note = note.replaceAll('/', ' ');
     note = _tidyNote(note);
     if (RegExp(r'^(?:sang|trua|toi|khuya)$').hasMatch(_fold(note))) {
-      return 'ăn $note';
+      return AppLocalizations.of(context).translate('financial_secretary_meal_note').replaceAll('{meal}', note);
     }
     return note;
   }
@@ -796,7 +734,4 @@ class ChatParser {
     return result.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  static String _t(BuildContext context, String vi, String en) {
-    return Localizations.localeOf(context).languageCode == 'vi' ? vi : en;
-  }
 }
