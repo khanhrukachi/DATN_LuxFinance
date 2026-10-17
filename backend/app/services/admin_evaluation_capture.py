@@ -113,9 +113,9 @@ def build_record(model, result, uid, sample_count=None, scope=None):
             'contamination': stats.get('contamination')}),
             status='diagnostic' if ready else 'not_ready', evaluationKind='unlabelled_inference_diagnostic',
             modelState='isolation_forest_and_rules' if ready else 'rules_or_insufficient_data',
-            notes=('Chưa có nhãn kiểm chứng: không tính precision, recall, F1 hay accuracy. '
+            notes=('Đây là thống kê lúc suy luận. Chỉ số từ nhãn kiểm chứng xem tại màn hình Đánh giá bất thường. '
                    'Số phát hiện và tỷ lệ bất thường là thống kê, không đo chất lượng mô hình. '
-                   'Baseline: ' + str(stats.get('baselineMode', 'unknown')) + '. ' + record['notes']))
+                   'Baseline: ' + str(stats.get('baselineMode', 'chưa xác định do chưa đủ dữ liệu hợp lệ')) + '. ' + record['notes']))
     else:
         raise ValueError('Unknown model')
     return record

@@ -100,24 +100,41 @@ def get_job(job_id):
 
 
 def user_transactions(client, uid):
+    from google.cloud.firestore_v1.base_query import FieldFilter
     index = client.collection('data').document(uid).get().to_dict() or {}
     ids = sorted({v for items in index.values() if isinstance(items,list) for v in items
                   if isinstance(v,str) and v and '/' not in v})
     if len(ids)>MAX_TRANSACTIONS:
-        raise ValueError('Người dùng có hơn 5.000 ID giao dịch; cần chạy đánh giá offline với toàn bộ lịch sử.')
-    result=[]; missing=0; conflicts=0
-    for start in range(0,len(ids),250):
-        references=[client.collection('spending').document(v) for v in ids[start:start+250]]
-        for snap in client.get_all(references):
+        raise ValueError('Người dùng có hơn 5.000 ID; cần đánh giá offline với toàn bộ lịch sử.')
+    found={};missing=0;conflicts=0;indexed_without_owner=0
+    # Union both supported schemas. Never scan the whole spending collection.
+    for owner_field in ('userId','uid','user_id','ownerId'):
+        query=client.collection('spending').where(filter=FieldFilter(owner_field,'==',uid)).limit(MAX_TRANSACTIONS+1)
+        for snap in query.stream():
+            found[snap.id]={**(snap.to_dict() or {}),'id':snap.id}
+            if len(found)>MAX_TRANSACTIONS:
+                raise ValueError('Có hơn 5.000 giao dịch cho UID; không cắt lịch sử âm thầm.')
+    explicit_count=len(found)
+    remaining=[v for v in ids if v not in found]
+    for start in range(0,len(remaining),250):
+        refs=[client.collection('spending').document(v) for v in remaining[start:start+250]]
+        for snap in client.get_all(refs):
             if not snap.exists:
                 missing+=1;continue
-            row=snap.to_dict() or {}
-            owner=next((row[k] for k in ('userId','uid','user_id','ownerId') if row.get(k)),None)
-            if owner and owner != uid:
-                conflicts+=1;continue
-            result.append({**row,'id':snap.id})
-    return result, {'source':'data_uid_monthly_index','indexedIds':len(ids),'loaded':len(result),
-                    'missing':missing,'ownerConflicts':conflicts,'historyCompleteVerified':False}
+            found[snap.id]={**(snap.to_dict() or {}),'id':snap.id}
+            if len(found)>MAX_TRANSACTIONS:
+                raise ValueError('Hợp dữ liệu có hơn 5.000 giao dịch; cần đánh giá offline.')
+    result=[]
+    for identity,row in found.items():
+        owners={str(row[k]) for k in ('userId','uid','user_id','ownerId') if row.get(k)}
+        if owners and owners!={uid}:
+            conflicts+=1;continue
+        if not owners:indexed_without_owner+=1
+        result.append(row)
+    return result,{'source':'explicit_uid_queries_union_monthly_index','indexedIds':len(ids),
+                   'explicitQueryMatches':explicit_count,'loaded':len(result),'missing':missing,
+                   'ownerConflicts':conflicts,'indexOnlyWithoutExplicitOwner':indexed_without_owner,
+                   'historyCompleteVerified':False}
 
 
 def run_job(job_id, uid, year, month, actor):
@@ -154,10 +171,14 @@ def run_job(job_id, uid, year, month, actor):
                 elif model=='K-Means':
                     result=km.cluster_spending(user_id=uid,transactions=clean,year=year,month=month,reference_date=cutoff)
                 else:
-                    result=iso.detect_anomalies(user_id=uid,transactions=clean,year=year,month=month,reference_date=cutoff)
+                    from .admin_anomaly_snapshot import analyze_with_snapshot, save_snapshot
+                    result,observer=analyze_with_snapshot(uid,clean,year,month,cutoff)
+                    save_snapshot(client,job_id,uid,year,month,result,observer,clean,scope)
                 record=build_record(model,result,uid,len(clean),scope)
                 record['jobId']=job_id
-                record['notes']+=' Dữ liệu theo chỉ mục data/<uid>; chưa xác nhận toàn bộ lịch sử. Ngày không ghi nhận trong chuỗi LSTM được engine điền 0.'
+                if model=='Isolation Forest':
+                    record['reviewSnapshotId']=job_id
+                record['notes']+=' Dữ liệu hợp UID trực tiếp và data/<uid>; chưa xác nhận toàn bộ lịch sử. Ngày không ghi nhận trong chuỗi LSTM được engine điền 0.'
                 rid=save_record(record,job_id+'_'+model.replace(' ','_'))
                 progress.append({'model':model,'status':record['status'],'recordId':rid})
             except Exception as exc:
