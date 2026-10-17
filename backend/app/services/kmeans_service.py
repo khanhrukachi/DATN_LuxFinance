@@ -210,43 +210,171 @@ class KMeansService:
         ]
     }
 
+    # Interpretation thresholds are explicit heuristics, not model confidence.
+    PROFILE_VERSION = 'evidence_v2'
+    PROFILE_MIN_COUNT_SHARE = 0.60
+    PROFILE_MIN_AMOUNT_SHARE = 0.60
+
     CLUSTER_PROFILES = {
-        "high_value_outliers": {
-            "name": "🔥 Khoản Chi Trọng Yếu",
-            "description_base": "Nhóm này bao gồm các giao dịch có giá trị rất lớn, mang tính chất đột biến hoặc định kỳ (thuê nhà, mua sắm tài sản lớn). Đây là các khoản tác động mạnh nhất đến dòng tiền hàng tháng.",
-            "advice": "Hãy kiểm tra lại tính thiết yếu của các khoản này. Với những khoản mua sắm lớn, hãy áp dụng quy tắc '30 ngày suy ngẫm' trước khi ra quyết định."
-        },
-        "daily_essentials": {
-            "name": "🏠 Sinh Hoạt Phí Cốt Lõi",
-            "description_base": "Các khoản chi bắt buộc để duy trì cuộc sống: Ăn uống, đi lại, hóa đơn điện nước. Đây là nền tảng của tháp nhu cầu tài chính.",
-            "advice": "Chi phí này khó cắt bỏ nhưng dễ tối ưu. Bạn có thể tiết kiệm bằng cách nấu ăn tại nhà hoặc rà soát lại các gói cước dịch vụ viễn thông."
-        },
-        "lifestyle_entertainment": {
-            "name": "🥂 Phong Cách Sống & Hưởng Thụ",
-            "description_base": "Khoản chi cho niềm vui tinh thần, sở thích cá nhân và các mối quan hệ xã hội. Nhóm này giúp cân bằng cuộc sống nhưng dễ gây 'vung tay quá trán'.",
-            "advice": "Cố gắng giữ nhóm này dưới 20-30% thu nhập. Hãy đặt hạn mức cụ thể cho việc vui chơi mỗi cuối tuần."
-        },
-        "micro_spending": {
-            "name": "☕ Chi Tiêu Nhỏ Lẻ (Latte Factor)",
-            "description_base": "Tập hợp các khoản tiền nhỏ (dưới 50k-100k) nhưng tần suất dày đặc (cà phê, ăn vặt, phí ship). 'Kiến tha lâu cũng đầy tổ' - đây là nơi tiền rò rỉ âm thầm nhất.",
-            "advice": "Hãy thử thách bản thân 'Một tuần không chi vặt' và tổng kết lại số tiền giữ được. Bạn sẽ bất ngờ với con số đó đấy."
-        },
-        "investment_future": {
-            "name": "🌱 Tích Lũy & Phát Triển",
-            "description_base": "Dòng tiền dành cho tương lai: Tiết kiệm, đầu tư, trả nợ hoặc học tập. Đây là dấu hiệu của sức khỏe tài chính tốt.",
-            "advice": "Tuyệt vời! Hãy cố gắng tự động hóa việc này ngay khi nhận lương để duy trì kỷ luật tài chính."
-        },
-        "debt_management": {
-            "name": "🧾 Quản lý vay và trả nợ",
-            "description_base": "Nhóm giao dịch liên quan đến vay, cho vay, thu hồi nợ, trả gốc hoặc trả lãi.",
-            "advice": "Theo dõi riêng dư nợ, lịch trả gốc và lãi; không xem khoản vay mới là thu nhập thường xuyên.",
-        },
-        "mixed_irregular": {
-            "name": "🧩 Chi Phí Phát Sinh Khác",
-            "description_base": "Các giao dịch hỗn hợp hoặc chưa rõ mục đích. Thường là các tình huống bất ngờ hoặc chi phí không tên.",
-            "advice": "Nên có một quỹ dự phòng khẩn cấp (3-6 tháng sinh hoạt phí) để các khoản này không làm đảo lộn kế hoạch tài chính của bạn."
-        }
+        'fixed_obligations': {'name': 'Chi phí cố định', 'description_base': 'Phần lớn giao dịch và số tiền thuộc các danh mục chi phí cố định.'},
+        'daily_essentials': {'name': 'Chi sinh hoạt', 'description_base': 'Phần lớn giao dịch và số tiền thuộc sinh hoạt hoặc nhu cầu thiết yếu đã phân loại.'},
+        'lifestyle_entertainment': {'name': 'Vui chơi và dịch vụ cá nhân', 'description_base': 'Phần lớn giao dịch và số tiền thuộc các danh mục vui chơi, làm đẹp, thể thao hoặc dịch vụ cá nhân được nhận diện.'},
+        'investment_future': {'name': 'Đầu tư', 'description_base': 'Phần lớn giao dịch và số tiền được ghi nhận là đóng góp đầu tư; không tự xác định hiệu quả hoặc lợi nhuận.'},
+        'savings_contributions': {'name': 'Tiết kiệm', 'description_base': 'Phần lớn giao dịch và số tiền được ghi nhận là chuyển vào tiết kiệm.'},
+        'education_development': {'name': 'Giáo dục', 'description_base': 'Phần lớn giao dịch và số tiền thuộc giáo dục; không gộp học phí thành khoản đầu tư tài chính.'},
+        'insurance_protection': {'name': 'Bảo hiểm', 'description_base': 'Phần lớn giao dịch và số tiền thuộc bảo hiểm; chưa suy ra phạm vi hoặc mức độ bảo vệ.'},
+        'debt_management': {'name': 'Dòng tiền vay và nợ', 'description_base': 'Phần lớn giao dịch và số tiền thuộc các vai trò vay/nợ đã ghi nhận; cần xem riêng gốc, lãi và cho vay.'},
+        'high_value_outliers': {'name': 'Giao dịch giá trị cao', 'description_base': 'Trung vị số tiền của cụm cao so với phân bố giao dịch của chính người dùng trong phạm vi phân tích. Đây không phải kết luận bất thường.'},
+        'micro_spending': {'name': 'Giao dịch giá trị thấp', 'description_base': 'Trung vị số tiền của cụm thấp so với phân bố giao dịch của chính người dùng. Không suy ra lãng phí hoặc tần suất chi dày đặc.'},
+        'mixed_irregular': {'name': 'Giao dịch đa mục đích', 'description_base': 'Chưa có một nhóm mục đích chiếm đồng thời ít nhất 60% số giao dịch và 60% số tiền. Không mặc định là chi phí đột xuất.'},
     }
+
+    def _profile_evidence(self, segment_df, full_df):
+        """Explain clusters using observed purpose, robust amount and time summaries.
+
+        Only reads fitted frames; it never changes features, assignments or K.
+        Categories describe recorded purpose, not necessity, affordability or intent.
+        """
+        keys = segment_df['original_key'].astype(str)
+        roles = segment_df['financial_role'].astype(str)
+        def flag(name):
+            return segment_df[name].fillna(0).astype(bool)
+        masks = {
+            'debt_management': flag('is_debt') | keys.isin(['borrow', 'loan', 'pay', 'pay_interest', 'debt_collection']) | roles.isin(['borrowed_principal', 'lending_principal', 'borrowing', 'lending', 'debt_repayment', 'debt_interest', 'debt_collection']),
+            'savings_contributions': flag('is_saving') | keys.eq('saving'),
+            'investment_future': flag('is_investment') | keys.eq('invest'),
+            'education_development': keys.eq('education') | roles.eq('education_expense'),
+            'insurance_protection': keys.eq('insurance') | roles.eq('insurance_expense'),
+            'fixed_obligations': flag('is_fixed') | keys.isin(['rent_house', 'water_money', 'electricity_bill', 'internet_money', 'tv_money']),
+            'lifestyle_entertainment': keys.isin(['fun_play', 'sport', 'beautify', 'online_services', 'travel']),
+            'daily_essentials': flag('is_living') | flag('is_essential'),
+        }
+        # Count each transaction in at most one interpretation family.
+        used = pd.Series(False, index=segment_df.index)
+        shares = {}
+        amount_total = float(segment_df['amount'].sum())
+        for name, raw_mask in masks.items():
+            mask = raw_mask & ~used
+            used = used | mask
+            shares[name] = {'transactionCount': int(mask.sum()),
+                            'countShare': float(mask.mean()),
+                            'amountShare': float(segment_df.loc[mask, 'amount'].sum() / amount_total) if amount_total else 0.0}
+        dominant = next((key for key, value in shares.items()
+                         if value['countShare'] >= self.PROFILE_MIN_COUNT_SHARE
+                         and value['amountShare'] >= self.PROFILE_MIN_AMOUNT_SHARE), None)
+        median = float(segment_df['amount'].median())
+        overall_median = float(full_df['amount'].median())
+        q25 = float(full_df['amount'].quantile(.25))
+        q75 = float(full_df['amount'].quantile(.75))
+        if median >= q75 and median >= 2 * max(overall_median, 1):
+            amount_band = 'cao'
+        elif median <= q25 and median <= .5 * max(overall_median, 1):
+            amount_band = 'thấp'
+        else:
+            amount_band = 'trong khoảng phổ biến'
+        if dominant is None:
+            dominant = {'cao': 'high_value_outliers', 'thấp': 'micro_spending'}.get(amount_band, 'mixed_irregular')
+        bands = pd.cut(segment_df['hour'], bins=[-1, 5, 11, 17, 23],
+                       labels=['đêm (00–05h)', 'buổi sáng (06–11h)', 'buổi chiều (12–17h)', 'buổi tối (18–23h)'])
+        time_counts = bands.value_counts()
+        top_time = str(time_counts.index[0]) if len(time_counts) else 'nhiều khung giờ'
+        top_time_share = float(time_counts.iloc[0] / len(segment_df)) if len(time_counts) else 0.0
+        return {'profileKey': dominant, 'profileVersion': self.PROFILE_VERSION,
+                'purposeShares': shares, 'unclassifiedPurposeCount': int((~used).sum()),
+                'medianAmount': median, 'minimumAmount': float(segment_df['amount'].min()),
+                'maximumAmount': float(segment_df['amount'].max()),
+                'referenceMedianAmount': overall_median,
+                'relativeAmountBand': amount_band,
+                'dominantTimeBand': top_time if top_time_share >= .60 else 'nhiều khung giờ',
+                'dominantTimeShare': top_time_share,
+                'activeDays': int(segment_df['date'].nunique()),
+                'weekendRatio': float(segment_df['is_weekend'].mean() * 100),
+                'countThreshold': self.PROFILE_MIN_COUNT_SHARE,
+                'amountThreshold': self.PROFILE_MIN_AMOUNT_SHARE,
+                'meaning': 'rule_based_interpretation_not_ground_truth_or_model_confidence'}
+
+    def _get_profile_key_strategy(self, segment_df: pd.DataFrame, full_df: pd.DataFrame) -> str:
+        return self._profile_evidence(segment_df, full_df)['profileKey']
+
+    def _build_merged_cluster_response(self, profile_key: str, merged_df: pd.DataFrame, full_df: pd.DataFrame, cluster_index: int) -> SpendingCluster:
+        evidence = self._profile_evidence(merged_df, full_df)
+        profile_key = evidence['profileKey']
+        base_profile = self.CLUSTER_PROFILES[profile_key]
+        category_counts = merged_df['type_name'].value_counts()
+        top_cats_dict = {str(k): int(v) for k, v in category_counts.head(5).items()}
+        category_amounts = merged_df.groupby('type_name')['amount'].sum().sort_values(ascending=False)
+        top_by_amount = {str(k): float(v) for k, v in category_amounts.head(5).items()}
+        names = list(top_cats_dict)
+        # A single category label only when it dominates both count and cash.
+        first = names[0] if names else 'Chưa rõ danh mục'
+        total = float(merged_df['amount'].sum())
+        single_dominates = (bool(names) and top_cats_dict[first] / len(merged_df) >= .60
+                            and float(category_amounts.get(first, 0)) / max(total, 1) >= .60)
+        label_categories = first if single_dominates else ' / '.join(names[:2])
+        characteristics = {
+            'averageAmount': float(round(merged_df['amount'].mean(), 0)),
+            'totalAmount': float(round(total, 0)),
+            'transactionCount': int(len(merged_df)),
+            'essentialRatio': float(round(merged_df['is_essential'].mean() * 100, 1)),
+            'livingRatio': float(round(merged_df['is_living'].mean() * 100, 1)),
+            'fixedRatio': float(round(merged_df['is_fixed'].mean() * 100, 1)),
+            'unexpectedRatio': float(round(merged_df['is_unexpected'].mean() * 100, 1)),
+            'investmentRatio': float(round(merged_df['is_investment'].mean() * 100, 1)),
+            'savingRatio': float(round(merged_df['is_saving'].mean() * 100, 1)),
+            'debtRatio': float(round(merged_df['is_debt'].mean() * 100, 1)),
+            'topCategories': top_cats_dict, 'topCategoriesByAmount': top_by_amount,
+            'amountPercentage': round(total / max(float(full_df['amount'].sum()), 1) * 100, 1),
+            'medianAmount': float(round(evidence['medianAmount'], 0)),
+            'activeDays': evidence['activeDays'],
+            'profileKey': profile_key, 'profileVersion': self.PROFILE_VERSION,
+            'profileEvidence': evidence,
+            'categoryGroups': {
+                str(group_id): {'name': str(group['category_group_name'].iloc[0]),
+                                'transactionCount': int(len(group)),
+                                'cashOutflow': float(round(group['amount'].sum(), 0))}
+                for group_id, group in merged_df.groupby('category_group_id')},
+            'financialRoles': {str(role): int(count) for role, count in merged_df['financial_role'].value_counts().items()},
+        }
+        category_text = ', '.join(f'{name}: {count} GD' for name, count in top_cats_dict.items())
+        purpose = evidence['purposeShares'].get(profile_key)
+        basis = (f"Nhóm mục đích này chiếm {purpose['countShare'] * 100:.1f}% số giao dịch "
+                 f"và {purpose['amountShare'] * 100:.1f}% số tiền trong cụm. " if purpose else '')
+        sample_note = ' Cụm có dưới 3 giao dịch; diễn giải còn hạn chế.' if len(merged_df) < 3 else ''
+        description = (
+            f"{base_profile['description_base']} {basis}"
+            f"{len(merged_df)} giao dịch trên {evidence['activeDays']} ngày có ghi nhận; "
+            f"tổng {total:,.0f}đ, trung vị {evidence['medianAmount']:,.0f}đ/GD "
+            f"(trung vị toàn bộ {evidence['referenceMedianAmount']:,.0f}đ/GD). "
+            f"Danh mục theo số giao dịch: {category_text}. "
+            f"Khung giờ: {evidence['dominantTimeBand']}. "
+            'Tỷ trọng cụm tính theo số giao dịch; tỷ trọng tiền nằm ở amountPercentage. '
+            'Nhãn là diễn giải theo quy tắc, không kết luận bất thường, lãng phí hay khả năng chi trả.'
+            + sample_note)
+        return SpendingCluster(cluster_id=cluster_index,
+                               cluster_name=f"{base_profile['name']} · {label_categories}",
+                               description=description, characteristics=characteristics,
+                               transaction_ids=merged_df['id'].tolist(),
+                               percentage=round(len(merged_df) / len(full_df) * 100, 1))
+
+    def _disambiguate_cluster_names(self, clusters):
+        """Preserve real K-Means groups; distinguish similar profiles honestly."""
+        groups = {}
+        for cluster in clusters:
+            groups.setdefault(cluster.cluster_name, []).append(cluster)
+        for same_name in groups.values():
+            if len(same_name) <= 1:
+                continue
+            for cluster in same_name:
+                evidence = cluster.characteristics['profileEvidence']
+                cluster.cluster_name += f" · {evidence['dominantTimeBand']} · trung vị {evidence['medianAmount']:,.0f}đ"
+        # Identical summaries are possible. An explicit run-local ID is honest;
+        # inventing a different behavior would not be supported by the data.
+        counts = Counter(cluster.cluster_name for cluster in clusters)
+        for cluster in clusters:
+            if counts[cluster.cluster_name] > 1:
+                cluster.cluster_name += f' · cụm {cluster.cluster_id + 1}'
+                cluster.description += ' Có cụm khác cùng tóm tắt; mã cụm chỉ phân biệt trong lần chạy này.'
+
 
     def __init__(self):
         self.scaler = StandardScaler()
@@ -344,83 +472,7 @@ class KMeansService:
 
         return df
 
-    def _get_profile_key_strategy(self, segment_df: pd.DataFrame, full_df: pd.DataFrame) -> str:
-        avg_amount = segment_df['amount'].mean()
-        overall_avg = full_df['amount'].mean()
-        
-        essential_ratio = segment_df['is_essential'].mean()
-        investment_ratio = np.maximum(segment_df['is_investment'], segment_df['is_saving']).mean()
-        debt_ratio = segment_df['is_debt'].mean()
-        entertainment_ratio = segment_df['is_entertainment'].mean()
-        
-        if debt_ratio > 0.5:
-            return "debt_management"
 
-        if avg_amount > overall_avg * 3.0: 
-            return "high_value_outliers"
-        
-        if investment_ratio > 0.5: 
-            return "investment_future"
-
-        if avg_amount < overall_avg * 0.25 or avg_amount < 50000: 
-            return "micro_spending"
-        
-        if essential_ratio > 0.6: 
-            return "daily_essentials"
-        
-        if entertainment_ratio > 0.5: 
-            return "lifestyle_entertainment"
-        
-        return "mixed_irregular"
-
-    def _build_merged_cluster_response(self, profile_key: str, merged_df: pd.DataFrame, full_df: pd.DataFrame, cluster_index: int) -> SpendingCluster:
-        base_profile = self.CLUSTER_PROFILES[profile_key]
-        
-        top_items_counts = merged_df['type_name'].value_counts().head(5)
-        keywords_str = ", ".join(top_items_counts.index.tolist()) if not top_items_counts.empty else "Nhiều mục khác nhau"
-        top_cats_dict = {str(k): int(v) for k, v in top_items_counts.to_dict().items()}
-        
-        characteristics = {
-            "averageAmount": float(round(merged_df['amount'].mean(), 0)),
-            "totalAmount": float(round(merged_df['amount'].sum(), 0)),
-            "transactionCount": int(len(merged_df)),
-            "essentialRatio": float(round(merged_df['is_essential'].mean() * 100, 1)),
-            "livingRatio": float(round(merged_df['is_living'].mean() * 100, 1)),
-            "fixedRatio": float(round(merged_df['is_fixed'].mean() * 100, 1)),
-            "unexpectedRatio": float(round(merged_df['is_unexpected'].mean() * 100, 1)),
-            "investmentRatio": float(round(merged_df['is_investment'].mean() * 100, 1)),
-            "savingRatio": float(round(merged_df['is_saving'].mean() * 100, 1)),
-            "debtRatio": float(round(merged_df['is_debt'].mean() * 100, 1)),
-            "topCategories": top_cats_dict,
-            "categoryGroups": {
-                str(group_id): {
-                    "name": str(group['category_group_name'].iloc[0]),
-                    "transactionCount": int(len(group)),
-                    "cashOutflow": float(round(group['amount'].sum(), 0)),
-                }
-                for group_id, group in merged_df.groupby('category_group_id')
-            },
-            "financialRoles": {
-                str(role): int(count)
-                for role, count in merged_df['financial_role'].value_counts().items()
-            },
-        }
-        
-        rich_description = (
-            f"{base_profile['description_base']}\n\n"
-            f"🛒 **Gồm các mục:** {keywords_str}.\n\n" 
-            f"💡 **Lời khuyên:** {base_profile['advice']}"
-        )
-
-        return SpendingCluster(
-            cluster_id=cluster_index,
-            cluster_name=base_profile['name'],
-            description=(f"Nhóm gồm {len(merged_df)} giao dịch; các danh mục thường gặp: {keywords_str}. "
-                         "Cụm mô tả đặc điểm giao dịch, không tự xác định chi tiêu lãng phí."), 
-            characteristics=characteristics,
-            transaction_ids=merged_df['id'].tolist(),
-            percentage=round(len(merged_df) / len(full_df) * 100, 1)
-        )
 
     def _select_optimal_k(self, X, requested_k=None):
         n, unique = len(X), len(np.unique(X, axis=0))
@@ -503,12 +555,21 @@ class KMeansService:
                 self._build_merged_cluster_response(profile_key, segment, df, cid)
             )
 
+        self._disambiguate_cluster_names(final_clusters)
         final_clusters.sort(
             key=lambda x: x.characteristics['totalAmount'], reverse=True
         )
 
         user_profile = self._build_user_profile(df, final_clusters)
         user_profile['categoryAnalysis'] = summarize_category_hierarchy(normalized)
+        user_profile['profileInterpretation'] = {
+            'version': self.PROFILE_VERSION,
+            'method': 'purpose_count_and_amount_shares_then_relative_median',
+            'countThreshold': self.PROFILE_MIN_COUNT_SHARE,
+            'amountThreshold': self.PROFILE_MIN_AMOUNT_SHARE,
+            'meaning': 'descriptive_heuristic_not_verified_behavior',
+            'clusterIdsStableAcrossRuns': False,
+        }
         # Add ML diagnostics without changing the response schema.
         user_profile['kMeans'] = {
             'optimalK': int(best_k),
@@ -532,35 +593,14 @@ class KMeansService:
         )
 
     def _determine_spending_style(self, df: pd.DataFrame) -> str:
-        total_tx = len(df)
-        avg_amt = df['amount'].mean()
-        
-        invest_ratio = df['is_investment'].mean()
-        saving_ratio = df['is_saving'].mean()
-        debt_ratio = df['is_debt'].mean()
-        essential_ratio = df['is_essential'].mean()
-        ent_ratio = df['is_entertainment'].mean()
-        weekend_ratio = df['is_weekend'].mean()
-        
-        if debt_ratio > 0.35:
-            return "🧾 Cần theo dõi nghĩa vụ nợ"
-
-        if max(invest_ratio, saving_ratio) > 0.35:
-            return "🌱 Người ưu tiên tích lũy/đầu tư"
-        
-        if essential_ratio > 0.70:
-            return "🛡️ Người Quản Gia Thận Trọng"
-        
-        if ent_ratio > 0.5:
-            return "🔥 Tín Đồ Trải Nghiệm (YOLO)"
-        
-        if weekend_ratio > 0.6:
-            return "🎉 Dân Chơi Cuối Tuần"
-            
-        if total_tx > 40 and avg_amt < 100000: 
-            return "🐜 Kiến Tha Lâu (Chi tiêu lặt vặt)"
-            
-        return "⚖️ Người Cân Bằng Tài Chính"
+        evidence = self._profile_evidence(df, df)
+        key = evidence['profileKey']
+        if key in ('mixed_irregular', 'high_value_outliers', 'micro_spending'):
+            return 'Giao dịch gồm nhiều mục đích; chưa có nhóm chi phối rõ'
+        value = evidence['purposeShares'][key]
+        return (f"{self.CLUSTER_PROFILES[key]['name']}: "
+                f"{value['countShare'] * 100:.1f}% số giao dịch, "
+                f"{value['amountShare'] * 100:.1f}% dòng tiền chi ra")
 
     def _calculate_financial_health_score(self, df: pd.DataFrame) -> int:
         score = 80 
