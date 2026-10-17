@@ -7,7 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
 from app.routers import prediction_router, clustering_router, anomaly_router, insights_router, chat_router, debt_router
-from app.routers.admin_analysis import router as admin_analysis_router
+from admin_router import router as admin_router
+from admin_firebase import use_existing_firebase
+from app.security.firebase_auth import _firebase_app
+use_existing_firebase(_firebase_app)
 from app.services.lstm_service import TF_AVAILABLE
 from app.schemas.response import HealthResponse
 
@@ -34,9 +37,10 @@ async def server_error(request: Request, exc: Exception):
 for router in (prediction_router, clustering_router, anomaly_router, insights_router, chat_router, debt_router):
     app.include_router(router,prefix=settings.API_V1_PREFIX)
 
-# admin_analysis_router already declares /api/v1/admin/evaluations.
-# Register separately to avoid /api/v1/api/v1 and keep the admin server separate.
-app.include_router(admin_analysis_router)
+# Admin router declares its full prefix and calls AI jobs in this process.
+# Do not also mount admin_analysis_router: its run/status routes overlap.
+app.state.admin_analysis_mode = 'local'
+app.include_router(admin_router)
 
 @app.get("/")
 def root():
