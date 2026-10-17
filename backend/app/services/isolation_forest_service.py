@@ -1,3 +1,4 @@
+from .admin_evaluation_capture import record_analysis
 import calendar
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -446,6 +447,7 @@ class IsolationForestService:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    @record_analysis('Isolation Forest')
     def detect_anomalies(
         self,
         user_id: str,

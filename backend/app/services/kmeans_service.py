@@ -1,3 +1,4 @@
+from .admin_evaluation_capture import record_analysis
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional
@@ -444,6 +445,7 @@ class KMeansService:
                 best_k, best_score = k, score
         return best_k, best_score if best_k > 1 else 0.0
 
+    @record_analysis('K-Means')
     def cluster_spending(self, user_id: str, transactions: List[SpendingItem], n_clusters: int = None,
                          year: Optional[int] = None, month: Optional[int] = None,
                          reference_date=None, category_catalog=None) -> ClusteringResponse:

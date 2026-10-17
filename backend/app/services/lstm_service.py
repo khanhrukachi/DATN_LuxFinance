@@ -1,3 +1,4 @@
+from .admin_evaluation_capture import record_analysis
 import os
 import calendar
 import math
@@ -3116,6 +3117,7 @@ class LSTMService:
                                            message=f"Dữ liệu đầu vào không hợp lệ: {exc}")
 
 
+    @record_analysis('LSTM')
     def predict_trend(self, user_id: str, transactions: List[Any],
                       prediction_days: Optional[int] = None, year: Optional[int] = None,
                       month: Optional[int] = None, *,
