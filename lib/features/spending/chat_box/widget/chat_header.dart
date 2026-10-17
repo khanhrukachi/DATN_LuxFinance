@@ -48,15 +48,6 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  hasPendingTransaction
-                      ? AppLocalizations.of(context).translate('financial_secretary_pending_status')
-                      : AppLocalizations.of(context).translate('financial_secretary_subtitle'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: style.mutedColor, fontSize: 11),
-                ),
               ],
             ),
           ),

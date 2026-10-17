@@ -54,7 +54,7 @@ def find_lstm_evaluation(value):
 def build_record(model, result, uid, sample_count=None, scope=None):
     data = mapping(result)
     success = field(data, 'success', default=False) is True
-    record = {'model': model, 'userId': str(uid), 'scope': scope or {},
+    record = {'model': model, 'recordSource':'app_inference', 'userId': str(uid), 'scope': scope or {},
               'dataset': 'Lịch sử cá nhân · ' + str(uid), 'metrics': {},
               'status': 'not_ready', 'evaluationKind': 'diagnostic',
               'notes': str(field(data, 'message', default=''))[:1000]}

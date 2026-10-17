@@ -160,22 +160,34 @@ def run_job(job_id, uid, year, month, actor):
         ref.update({'scope':scope})
         for model in ('LSTM','K-Means','Isolation Forest'):
             try:
+                model_details={}
                 if model=='LSTM':
                     history=ls._prepare_daily_data(clean).tail(ls.max_history_days).copy()
                     if history.empty:
                         meta={'model':'insufficient_history','mae':None}
                     else:
                         _,meta=ls._fit_lstm_and_forecast(history['expense'].to_numpy(dtype=float),7,history=history)
+                    from .admin_model_details import lstm_details
+                    from .lstm_service import TF_AVAILABLE
+                    try:
+                        model_details=lstm_details(ls,history,meta,TF_AVAILABLE)
+                    except Exception as detail_error:
+                        logger.exception('Admin LSTM detail generation failed job=%s',job_id)
+                        model_details={'detailsStatus':'failed','detailsError':type(detail_error).__name__}
                     result={'success':True,'summary':{'model':{'expense':{'lstmEvaluation':meta}}},
                             'message':'Đánh giá holdout trực tiếp bằng hàm LSTM của dự án; không chạy dự báo ensemble.'}
                 elif model=='K-Means':
-                    result=km.cluster_spending(user_id=uid,transactions=clean,year=year,month=month,reference_date=cutoff)
+                    from .admin_model_details import analyze_kmeans
+                    result,model_details=analyze_kmeans(uid,clean,year,month,cutoff)
                 else:
                     from .admin_anomaly_snapshot import analyze_with_snapshot, save_snapshot
                     result,observer=analyze_with_snapshot(uid,clean,year,month,cutoff)
                     save_snapshot(client,job_id,uid,year,month,result,observer,clean,scope)
                 record=build_record(model,result,uid,len(clean),scope)
                 record['jobId']=job_id
+                record['recordSource']='admin_job'
+                record['details']=model_details
+                if model=='K-Means':record['metrics'].update(model_details.get('extraMetrics',{}))
                 if model=='Isolation Forest':
                     record['reviewSnapshotId']=job_id
                 record['notes']+=' Dữ liệu hợp UID trực tiếp và data/<uid>; chưa xác nhận toàn bộ lịch sử. Ngày không ghi nhận trong chuỗi LSTM được engine điền 0.'
