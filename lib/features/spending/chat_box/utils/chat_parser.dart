@@ -3,6 +3,9 @@ import 'package:personal_financial_management/setting/localization/app_localizat
 import 'package:personal_financial_management/core/constants/list.dart';
 
 import 'category_matcher.dart';
+import 'category_semantics.dart';
+import 'transaction_action_keywords.dart';
+import 'transaction_location_parser.dart';
 import '../model/chat_intent.dart';
 
 /// Bộ phân tích câu nhập giao dịch dạng tự nhiên.
@@ -34,11 +37,6 @@ class ChatParser {
     'online_services',
     'fun_play',
     'invest',
-    'debt_collection',
-    'borrow',
-    'loan',
-    'pay',
-    'pay_interest',
     'earn_profit',
     'salary',
     'other_income',
@@ -64,10 +62,10 @@ class ChatParser {
 
   /// Merge explicit fields only; an amount reply never resets date or category.
   static ChatParseResult parseTurn(
-    String raw,
-    BuildContext context,
-    ChatConversationMemory memory,
-  ) {
+      String raw,
+      BuildContext context,
+      ChatConversationMemory memory,
+      ) {
     final text = raw.trim();
     final folded = _fold(text);
     if (RegExp(r'^(chao|xin chao|hello|hi|cam on|thanks)$').hasMatch(folded)) {
@@ -87,26 +85,77 @@ class ChatParser {
         RegExp(
           r'^(?:ghi chu|note|dia diem|location)\s*[:：]?\s+',
         ).hasMatch(folded) ||
-        RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]').hasMatch(folded);
-    final match = metadataOnly ? null : CategoryMatcher.find(text);
+            RegExp(r'^(?:ghi chu|note|dia diem|location)\s*[:：]').hasMatch(folded);
+    final categoryText = _categoryText(text);
+    if (!metadataOnly && RegExp(
+      r'\b(thu no|tra no|cho vay|di vay|vay tien|muon tien|tra lai vay|repay|repaying|borrow money|lend money|debt repayment|debt collection)\b',
+    ).hasMatch(_fold(categoryText))) {
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_debt_ledger_prompt'));
+    }
+    final pendingTerm = memory.ambiguousTerm;
+    final analysis = metadataOnly
+        ? const CategoryAnalysis([], [], false)
+        : CategoryMatcher.analyze(categoryText);
+    final categoryReplyKeys = metadataOnly
+        ? <String>[]
+        : CategorySemantics.categoryReplyChoices(
+        _fold(categoryText),
+        {for (final key in memory.categoryCandidates)
+          key: _fold(categoryLabel(key, context))},
+        memory.categoryCandidates);
+    final categoryReplyOptions = <CategoryMatch>[];
+    for (final key in categoryReplyKeys) {
+      final index = listType.indexWhere((e) => e['title'] == key && e['isParent'] != 'true');
+      if (index >= 0) categoryReplyOptions.add(CategoryMatch(index, key, 0.9));
+    }
+    final isCategoryReply = categoryReplyOptions.isNotEmpty;
+    final replyKey = metadataOnly ? null : CategorySemantics.resolveReply(pendingTerm, _fold(categoryText));
+    final replyIndex = replyKey == null ? -1 : listType.indexWhere(
+            (e) => e['title'] == replyKey && e['isParent'] != 'true');
+    final resolvedReply = replyKey != null && replyIndex >= 0;
+    final options = isCategoryReply
+        ? categoryReplyOptions
+        : resolvedReply
+        ? <CategoryMatch>[CategoryMatch(replyIndex, replyKey!, 0.9)]
+        : analysis.matches;
+    final match = options.length == 1 ? options.first : null;
+    if (!metadataOnly && RegExp(r'(\$|€|£|\b(?:usd|eur|gbp|dollar|dollars|euro|euros)\b)').hasMatch(folded)) {
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_vnd_only_prompt'));
+    }
+    if (!metadataOnly && RegExp(r'(?<![a-z0-9])0+(?:[.,]0+)?\s*(?:k|tr|trieu|nghin|ngan|dong|vnd|d)(?![a-z0-9])').hasMatch(folded)) {
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_positive_amount_required'));
+    }
+    if (!metadataOnly && _hasMultipleAmounts(text)) {
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_one_amount_prompt'));
+    }
+    if (!metadataOnly && TransactionActionKeywords.unrealized.hasMatch(folded)) {
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_actual_transaction_prompt'));
+    }
+    final ambiguousCategory = match == null && options.isNotEmpty;
+
     if (match != null &&
         (!_categoryKeys.contains(match.key) ||
             !listType.any(
-              (item) =>
-                  item['title'] == match.key && item['isParent'] != 'true',
+                  (item) =>
+              item['title'] == match.key && item['isParent'] != 'true',
             ))) {
       return ChatParseResult.question(
         AppLocalizations.of(context).translate('financial_secretary_specific_category_prompt'),
       );
     }
-    final parsedDate = metadataOnly ? null : _date(text);
-    final parsedTime = metadataOnly ? null : _time(text);
+    final parsedDate = metadataOnly ? null : _date(categoryText);
+    final parsedTime = metadataOnly ? null : _time(categoryText);
     final hasDate = RegExp(
-      r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
+      r'\b\d{1,2}\s*[/-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
     ).hasMatch(folded);
     final hasTime =
         _timePattern.hasMatch(folded) ||
-        RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
+            RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
     if (!metadataOnly &&
         ((hasDate && parsedDate == null) || (hasTime && parsedTime == null))) {
       return ChatParseResult.question(
@@ -129,23 +178,39 @@ class ChatParser {
     final locationUpdate = RegExp(
       r'^(?:dia diem|location)\s*[:：]?\s*(.+)$',
     ).firstMatch(folded);
-    final location = _location(text);
+    final location = metadataOnly ? '' : _location(text);
     if (match == null &&
         amount == null &&
         parsedDate == null &&
         parsedTime == null &&
         noteUpdate == null &&
         locationUpdate == null &&
-        location.isEmpty) {
+        location.isEmpty &&
+        !ambiguousCategory) {
       return ChatParseResult.question(
         memory.isActive
-              ? AppLocalizations.of(context).translate('financial_secretary_pending_details_prompt')
-              : AppLocalizations.of(context).translate('financial_secretary_transaction_prompt'),
+            ? AppLocalizations.of(context).translate('financial_secretary_pending_details_prompt')
+            : AppLocalizations.of(context).translate('financial_secretary_transaction_prompt'),
       );
     }
     // Freeze the default day on the first accepted turn (including midnight).
     memory.date ??= DateTime.now();
-    if (match != null) memory.categoryKey = match.key;
+    if (ambiguousCategory || (!metadataOnly && match == null &&
+        TransactionActionKeywords.hasPurchase(folded))) memory.categoryKey = null;
+    if (!metadataOnly && !ambiguousCategory && match == null &&
+        TransactionActionKeywords.hasPurchase(folded)) {
+      memory.ambiguousTerm = null;
+      memory.categoryCandidates.clear();
+    }
+    if (ambiguousCategory) {
+      memory.categoryCandidates = options.map((e) => e.key).toList();
+      memory.ambiguousTerm = !isCategoryReply && analysis.canClarifySingleTerm ? analysis.ambiguousTerms.first : null;
+    }
+    if (match != null) {
+      memory.categoryKey = match.key;
+      memory.categoryCandidates.clear();
+      memory.ambiguousTerm = null;
+    }
     if (amount != null) memory.amount = amount;
     if (parsedDate != null) memory.date = parsedDate;
     if (parsedTime != null) memory.time = parsedTime;
@@ -162,18 +227,43 @@ class ChatParser {
         r'^(?:ghi chu|note)\s*[:：]?\s*',
       ).firstMatch(_foldKeepingOffsets(text))!;
       memory.note = text.substring(prefix.end).trim();
-    } else if (match != null && memory.note.isEmpty) {
+      memory.noteIsExplicit = true;
+    } else if (!metadataOnly && !isCategoryReply && !memory.noteIsExplicit &&
+        (memory.note.isEmpty || TransactionActionKeywords.hasPurchase(folded) || RegExp(r'\b(an|uong|ate|drank|nhan luong|received|sua thanh|change to)\b').hasMatch(folded))) {
       memory.note = _cleanNote(text, context);
+      if (RegExp(r'\b(?:ghi chu|note)\s*:').hasMatch(folded)) memory.noteIsExplicit = true;
+    }
+    // Refine the note only from the user's own clarification text.
+    if (!metadataOnly && !isCategoryReply && !memory.noteIsExplicit && pendingTerm != null && match != null &&
+        !TransactionActionKeywords.hasPurchase(folded)) {
+      final categoryOnly = _fold(categoryLabel(match.key, context)) == folded || match.key == text;
+      if (!categoryOnly) {
+        final refined = _cleanNote(text, context);
+        if (refined.isNotEmpty) {
+          memory.note = RegExp('(?<![a-z0-9])$pendingTerm(?![a-z0-9])').hasMatch(_fold(refined))
+              ? refined : '${memory.note} $refined'.trim();
+        }
+      }
     }
     memory.turns.add(text);
     if (memory.turns.length > 20) memory.turns.removeAt(0);
+    if (ambiguousCategory) {
+      if (!isCategoryReply && analysis.canClarifySingleTerm) {
+        return ChatParseResult.question(AppLocalizations.of(context).translate(
+            'financial_secretary_clarify_${analysis.ambiguousTerms.first}'));
+      }
+      final labels = options.take(3).map((e) => categoryLabel(e.key, context)).join(' / ');
+      return ChatParseResult.question(AppLocalizations.of(context)
+          .translate('financial_secretary_ambiguous_category_prompt')
+          .replaceAll('{categories}', labels));
+    }
     if (memory.amount == null) {
       final income =
           memory.categoryKey != null && _isIncome(memory.categoryKey!);
       return ChatParseResult.question(
         income
-              ? AppLocalizations.of(context).translate('financial_secretary_income_amount_prompt')
-              : AppLocalizations.of(context).translate('financial_secretary_expense_amount_prompt'),
+            ? AppLocalizations.of(context).translate('financial_secretary_income_amount_prompt')
+            : AppLocalizations.of(context).translate('financial_secretary_expense_amount_prompt'),
       );
     }
     if (memory.categoryKey == null) {
@@ -183,7 +273,7 @@ class ChatParser {
     }
     final key = memory.categoryKey!;
     final type = listType.indexWhere(
-      (item) => item['title'] == key && item['isParent'] != 'true',
+          (item) => item['title'] == key && item['isParent'] != 'true',
     );
     return ChatParseResult.success(
       ChatTransactionDraft(
@@ -202,95 +292,20 @@ class ChatParser {
     );
   }
 
-  static ChatParseResult parse(String raw, BuildContext context) {
-    final text = raw.trim();
-    if (text.isEmpty) {
-      return ChatParseResult.question(
-        AppLocalizations.of(context).translate('financial_secretary_empty_input_prompt'),
-      );
-    }
-
-    final match = CategoryMatcher.find(text);
-    if (match != null &&
-        (match.key == 'current_money' || match.key == 'new_group')) {
-      return ChatParseResult.question(
-        match.key == 'current_money'
-              ? AppLocalizations.of(context).translate('financial_secretary_balance_guidance')
-              : AppLocalizations.of(context).translate('financial_secretary_custom_category_guidance'),
-      );
-    }
-
-    final amount = _amount(text);
-    if (amount == null || amount <= 0) {
-      return ChatParseResult.question(
-        AppLocalizations.of(context).translate('financial_secretary_missing_amount_prompt'),
-      );
-    }
-
-    if (match == null) {
-      return ChatParseResult.question(
-        AppLocalizations.of(context).translate('financial_secretary_category_prompt'),
-      );
-    }
-
-    // Re-resolve the index from the application's real list, never reindex it.
-    final typeIndex = listType.indexWhere(
-      (item) => item['title'] == match.key && item['isParent'] != 'true',
-    );
-    if (typeIndex < 0 || !_categoryKeys.contains(match.key)) {
-      return ChatParseResult.question(
-        AppLocalizations.of(context).translate('financial_secretary_category_unavailable'),
-      );
-    }
-
-    final date = _date(text);
-    final time = _time(text);
-    final folded = _fold(text);
-    final hasDate = RegExp(
-      r'\b\d{1,2}\s*[/.-]\s*\d{1,2}|\bngay\s*\d|\b\d{1,2}\s*thang\s*\d',
-    ).hasMatch(folded);
-    final hasTime =
-        _timePattern.hasMatch(folded) ||
-        RegExp(r'\b\d{1,2}\s+(?:sang|trua|chieu|toi|am|pm)\b').hasMatch(folded);
-    if ((hasDate && date == null) || (hasTime && time == null)) {
-      return ChatParseResult.question(
-        AppLocalizations.of(context).translate('financial_secretary_invalid_datetime'),
-      );
-    }
-
-    final confidence =
-        (match.confidence +
-                (date != null ? 0.02 : 0) +
-                (time != null ? 0.02 : 0) +
-                0.02)
-            .clamp(0.0, 0.99)
-            .toDouble();
-
-    return ChatParseResult.success(
-      ChatTransactionDraft(
-        amount: amount,
-        type: typeIndex,
-        typeName: categoryLabel(match.key, context),
-        date: _mergeDateAndTime(date ?? DateTime.now(), time),
-        note: _cleanNote(text, context),
-        location: _location(text),
-        hasExplicitTime: time != null,
-        kind: _isIncome(match.key)
-            ? ChatTransactionKind.income
-            : ChatTransactionKind.expense,
-        confidence: confidence,
-      ),
-    );
-  }
+  static ChatParseResult parse(String raw, BuildContext context) =>
+      parseTurn(raw, context, ChatConversationMemory());
 
   /// Đọc 50k, 50 nghìn, 1.5 triệu, 1,5 triệu, 50.000đ và 50000.
   /// Các số thuộc ngày/giờ sẽ bị bỏ qua, không bị hiểu nhầm là số tiền.
   static double? _amount(String text) {
+    text = _foldKeepingOffsets(_categoryText(text));
+    text = text.replaceAll(RegExp(r'(?<=\d)đ\b'), ' dong');
+
     // Exclude complete date/time spans before looking for money. A day,
     // month or minute must never become the amount of a transaction.
     for (final pattern in <RegExp>[
       RegExp(
-        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)',
+        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/-]\s*\d{1,2}(?:\s*[/-]\s*\d{2,4})?(?!\d)',
       ),
       RegExp(
         r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)',
@@ -304,7 +319,7 @@ class ChatParser {
       text = _without(text, pattern);
     }
     final pattern = RegExp(
-      r'\d[\d.,]*(?:\s*(?:triệu|tr|million|k|nghìn|ngàn|đ|dong)(?![A-Za-zÀ-ỹĐđ0-9]))?',
+      r'\d[\d.,]*(?:\s*(?:triệu|trieu|tr|million|k|nghìn|nghin|ngàn|ngan|vnd|dong|đ|d)(?![A-Za-zÀ-ỹĐđ0-9]))?',
       caseSensitive: false,
     );
 
@@ -316,7 +331,7 @@ class ChatParser {
       if (_isDateOrTimeNumber(text, match.start, match.end, raw)) continue;
 
       final unitMatch = RegExp(
-        r'(triệu|tr|million|k|nghìn|ngàn|đ|dong)\s*$',
+        r'(triệu|trieu|tr|million|k|nghìn|nghin|ngàn|ngan|vnd|dong|đ|d)\s*$',
         caseSensitive: false,
       ).firstMatch(raw);
       final unit = (unitMatch?.group(1) ?? '').toLowerCase();
@@ -324,12 +339,12 @@ class ChatParser {
           ? raw
           : raw.substring(0, unitMatch.start).trim();
       final value = _parseNumber(number);
-      if (value == null || value <= 0) continue;
+      if (value == null || !value.isFinite || value <= 0 || value > 9000000000000) continue;
 
       var amount = value;
-      if (unit == 'triệu' || unit == 'tr' || unit == 'million') {
+      if (unit == 'triệu' || unit == 'trieu' || unit == 'tr' || unit == 'million') {
         amount = value * 1000000;
-      } else if (unit == 'k' || unit == 'nghìn' || unit == 'ngàn') {
+      } else if (unit == 'k' || unit == 'nghìn' || unit == 'nghin' || unit == 'ngàn' || unit == 'ngan') {
         amount = value * 1000;
       }
 
@@ -342,6 +357,10 @@ class ChatParser {
 
       // Có đơn vị (k, nghìn, triệu, đ) hoặc đứng sau động từ thanh toán
       // thì gần như chắc chắn đây là số tiền.
+      final standalone = RegExp(r'^\s*\d[\d.,]*\s*$').hasMatch(text);
+      // Bare model numbers, quantities and addresses are not payment amounts.
+      if (unit.isEmpty && !hasPaymentMarker && !standalone &&
+          !(value >= 10000 && match.end == text.trimRight().length)) continue;
       var score = unit.isNotEmpty ? 3.0 : 0.5;
       if (hasPaymentMarker) score += 4.0;
       if (amount >= 1000) score += 0.5;
@@ -374,11 +393,11 @@ class ChatParser {
   }
 
   static bool _isDateOrTimeNumber(
-    String text,
-    int start,
-    int end,
-    String candidate,
-  ) {
+      String text,
+      int start,
+      int end,
+      String candidate,
+      ) {
     final value = _fold(candidate.trim());
 
     // Có đơn vị tiền rõ ràng thì không xem là ngày hoặc giờ.
@@ -421,7 +440,7 @@ class ChatParser {
   }
 
   static bool _isIncome(String category) => listType.any(
-    (item) => item['title'] == category && item['type'] == 'income',
+        (item) => item['title'] == category && item['type'] == 'income',
   );
 
   /// Nhận hôm nay, hôm qua, ngày mai, ngày kia, thứ trong tuần,
@@ -445,7 +464,7 @@ class ChatParser {
     }
 
     var match = RegExp(
-      r'\b(\d{1,2})\s*[/\-.]\s*(\d{1,2})(?:\s*[/\-.]\s*(\d{2,4}))?\b',
+      r'\b(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?\b',
     ).firstMatch(folded);
     if (match != null) {
       return _validDate(
@@ -541,9 +560,9 @@ class ChatParser {
     final folded = _fold(text);
     final match =
         _timePattern.firstMatch(folded) ??
-        RegExp(
-          r'(?<![\d/.-])(\d{1,2})\s+(sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
-        ).firstMatch(folded);
+            RegExp(
+              r'(?<![\d/.-])(\d{1,2})\s+(sang|trua|chieu|toi|am|pm)(?![a-z0-9])',
+            ).firstMatch(folded);
     if (match == null) return null;
     final hasSeparator = match.groupCount == 3;
     var hour = int.parse(match.group(1)!);
@@ -571,12 +590,30 @@ class ChatParser {
     );
   }
 
+  // Location extraction must inspect original spelling before accent folding.
+  static List<int>? _locationSpan(String text) =>
+      TransactionLocationParser.findSpan(text, _foldKeepingOffsets(text));
+
   static String _location(String text) {
-    final match = RegExp(
-      r'\b(?:ở|o|tại|tai|at|in)\s+([^,.;]+)',
-      caseSensitive: false,
-    ).firstMatch(text);
-    return match?.group(1)?.trim() ?? '';
+    final span = _locationSpan(text);
+    return span == null ? '' : _tidyNote(text.substring(span[1], span[2]));
+  }
+
+  static String _categoryText(String text) {
+    final span = _locationSpan(text);
+    if (span != null) text = text.replaceRange(span[0], span[2], ' ');
+    final explicit = RegExp(r'\b(?:ghi chu|note)\s*:').firstMatch(_foldKeepingOffsets(text));
+    if (explicit != null) text = text.substring(0, explicit.start);
+    return text;
+  }
+
+  static bool _hasMultipleAmounts(String text) {
+    final money = RegExp(r'\d[\d.,]*\s*(?:trieu|tr|million|k|nghin|ngan|dong|vnd|d)(?![a-z0-9])');
+    final clean = _fold(_categoryText(text));
+    final explicit = money.allMatches(clean).toList();
+    final bareLarge = RegExp(r'(?<![a-z0-9])\d{5,}(?![a-z0-9])').allMatches(clean)
+        .where((m) => !explicit.any((e) => m.start >= e.start && m.end <= e.end));
+    return explicit.length + bareLarge.length > 1;
   }
 
   // Fold accents without changing offsets so removals preserve the original
@@ -605,11 +642,25 @@ class ChatParser {
         ),
       );
     }
-    var note = text;
+    var note = _categoryText(text);
+    note = _without(note, RegExp(
+        r'^\s*(?:ghi giup toi khoan|ghi lai giup minh|ghi khoan nay nhe|them giao dich|them khoan|luu giup toi|ghi lai khoan|cho toi ghi khoan|nho ghi giup khoan|record this|please record that|please add this transaction|add a transaction|please save this|log this transaction|add this|log this|could you record this|please log a transaction)\s*[:：]?\s*'));
+    note = _without(note, RegExp(
+        r'[,;]?\s*(?:nhe|ghi lai giup toi|please record it|please save it)\s*$'));
+
+    final amount = _amount(text);
+    if (amount != null) {
+      final bare = RegExp(r'\d[\d.,]*\s*$').firstMatch(note);
+      if (bare != null && _parseNumber(bare.group(0)!.trim()) == amount) {
+        note = note.substring(0, bare.start);
+      }
+    }
+    note = _without(note, RegExp(
+        r'(?<![a-z0-9])(?:sang nay|trua nay|chieu nay|toi nay|this morning|this afternoon|this evening)(?![a-z0-9])'));
     // Remove full date/time spans BEFORE amounts.
     for (final pattern in <RegExp>[
       RegExp(
-        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/.-]\s*\d{1,2}(?:\s*[/.-]\s*\d{2,4})?(?!\d)',
+        r'(?<!\d)(?:ngay\s*)?\d{1,2}\s*[/-]\s*\d{1,2}(?:\s*[/-]\s*\d{2,4})?(?!\d)',
       ),
       RegExp(
         r'(?<![a-z0-9])(?:ngay\s*)?\d{1,2}\s*thang\s*\d{1,2}(?:\s*nam\s*\d{2,4})?(?!\d)',
@@ -623,28 +674,29 @@ class ChatParser {
         r'(?<![a-z0-9])(?:hom nay|hom qua|ngay mai|ngay kia|today|yesterday|tomorrow)(?![a-z0-9])',
       ),
       RegExp(
-        r'\d[\d.,]*(?:\s*(?:trieu|tr|million|k|nghin|ngan|dong|d)(?![a-z0-9]))?',
+        r'\d[\d.,]*\s*(?:trieu|tr|million|k|nghin|ngan|dong|vnd|d)(?![a-z0-9])',
       ),
-      RegExp(r'(?<![a-z0-9])(?:o|tai|at|in)\s+[^,.;]+'),
+      RegExp(r'(?<![a-z0-9])(?:het|ton|gia|cost|paid|spent|for|of|thanh toan)\s+\d[\d.,]*'),
     ]) {
       note = _without(note, pattern);
     }
-    note = _without(note, RegExp(r'(?<![a-z0-9])ngay(?![a-z0-9])'));
+
     note = note.replaceAll('/', ' ');
     // Strip conversational/action prefixes only; do not delete words inside
     // item names (for example "bánh mì", "bún bò", "cơm chiên").
-    final prefix = RegExp(
-      r'^\s*(?:toi|minh|em|anh|ban|di|da|vua|co|an|uong|mua|dung|chi tieu|chi|tra|thanh toan|nhan|dong|gui)\s+',
-    );
-    while (prefix.hasMatch(_foldKeepingOffsets(note))) {
-      note = _without(note, prefix);
+    final prefix = TransactionActionKeywords.leading;
+    while (true) {
+      final foldedNote = _foldKeepingOffsets(note);
+      if (TransactionActionKeywords.shoppingPrefixPattern.hasMatch(foldedNote)) {
+        note = _without(note, TransactionActionKeywords.shoppingPrefixPattern);
+      } else if (prefix.hasMatch(foldedNote)) {
+        note = _without(note, prefix);
+      } else {
+        break;
+      }
     }
-    note = _without(
-      note,
-      RegExp(
-        r'(?<![a-z0-9])(?:het|ton|mat|gia|luc|vao|khi|hoi|ngay)(?![a-z0-9])',
-      ),
-    );
+    note = _without(note, RegExp(
+        r'\s+(?:het|ton|gia|cost|paid|spent|luc|vao|on|at|for|of|dong)\s*$'));
     note = note.replaceAll('/', ' ');
     note = _tidyNote(note);
     if (RegExp(r'^(?:sang|trua|toi|khuya)$').hasMatch(_fold(note))) {

@@ -1,0 +1,177 @@
+{
+  "previous_nominal_phrases": 28967,
+  "reusable_keywords": 1672,
+  "phrases_covered_by_keywords": 23858,
+  "remaining_specific_phrases": 5109,
+  "explanation": "Old recognition phrases retained in before_refactor data for coverage verification; runtime uses shared heads and specific phrases. Keyword counts are not new unique real products.",
+  "per_category": {
+    "personal_belongings": {
+      "before": 1032,
+      "keywords": 89,
+      "remaining": 277,
+      "covered_by_keywords": 755
+    },
+    "housewares": {
+      "before": 1032,
+      "keywords": 95,
+      "remaining": 266,
+      "covered_by_keywords": 766
+    },
+    "market": {
+      "before": 1149,
+      "keywords": 75,
+      "remaining": 447,
+      "covered_by_keywords": 702
+    },
+    "eating": {
+      "before": 1035,
+      "keywords": 31,
+      "remaining": 770,
+      "covered_by_keywords": 265
+    },
+    "move": {
+      "before": 1024,
+      "keywords": 76,
+      "remaining": 125,
+      "covered_by_keywords": 899
+    },
+    "vehicle_maintenance": {
+      "before": 1029,
+      "keywords": 85,
+      "remaining": 145,
+      "covered_by_keywords": 884
+    },
+    "physical_examination": {
+      "before": 1027,
+      "keywords": 88,
+      "remaining": 138,
+      "covered_by_keywords": 889
+    },
+    "beautify": {
+      "before": 1026,
+      "keywords": 97,
+      "remaining": 144,
+      "covered_by_keywords": 882
+    },
+    "pet": {
+      "before": 1149,
+      "keywords": 77,
+      "remaining": 613,
+      "covered_by_keywords": 536
+    },
+    "education": {
+      "before": 1028,
+      "keywords": 46,
+      "remaining": 136,
+      "covered_by_keywords": 892
+    },
+    "sport": {
+      "before": 1030,
+      "keywords": 78,
+      "remaining": 179,
+      "covered_by_keywords": 851
+    },
+    "fun_play": {
+      "before": 1028,
+      "keywords": 76,
+      "remaining": 116,
+      "covered_by_keywords": 912
+    },
+    "online_services": {
+      "before": 1024,
+      "keywords": 76,
+      "remaining": 128,
+      "covered_by_keywords": 896
+    },
+    "gifts_donations": {
+      "before": 1026,
+      "keywords": 62,
+      "remaining": 96,
+      "covered_by_keywords": 930
+    },
+    "repair_and_decorate_the_house": {
+      "before": 1029,
+      "keywords": 38,
+      "remaining": 585,
+      "covered_by_keywords": 444
+    },
+    "salary": {
+      "before": 1024,
+      "keywords": 28,
+      "remaining": 81,
+      "covered_by_keywords": 943
+    },
+    "other_income": {
+      "before": 1024,
+      "keywords": 21,
+      "remaining": 130,
+      "covered_by_keywords": 894
+    },
+    "earn_profit": {
+      "before": 1023,
+      "keywords": 31,
+      "remaining": 61,
+      "covered_by_keywords": 962
+    },
+    "invest": {
+      "before": 1024,
+      "keywords": 43,
+      "remaining": 81,
+      "covered_by_keywords": 943
+    },
+    "rent_house": {
+      "before": 1024,
+      "keywords": 41,
+      "remaining": 81,
+      "covered_by_keywords": 943
+    },
+    "water_money": {
+      "before": 1024,
+      "keywords": 51,
+      "remaining": 80,
+      "covered_by_keywords": 944
+    },
+    "electricity_bill": {
+      "before": 1024,
+      "keywords": 51,
+      "remaining": 78,
+      "covered_by_keywords": 946
+    },
+    "gas_money": {
+      "before": 1024,
+      "keywords": 51,
+      "remaining": 56,
+      "covered_by_keywords": 968
+    },
+    "internet_money": {
+      "before": 1024,
+      "keywords": 52,
+      "remaining": 65,
+      "covered_by_keywords": 959
+    },
+    "telephone_fee": {
+      "before": 1024,
+      "keywords": 54,
+      "remaining": 76,
+      "covered_by_keywords": 948
+    },
+    "tv_money": {
+      "before": 1024,
+      "keywords": 51,
+      "remaining": 29,
+      "covered_by_keywords": 995
+    },
+    "insurance": {
+      "before": 1024,
+      "keywords": 68,
+      "remaining": 53,
+      "covered_by_keywords": 971
+    },
+    "other_costs": {
+      "before": 1012,
+      "keywords": 41,
+      "remaining": 73,
+      "covered_by_keywords": 939
+    }
+  }
+}

@@ -6,13 +6,17 @@ import '../model/chat_intent.dart';
 
 class ChatFirebaseAdapter {
   static Future<void> addDraft(ChatTransactionDraft draft) async {
+    if (draft.type < 0 || draft.type >= listType.length ||
+        !draft.amount.isFinite || draft.amount <= 0) {
+      throw ArgumentError('Invalid transaction draft');
+    }
     final category = Map<String, dynamic>.from(listType[draft.type] as Map);
 
     final categoryId = (category['id'] ?? category['title'])?.toString();
     final parentId = category['parent']?.toString();
 
     final parentIndex = listType.indexWhere(
-      (item) => item['id']?.toString() == parentId,
+          (item) => item['id']?.toString() == parentId,
     );
 
     final parentName = parentIndex >= 0

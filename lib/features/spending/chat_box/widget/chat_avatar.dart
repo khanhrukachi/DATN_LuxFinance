@@ -30,5 +30,5 @@ class ChatAvatar extends StatelessWidget {
         size: size * 0.53,
       ),
     );
-    }
+  }
 }

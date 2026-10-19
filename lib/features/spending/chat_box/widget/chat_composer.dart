@@ -91,5 +91,5 @@ class ChatComposer extends StatelessWidget {
         ),
       ),
     );
-    }
+  }
 }

@@ -50,5 +50,5 @@ class ChatSavingStatus extends StatelessWidget {
         ),
       ),
     );
-    }
+  }
 }

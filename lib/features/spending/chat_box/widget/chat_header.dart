@@ -62,5 +62,5 @@ class ChatHeader extends StatelessWidget implements PreferredSizeWidget {
         const SizedBox(width: 14),
       ],
     );
-    }
+  }
 }

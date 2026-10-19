@@ -12,7 +12,10 @@ class ChatSuggestions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = ChatStyle(context);
-    final suggestions = memory.isActive
+    final suggestions = memory.categoryCandidates.isNotEmpty
+        ? memory.categoryCandidates.take(4).map((key) =>
+        AppLocalizations.of(context).translate(key)).toList()
+        : memory.isActive
         ? (hasDraft
         ? [
       AppLocalizations.of(context).translate('financial_secretary_save_transaction'),
@@ -62,5 +65,5 @@ class ChatSuggestions extends StatelessWidget {
         }),
       ),
     );
-    }
+  }
 }

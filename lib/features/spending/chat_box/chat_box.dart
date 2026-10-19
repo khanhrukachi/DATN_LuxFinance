@@ -174,6 +174,7 @@ class _ChatBoxState extends State<ChatBox> {
         _activeDraftMessage = message;
         _messages.add(message);
       } else {
+        _retireDraft();
         _messages.add(
           ChatMessage(
             text: result.question ?? result.error ?? AppLocalizations.of(context).translate('financial_secretary_parse_failed'),

@@ -1,0 +1,126 @@
+{
+  "muc": {
+    "question_vi": "Bạn nói mực tươi để nấu, món mực đã chế biến, mực viết/in hay mực phun xăm?",
+    "question_en": "Do you mean raw squid for cooking, prepared squid, writing/printing ink, or cosmetic tattoo ink?"
+  },
+  "chuot": {
+    "question_vi": "Bạn nói chuột máy tính hay chuột nuôi/thú cưng?",
+    "question_en": "Do you mean a computer mouse or a pet rodent?"
+  },
+  "dau": {
+    "question_vi": "Đó là dầu ăn, dầu nhớt xe, dầu gội/dưỡng tóc hay dầu vệ sinh đồ gia dụng?",
+    "question_en": "Is it cooking oil, vehicle oil, hair care oil, or household cleaning oil?"
+  },
+  "duong": {
+    "question_vi": "Bạn nói đường dùng làm thực phẩm hay phí đường bộ/cầu đường?",
+    "question_en": "Do you mean sugar as food or a road/toll charge?"
+  },
+  "kinh": {
+    "question_vi": "Đó là kính đeo mắt, kính cửa nhà hay kính thay cho xe?",
+    "question_en": "Is it eyewear, home window glass, or replacement vehicle glass?"
+  },
+  "banh": {
+    "question_vi": "Bạn nói bánh để ăn, bánh xe hay bánh của ghế/xe đẩy gia đình?",
+    "question_en": "Do you mean food, a vehicle wheel, or a household chair/cart wheel?"
+  },
+  "sac": {
+    "question_vi": "Bạn mua bộ sạc thiết bị cá nhân hay trả tiền sạc xe điện?",
+    "question_en": "Are you buying a personal device charger or paying to charge an electric vehicle?"
+  },
+  "pin": {
+    "question_vi": "Đó là pin thiết bị cá nhân, pin đồ gia dụng hay pin thay cho xe?",
+    "question_en": "Is it a personal device battery, a household battery, or a replacement vehicle battery?"
+  },
+  "son": {
+    "question_vi": "Bạn nói son môi/sơn móng, sơn nhà hay sơn xe?",
+    "question_en": "Do you mean lipstick/nail polish, home paint, or vehicle paint?"
+  },
+  "keo": {
+    "question_vi": "Bạn nói keo học tập, keo xây/sửa nhà, keo gia dụng hay kẹo ăn?",
+    "question_en": "Do you mean stationery glue, construction glue, household adhesive, or candy?"
+  },
+  "kem": {
+    "question_vi": "Bạn nói kem ăn, kem dưỡng/chống nắng hay kem đánh răng?",
+    "question_en": "Do you mean ice cream, skincare/sunscreen cream, or toothpaste?"
+  },
+  "nuoc": {
+    "question_vi": "Bạn nói nước uống, tiền nước sinh hoạt, nước tẩy rửa hay sản phẩm dưỡng da?",
+    "question_en": "Do you mean a drink, a water utility bill, a cleaning liquid, or skincare?"
+  },
+  "ca": {
+    "question_vi": "Bạn mua cá tươi để nấu, món cá đã chế biến hay cá cảnh?",
+    "question_en": "Do you mean raw fish for cooking, a prepared fish dish, or aquarium fish?"
+  },
+  "ga": {
+    "question_vi": "Bạn mua thịt gà sống để nấu, món gà đã chế biến hay gà cảnh?",
+    "question_en": "Do you mean raw chicken for cooking, a prepared chicken meal, or a pet chicken?"
+  },
+  "sua": {
+    "question_vi": "Đó là sữa uống, sữa làm nguyên liệu, sữa tắm hay sữa cho thú cưng?",
+    "question_en": "Is it drinking milk, milk as a cooking ingredient, body wash, or pet milk?"
+  },
+  "bot": {
+    "question_vi": "Đó là bột nấu ăn, bột giặt, phấn/bột trang điểm hay bột thuốc?",
+    "question_en": "Is it cooking flour, laundry powder, cosmetic powder, or powdered medicine?"
+  },
+  "hoa": {
+    "question_vi": "Bạn mua hoa để tặng, để trang trí nhà hay hoa dùng làm thực phẩm?",
+    "question_en": "Are the flowers a gift, home decoration, or an edible ingredient?"
+  },
+  "bong": {
+    "question_vi": "Bạn nói bóng thể thao, bóng đèn hay bóng bay vui chơi?",
+    "question_en": "Do you mean a sports ball, a light bulb, or a balloon for entertainment?"
+  },
+  "the": {
+    "question_vi": "Bạn nói thẻ nạp điện thoại, phí thẻ ngân hàng, thẻ game hay thẻ quà tặng?",
+    "question_en": "Do you mean a phone top-up card, a bank card fee, a game card, or a gift card?"
+  },
+  "ve": {
+    "question_vi": "Đó là vé đi lại, vé tham quan/xem biểu diễn hay vé tập thể thao?",
+    "question_en": "Is it a transport ticket, an entertainment ticket, or a sports admission ticket?"
+  },
+  "day": {
+    "question_vi": "Đó là dây sạc/phụ kiện cá nhân, dây dùng trong nhà, dây dắt thú cưng, dây tập hay dây đàn?",
+    "question_en": "Is it a personal cable, a household cord, a pet leash, an exercise rope, or an instrument string?"
+  },
+  "vong": {
+    "question_vi": "Bạn nói vòng trang sức, vòng cổ thú cưng hay vòng tập thể thao?",
+    "question_en": "Do you mean jewelry, a pet collar, or an exercise hoop?"
+  },
+  "ong": {
+    "question_vi": "Đó là ống hút, ống nước xây/sửa nhà, ống y tế hay ống kính máy ảnh?",
+    "question_en": "Is it a drinking straw, a home plumbing pipe, a medical tube, or a camera lens?"
+  },
+  "binh": {
+    "question_vi": "Bạn nói bình nước/đồ gia dụng, bình gas nấu ăn hay bình ắc quy xe?",
+    "question_en": "Do you mean a household bottle, cooking gas cylinder, or vehicle battery?"
+  },
+  "quat": {
+    "question_vi": "Đó là quạt gia đình, quạt tản nhiệt máy tính hay quạt làm mát xe?",
+    "question_en": "Is it a household fan, a computer cooling fan, or a vehicle cooling fan?"
+  },
+  "loc": {
+    "question_vi": "Bạn nói bộ lọc nước/không khí gia đình, lọc của xe hay kính lọc máy ảnh?",
+    "question_en": "Do you mean a household filter, a vehicle filter, or a camera lens filter?"
+  },
+  "den": {
+    "question_vi": "Đó là đèn dùng trong nhà, đèn xe hay đèn trang trí/lắp sửa nhà?",
+    "question_en": "Is it a household lamp, a vehicle light, or lighting for home decoration/renovation?"
+  },
+  "hat": {
+    "question_vi": "Bạn mua hạt nguyên liệu, hạt ăn liền, hạt thức ăn thú cưng hay hạt giống trồng trang trí?",
+    "question_en": "Are these raw ingredients, ready-to-eat nuts, pet food pellets, or seeds for decorative plants?"
+  },
+  "vai": {
+    "question_vi": "Bạn nói quả vải, vải may đồ cá nhân hay vải may đồ dùng trong nhà?",
+    "question_en": "Do you mean lychee fruit, fabric for clothing, or fabric for household furnishings?"
+  },
+  "ban": {
+    "question_vi": "Bạn nói bàn ghế, bàn phím máy tính hay bảng/dụng cụ học tập?",
+    "question_en": "Do you mean furniture, a computer keyboard, or a learning board?"
+  },
+  "tay": {
+    "question_vi": "Bạn nói tẩy bút chì, chất tẩy rửa hay tẩy tóc/tẩy trang?",
+    "question_en": "Do you mean an eraser, household cleaner, or hair/makeup remover?"
+  }
+}

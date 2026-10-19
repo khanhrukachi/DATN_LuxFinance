@@ -439,6 +439,8 @@ class _DebtBookScreenState extends State<DebtBookScreen>
                                   ? Icons.check_circle_outline_rounded
                                   : entry.key == 'overdue'
                                   ? Icons.schedule_rounded
+                                  : entry.key == 'partial'
+                                  ? Icons.radio_button_checked_rounded
                                   : Icons.circle_outlined,
                               selected: status == entry.key,
                               onTap: () => setState(() => status = entry.key),

@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -175,7 +174,7 @@ class _MainPageState extends State<MainPage>
                             ),
                           ),
                         ),
-                        _buildArcMenu(progress),
+                        _buildToolsMenu(progress),
                       ],
                     ),
                   ),
@@ -210,13 +209,17 @@ class _MainPageState extends State<MainPage>
                 shape: BoxShape.circle,
               ),
               child: AnimatedRotation(
-                turns: _isMenuOpen ? .125 : 0,
+                turns: _isMenuOpen ? .25 : 0,
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
-                child: const Icon(
-                  Icons.widgets_rounded,
-                  color: MainStyle.ink,
-                  size: 32,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    _isMenuOpen ? Icons.close_rounded : Icons.widgets_rounded,
+                    key: ValueKey(_isMenuOpen),
+                    color: MainStyle.ink,
+                    size: 30,
+                  ),
                 ),
               ),
             ),
@@ -322,122 +325,216 @@ class _MainPageState extends State<MainPage>
     );
   }
 
-  Widget _buildArcMenu(double progress) {
-    final actions = <_ArcAction>[
-      _ArcAction(
-        AppLocalizations.of(context).translate('main_analytics'),
-        Icons.bar_chart_rounded,
-            () => _openPage(const AnalyticPage()),
+  Widget _buildToolsMenu(double progress) {
+    final tr = AppLocalizations.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final actions = <_ToolAction>[
+      _ToolAction(
+        tr.translate('main_analytics'), Icons.bar_chart_rounded,
+            () => _openPage(const AnalyticPage()), const Color(0xFF14988F),
       ),
-      _ArcAction(
-        AppLocalizations.of(context).translate('financial_chat_title'),
-        Icons.question_answer_rounded,
-        _openFinancialChat,
+      _ToolAction(
+        tr.translate('financial_chat_title'), Icons.question_answer_rounded,
+        _openFinancialChat, const Color(0xFF5279D7),
       ),
-      _ArcAction(
-        AppLocalizations.of(context).translate('financial_secretary_title'),
-        Icons.smart_toy_rounded,
-            () => _openPage(
-          ChatBox(onCreateTransaction: ChatFirebaseAdapter.addDraft),
-        ),
+      _ToolAction(
+        tr.translate('financial_secretary_title'), Icons.smart_toy_rounded,
+            () => _openPage(ChatBox(onCreateTransaction: ChatFirebaseAdapter.addDraft)),
+        const Color(0xFF9271CD),
       ),
-      _ArcAction(
-        AppLocalizations.of(context).translate('main_notifications'),
-        Icons.notifications_rounded,
-            () => _openPage(const NotificationScreen()),
+      _ToolAction(
+        tr.translate('main_notifications'), Icons.notifications_rounded,
+            () => _openPage(const NotificationScreen()), const Color(0xFFBD8732),
       ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final tileWidth = math.min(130.0, width * .30);
-        final radius = math.min(185.0, width * .36);
-        final arcLift = 42.0 * progress;
-        // Lift the shortcut arc above the separate create-action row.
-        const angles = [158.0, 112.0, 68.0, 22.0];
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _ArcGuidePainter(
-                    radius: radius,
-                    progress: progress,
-                    lift: arcLift,
-                    color: MainStyle.cyan.withOpacity(.22),
-                  ),
-                ),
-              ),
-            ),
-            for (var i = 0; i < actions.length; i++)
-              Positioned(
-                left:
-                width / 2 +
-                    math.cos(angles[i] * math.pi / 180) * radius * progress -
-                    tileWidth / 2,
-                bottom:
-                18 +
-                    math.sin(angles[i] * math.pi / 180) * radius * progress -
-                    40 +
-                    arcLift,
-                width: tileWidth,
-                child: Opacity(
-                  opacity: progress,
-                  child: Transform.scale(
-                    scale: .65 + .35 * progress,
-                    child: _arcAction(actions[i]),
-                  ),
-                ),
-              ),
-            Positioned(
-              left: (width - math.min(150.0, width - 32)) / 2,
-              right: (width - math.min(150.0, width - 32)) / 2,
-              bottom: 80,
-              child: Opacity(
-                opacity: progress,
-                child: Transform.translate(
-                  offset: Offset(0, 18 * (1 - progress)),
-                  child: _createActionButton(
-                    label: AppLocalizations.of(context).translate('main_add_debt'),
-                    icon: Icons.menu_book_rounded,
-                    onTap: _openAddDebt,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
-              child: Opacity(
-                opacity: progress,
-                child: Transform.translate(
-                  offset: Offset(0, 18 * (1 - progress)),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _createActionButton(
-                          label: AppLocalizations.of(context).translate('main_add_expense'),
-                          icon: Icons.remove_circle_outline_rounded,
-                          onTap: _openAddSpending,
+        final bottom = constraints.maxHeight > 180 ? 42.0 : 8.0;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(14, 12, 14, bottom),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Opacity(
+              opacity: progress,
+              child: Transform.translate(
+                offset: Offset(0, 36 * (1 - progress)),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(.22),
+                          blurRadius: 32,
+                          offset: const Offset(0, 14),
+                        ),
+                        BoxShadow(
+                          color: MainStyle.cyan.withOpacity(.09),
+                          blurRadius: 20,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: MainStyle.card(context),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: BorderSide(
+                          color: MainStyle.cyan.withOpacity(dark ? .18 : .12),
                         ),
                       ),
-                      const SizedBox(width: 68),
-                      Expanded(
-                        child: _createActionButton(
-                          label: AppLocalizations.of(context).translate('main_add_income'),
-                          icon: Icons.add_circle_outline_rounded,
-                          onTap: _openAddIncome,
+                      clipBehavior: Clip.antiAlias,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _toolsHeader(),
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _createActionButton(
+                                            label: tr.translate('main_add_expense'),
+                                            icon: Icons.remove_circle_outline_rounded,
+                                            onTap: _openAddSpending,
+                                            filled: true,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _createActionButton(
+                                            label: tr.translate('main_add_income'),
+                                            icon: Icons.add_circle_outline_rounded,
+                                            onTap: _openAddIncome,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Divider(height: 1, color: MainStyle.muted(context).withOpacity(.12))),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                                          child: Icon(Icons.apps_rounded, size: 16, color: MainStyle.muted(context).withOpacity(.5)),
+                                        ),
+                                        Expanded(child: Divider(height: 1, color: MainStyle.muted(context).withOpacity(.12))),
+                                      ],
+                                    ),
+                                  ),
+                                  for (var row = 0; row < 2; row++) ...[
+                                    if (row > 0) const SizedBox(height: 10),
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (var col = 0; col < 2; col++) ...[
+                                            if (col > 0) const SizedBox(width: 10),
+                                            Expanded(
+                                              child: _revealTool(
+                                                progress, row * 2 + col,
+                                                _toolTile(actions[row * 2 + col]),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         );
       },
+    );
+  }
+
+  Widget _toolsHeader() {
+    final tr = AppLocalizations.of(context);
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF073D43), Color(0xFF116C6B)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -24, top: -50,
+            child: IgnorePointer(
+              child: Container(
+                width: 150, height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: MainStyle.cyan.withOpacity(.12), width: 24),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
+            child: Row(
+              children: [
+                Container(
+                  width: 46, height: 46,
+                  decoration: BoxDecoration(
+                    gradient: MainStyle.gradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.widgets_rounded, size: 24, color: MainStyle.ink),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    tr.translate('main_shortcuts'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _closeMenu,
+                  tooltip: tr.translate('main_close_shortcuts'),
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(.12), shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _revealTool(double progress, int index, Widget child) {
+    final value = ((progress - index * .07) / (1 - index * .07)).clamp(0.0, 1.0).toDouble();
+    return Opacity(
+      opacity: value,
+      child: Transform.translate(offset: Offset(0, 12 * (1 - value)), child: child),
     );
   }
 
@@ -445,118 +542,100 @@ class _MainPageState extends State<MainPage>
     required String label,
     required IconData icon,
     required VoidCallback onTap,
+    bool filled = false,
   }) {
-    return Material(
-      color: MainStyle.card(context),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 56),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: MainStyle.cyan.withOpacity(.3)),
-            boxShadow: [
-              BoxShadow(
-                color: MainStyle.teal.withOpacity(.16),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: MainStyle.accent(context), size: 20),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: MainStyle.text(context),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _arcAction(_ArcAction action) {
-    return Semantics(
-      button: true,
-      label: action.label,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = filled ? MainStyle.ink : MainStyle.accent(context);
+    return Tooltip(
+      message: label,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: action.onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: MainStyle.gradient,
-                    border: Border.all(
-                      color: Colors.white.withOpacity(.65),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: MainStyle.teal.withOpacity(.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: filled ? MainStyle.gradient : null,
+            color: filled ? null : MainStyle.accent(context).withOpacity(dark ? .14 : .07),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: MainStyle.accent(context).withOpacity(.15)),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 15),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: foreground, size: 27),
+                  const SizedBox(height: 8),
+                  Text(
+                    label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: foreground, fontSize: 12, fontWeight: FontWeight.w800),
                   ),
-                  child: Icon(action.icon, color: MainStyle.ink, size: 26),
-                ),
-                const SizedBox(height: 9),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: MainStyle.card(context),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: MainStyle.cyan.withOpacity(.22)),
-                  ),
-                  child: Text(
-                    action.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: MainStyle.text(context),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  Widget _toolTile(_ToolAction action) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tint = dark ? Color.lerp(action.color, Colors.white, .3)! : action.color;
+    return Tooltip(
+      message: action.label,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [tint.withOpacity(dark ? .13 : .09), tint.withOpacity(.025)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: tint.withOpacity(.16)),
+          ),
+          child: InkWell(
+            onTap: action.onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 42, height: 42,
+                        decoration: BoxDecoration(
+                          color: tint.withOpacity(dark ? .18 : .12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(action.icon, color: tint, size: 23),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.north_east_rounded, size: 16, color: tint.withOpacity(.6)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    action.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: MainStyle.text(context), fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }
 
 class _KeepAliveTab extends StatefulWidget {
@@ -580,45 +659,12 @@ class _KeepAliveTabState extends State<_KeepAliveTab>
   }
 }
 
-class _ArcAction {
+class _ToolAction {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _ArcAction(this.label, this.icon, this.onTap);
-}
-
-class _ArcGuidePainter extends CustomPainter {
-  final double radius, progress, lift;
   final Color color;
 
-  const _ArcGuidePainter({
-    required this.radius,
-    required this.progress,
-    required this.lift,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height - 18 - lift);
-    final paint = Paint()
-      ..color = color.withOpacity(color.opacity * progress)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius * progress),
-      -158 * math.pi / 180,
-      136 * math.pi / 180,
-      false,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ArcGuidePainter oldDelegate) =>
-      oldDelegate.progress != progress ||
-          oldDelegate.radius != radius ||
-          oldDelegate.lift != lift ||
-          oldDelegate.color != color;
+  const _ToolAction(this.label, this.icon, this.onTap, this.color);
 }

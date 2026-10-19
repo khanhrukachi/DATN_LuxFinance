@@ -216,12 +216,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ),
           if (kDebugMode)
-          ReminderToolbarButton(
-            tooltip: _text('mark_all'),
-            icon: Icons.done_all_rounded,
-            loading: _markingAll,
-            onPressed: _uid == null || unread == 0 || _markingAll ? null : _markAllRead,
-          ),
+            if (_markingAll)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Semantics(
+                  label: _text('mark_all'),
+                  liveRegion: true,
+                  child: const SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: _NotificationLoadingSkeleton(compact: true),
+                  ),
+                ),
+              )
+            else
+              ReminderToolbarButton(
+                tooltip: _text('mark_all'),
+                icon: Icons.done_all_rounded,
+                onPressed: _uid == null || unread == 0 ? null : _markAllRead,
+              ),
           const SizedBox(width: 16),
         ],
       ),
@@ -229,8 +242,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
+  // Khung chờ theo bố cục thẻ tổng hợp và danh sách thông báo.
+  Widget _loadingSkeleton() {
+    return const _NotificationLoadingSkeleton();
+  }
+
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return _loadingSkeleton();
+    }
     if (_uid == null) {
       return Center(child: Text(_text('sign_in')));
     }
@@ -310,6 +330,181 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// Loading được viết ngay trong file, không cần package hoặc file bổ sung.
+class _NotificationLoadingSkeleton extends StatefulWidget {
+  final bool compact;
+
+  const _NotificationLoadingSkeleton({this.compact = false});
+
+  @override
+  State<_NotificationLoadingSkeleton> createState() =>
+      _NotificationLoadingSkeletonState();
+}
+
+class _NotificationLoadingSkeletonState
+    extends State<_NotificationLoadingSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _controller.stop();
+      _controller.value = .5;
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _block({
+    double? width,
+    double height = 12,
+    double radius = 6,
+  }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: SpendingStyle.muted(context).withOpacity(dark ? .24 : .15),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+
+  Widget _card({required Widget child, bool summary = false}) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: summary
+            ? SpendingStyle.accent(context).withOpacity(dark ? .12 : .07)
+            : (dark ? Colors.white.withOpacity(.04) : Colors.white),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: SpendingStyle.accent(context).withOpacity(.10),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _summary() {
+    return _card(
+      summary: true,
+      child: Row(
+        children: [
+          _block(width: 48, height: 48, radius: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(widthFactor: .72, child: _block(height: 16)),
+                const SizedBox(height: 12),
+                FractionallySizedBox(widthFactor: .48, child: _block(height: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _notification(int index) {
+    return _card(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _block(width: 42, height: 42, radius: 14),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: index.isEven ? .78 : .62,
+                        child: _block(height: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _block(width: 7, height: 7, radius: 7),
+                  ],
+                ),
+                const SizedBox(height: 13),
+                _block(height: 11),
+                const SizedBox(height: 7),
+                FractionallySizedBox(widthFactor: .78, child: _block(height: 11)),
+                const SizedBox(height: 13),
+                FractionallySizedBox(widthFactor: .34, child: _block(height: 9)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.compact
+        ? Center(child: _block(width: 24, height: 24, radius: 8))
+        : CustomScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          sliver: SliverToBoxAdapter(child: _summary()),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _notification(index),
+              ),
+              childCount: 6,
+            ),
+          ),
+        ),
+      ],
+    );
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          child: child,
+          builder: (context, child) => Opacity(
+            opacity: .45 + .55 * Curves.easeInOut.transform(_controller.value),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

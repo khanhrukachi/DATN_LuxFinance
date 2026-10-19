@@ -27,9 +27,7 @@ bool isFirstStart = true;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -57,68 +55,67 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: BlocBuilder<SettingCubit, SettingState>(
-          buildWhen: (previous, current) => previous != current,
-          builder: (_, settingState) {
-            return MaterialApp(
-              supportedLocales: AppLocalizationsSetup.supportedLocales,
-              localizationsDelegates:
-              AppLocalizationsSetup.localizationsDelegates,
-              localeResolutionCallback:
-              AppLocalizationsSetup.localeResolutionCallback,
-              locale: settingState.locale,
-              builder: (context, child) => ServiceLanguageScope(
-                child: child ?? const SizedBox.shrink(),
-              ),
-              debugShowCheckedModeBanner: false,
-              title: 'Spending Management',
-              theme: settingState.isDark
-                  ? ThemeData(
-                brightness: Brightness.dark,
-                primarySwatch: Colors.blue,
-              )
-                  : ThemeData(
-                cardColor: Colors.white,
-                colorScheme:
-                const ColorScheme.light(background: Colors.white),
-                brightness: Brightness.light,
-                primarySwatch: Colors.blue,
-                bottomAppBarTheme: BottomAppBarThemeData(
-                  elevation: 3,
-                ),
-                floatingActionButtonTheme:
-                const FloatingActionButtonThemeData(
-                  backgroundColor: Color.fromRGBO(121, 158, 84, 1),
-                ),
-                appBarTheme: AppBarTheme(
-                  iconTheme: const IconThemeData(color: Colors.black),
-                  titleTextStyle: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+        buildWhen: (previous, current) => previous != current,
+        builder: (_, settingState) {
+          return MaterialApp(
+            supportedLocales: AppLocalizationsSetup.supportedLocales,
+            localizationsDelegates:
+                AppLocalizationsSetup.localizationsDelegates,
+            localeResolutionCallback:
+                AppLocalizationsSetup.localeResolutionCallback,
+            locale: settingState.locale,
+            builder: (context, child) =>
+                ServiceLanguageScope(child: child ?? const SizedBox.shrink()),
+            debugShowCheckedModeBanner: false,
+            title: 'Spending Management',
+            theme: settingState.isDark
+                ? ThemeData(
+                    brightness: Brightness.dark,
+                    primarySwatch: Colors.blue,
+                  )
+                : ThemeData(
+                    cardColor: Colors.white,
+                    colorScheme: const ColorScheme.light(
+                      background: Colors.white,
+                    ),
+                    brightness: Brightness.light,
+                    primarySwatch: Colors.blue,
+                    bottomAppBarTheme: BottomAppBarThemeData(elevation: 3),
+                    floatingActionButtonTheme:
+                        const FloatingActionButtonThemeData(
+                          backgroundColor: Color.fromRGBO(121, 158, 84, 1),
+                        ),
+                    appBarTheme: AppBarTheme(
+                      iconTheme: const IconThemeData(color: Colors.black),
+                      titleTextStyle: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    primaryColor: const Color.fromRGBO(242, 243, 247, 1),
                   ),
-                ),
-                primaryColor: const Color.fromRGBO(242, 243, 247, 1),
-              ),
-              initialRoute: FirebaseAuth.instance.currentUser == null
-                  ? (isFirstStart ? "/" : "/login")
-                  : loginMethod
-                  ? (FirebaseAuth.instance.currentUser!.emailVerified
-                  ? '/main'
-                  : '/verify')
-                  : '/main',
-              routes: {
-                '/': (context) => const OnBoardingPage(),
-                '/login': (context) => const LoginPage(),
-                '/home': (context) => const HomePage(),
-                '/main': (context) => const MainPage(),
-                '/forgot': (context) => const ForgotPage(),
-                '/success': (context) => const SuccessPage(),
-                '/verify': (context) => const VerifyPage(),
-                '/survey': (context) => const UpdateProfileScreen(),
-                '/edit_profile': (context) => const EditProfilePage(),
-              },
-            );
-          }),
+            initialRoute: FirebaseAuth.instance.currentUser == null
+                ? (isFirstStart ? "/" : "/login")
+                : loginMethod
+                ? (FirebaseAuth.instance.currentUser!.emailVerified
+                      ? '/main'
+                      : '/verify')
+                : '/main',
+            routes: {
+              '/': (context) => const OnBoardingPage(),
+              '/login': (context) => const LoginPage(),
+              '/home': (context) => const HomePage(),
+              '/main': (context) => const MainPage(),
+              '/forgot': (context) => const ForgotPage(),
+              '/success': (context) => const SuccessPage(),
+              '/verify': (context) => const VerifyPage(),
+              '/survey': (context) => const UpdateProfileScreen(),
+              '/edit_profile': (context) => const EditProfilePage(),
+            },
+          );
+        },
+      ),
     );
   }
 }

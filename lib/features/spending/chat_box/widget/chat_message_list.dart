@@ -15,5 +15,5 @@ class ChatMessageList extends StatelessWidget {
       itemCount: messageCount,
       itemBuilder: messageBuilder,
     );
-    }
+  }
 }

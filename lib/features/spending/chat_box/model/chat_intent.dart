@@ -53,9 +53,12 @@ class ChatParseResult {
 class ChatConversationMemory {
   double? amount;
   String? categoryKey;
+  List<String> categoryCandidates = [];
+  String? ambiguousTerm;
   DateTime? date;
   DateTime? time;
   String note = '';
+  bool noteIsExplicit = false;
   String location = '';
   final List<String> turns = [];
 
@@ -64,9 +67,12 @@ class ChatConversationMemory {
   void clear() {
     amount = null;
     categoryKey = null;
+    categoryCandidates.clear();
+    ambiguousTerm = null;
     date = null;
     time = null;
     note = '';
+    noteIsExplicit = false;
     location = '';
     turns.clear();
   }

@@ -1,0 +1,178 @@
+{
+  "old_action_aliases": 17689,
+  "old_alias_handling": "Preserved in reference; all original seeds retained; neutral action prefixes handled centrally, no runtime expansion",
+  "new_nominal_phrases": 24534,
+  "nominal_family_composition": true,
+  "counts_are": "Nominal phrases including qualified products/services, not independent product species or observed customer records",
+  "per_category": {
+    "personal_belongings": {
+      "core_before": 297,
+      "added": 735,
+      "core_after": 1032
+    },
+    "housewares": {
+      "core_before": 256,
+      "added": 776,
+      "core_after": 1032
+    },
+    "market": {
+      "core_before": 179,
+      "added": 970,
+      "core_after": 1149
+    },
+    "eating": {
+      "core_before": 306,
+      "added": 729,
+      "core_after": 1035
+    },
+    "move": {
+      "core_before": 162,
+      "added": 862,
+      "core_after": 1024
+    },
+    "vehicle_maintenance": {
+      "core_before": 139,
+      "added": 890,
+      "core_after": 1029
+    },
+    "physical_examination": {
+      "core_before": 170,
+      "added": 857,
+      "core_after": 1027
+    },
+    "beautify": {
+      "core_before": 151,
+      "added": 875,
+      "core_after": 1026
+    },
+    "pet": {
+      "core_before": 599,
+      "added": 550,
+      "core_after": 1149
+    },
+    "education": {
+      "core_before": 144,
+      "added": 884,
+      "core_after": 1028
+    },
+    "sport": {
+      "core_before": 140,
+      "added": 890,
+      "core_after": 1030
+    },
+    "fun_play": {
+      "core_before": 144,
+      "added": 884,
+      "core_after": 1028
+    },
+    "online_services": {
+      "core_before": 130,
+      "added": 894,
+      "core_after": 1024
+    },
+    "gifts_donations": {
+      "core_before": 129,
+      "added": 897,
+      "core_after": 1026
+    },
+    "repair_and_decorate_the_house": {
+      "core_before": 137,
+      "added": 892,
+      "core_after": 1029
+    },
+    "salary": {
+      "core_before": 110,
+      "added": 914,
+      "core_after": 1024
+    },
+    "other_income": {
+      "core_before": 131,
+      "added": 893,
+      "core_after": 1024
+    },
+    "earn_profit": {
+      "core_before": 107,
+      "added": 916,
+      "core_after": 1023
+    },
+    "invest": {
+      "core_before": 116,
+      "added": 908,
+      "core_after": 1024
+    },
+    "rent_house": {
+      "core_before": 109,
+      "added": 915,
+      "core_after": 1024
+    },
+    "water_money": {
+      "core_before": 104,
+      "added": 920,
+      "core_after": 1024
+    },
+    "electricity_bill": {
+      "core_before": 106,
+      "added": 918,
+      "core_after": 1024
+    },
+    "gas_money": {
+      "core_before": 75,
+      "added": 949,
+      "core_after": 1024
+    },
+    "internet_money": {
+      "core_before": 109,
+      "added": 915,
+      "core_after": 1024
+    },
+    "telephone_fee": {
+      "core_before": 120,
+      "added": 904,
+      "core_after": 1024
+    },
+    "tv_money": {
+      "core_before": 75,
+      "added": 949,
+      "core_after": 1024
+    },
+    "insurance": {
+      "core_before": 98,
+      "added": 926,
+      "core_after": 1024
+    },
+    "other_costs": {
+      "core_before": 90,
+      "added": 922,
+      "core_after": 1012
+    }
+  },
+  "runtime_nominal_phrases": 28967,
+  "added_english_qualified_aliases": {
+    "personal_belongings": 58,
+    "housewares": 183,
+    "eating": 46,
+    "move": 335,
+    "vehicle_maintenance": 274,
+    "physical_examination": 215,
+    "beautify": 271,
+    "education": 178,
+    "sport": 284,
+    "fun_play": 301,
+    "online_services": 294,
+    "gifts_donations": 346,
+    "repair_and_decorate_the_house": 334,
+    "salary": 194,
+    "other_income": 393,
+    "earn_profit": 400,
+    "invest": 367,
+    "rent_house": 398,
+    "water_money": 320,
+    "electricity_bill": 318,
+    "gas_money": 349,
+    "internet_money": 315,
+    "telephone_fee": 304,
+    "tv_money": 349,
+    "insurance": 337,
+    "other_costs": 400
+  }
+}
